@@ -502,6 +502,84 @@ export async function processInboundEmail(emailData: EmailData) {
       
     console.log('📧 Step 7: Should create task?', shouldCreateTask, 'Priority score:', score)
     
+    // Store classification and command in email log while variables are in scope
+    await prisma.emailLog.update({
+      where: { id: emailLog.id },
+      data: { 
+        rawData: {
+          ...(emailData as any),
+          smartAnalysis: {
+            priorityScore: score,
+            reasoning: priorityAnalysis?.reasoning || 'N/A',
+            threadContext: threadContext
+          },
+          command: emailCommand
+        }
+      }
+    })
+
+    // If AI determines email is not actionable, just log it and exit early
+    if (!shouldCreateTask) {
+      await prisma.emailLog.update({
+        where: { id: emailLog.id },
+        data: { 
+          processed: true,
+          error: null,
+          rawData: {
+            ...(emailData as any),
+            smartAnalysis: {
+              priorityScore: score,
+              reasoning: priorityAnalysis?.reasoning || 'N/A',
+              shouldCreateTask: false,
+              threadContext: threadContext
+            }
+          }
+        }
+      })
+
+      await updateSenderIntelligence(senderEmail, organization.id, {
+        taskCreated: false,
+        priority: 'low',
+        userResponseTime: null,
+        taskCompleted: false,
+        taskCompletionTime: null
+      })
+
+      return {
+        success: true,
+        taskId: null,
+        isActionable: false,
+        classification: { isActionable: false, type: 'fyi', confidence: score / 100 },
+        message: `Email logged but no task created (Priority: ${score}/100 - ${priorityAnalysis?.reasoning || 'N/A'})`
+      }
+    }
+
+    // Build task payload from AI result
+    const extractedTask = {
+      title: smartTask.title,
+      description: smartTask.description,
+      priority: smartTask.priority,
+      dueDate: smartTask.dueDate ? new Date(smartTask.dueDate) : null
+    }
+
+    // Apply command parameters if available
+    if (emailCommand?.hasCommand && emailCommand.parameters) {
+      if (emailCommand.parameters.priority) {
+        extractedTask.priority = emailCommand.parameters.priority === 'urgent' ? 'high' : emailCommand.parameters.priority
+      }
+      if (emailCommand.parameters.dueDate) {
+        try {
+          const dueDate = typeof emailCommand.parameters.dueDate === 'string'
+            ? new Date(emailCommand.parameters.dueDate)
+            : emailCommand.parameters.dueDate
+          extractedTask.dueDate = dueDate
+        } catch {}
+      }
+    }
+
+    // Create the task and return
+    return await createTaskFromEmail(extractedTask, emailData, organization, emailLog)
+
     } catch (aiError) {
       console.error('📧 Error in AI processing:', aiError)
       
@@ -766,6 +844,51 @@ export async function processInboundEmail(emailData: EmailData) {
     
     throw error
   }
+}
+
+// Helper: create a Task from AI-extracted (or fallback) data and link the email log
+async function createTaskFromEmail(
+  extractedTask: {
+    title: string
+    description: string
+    priority: 'low' | 'medium' | 'high'
+    dueDate: Date | null
+  },
+  emailData: EmailData,
+  organization: { id: string },
+  emailLog: { id: string }
+) {
+  // Compute a thread id from headers if present
+  const thread = getThreadId(emailData) || emailData.MessageID || null
+
+  // Create the task
+  const task = await prisma.task.create({
+    data: {
+      organizationId: organization.id,
+      title: extractedTask.title,
+      description: extractedTask.description,
+      priority: extractedTask.priority,
+      dueDate: extractedTask.dueDate,
+      createdVia: 'email',
+      emailMetadata: JSON.parse(JSON.stringify({
+        from: emailData.From,
+        subject: emailData.Subject,
+        date: emailData.Date
+      })),
+      emailThreadId: thread || undefined
+    }
+  })
+
+  // Link the email log to the task and mark processed
+  await prisma.emailLog.update({
+    where: { id: emailLog.id },
+    data: {
+      processed: true,
+      taskId: task.id
+    }
+  })
+
+  return task
 }
 
 async function parseEmailCommand(command: string, context?: string): Promise<EmailCommand> {
