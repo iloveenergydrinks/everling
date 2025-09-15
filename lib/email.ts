@@ -139,9 +139,10 @@ export async function processInboundEmail(emailData: EmailData) {
   })
   
   // Extract the original recipient (not the Postmark forwarding address)
-  // When using Cloudflare Email Routing, the original recipient is in OriginalRecipient
-  // Otherwise fall back to To field
-  const originalRecipient = emailData.OriginalRecipient || emailData.To
+  // With Cloudflare Email Routing → Postmark, the To field contains the real recipient
+  // and OriginalRecipient contains Postmark's internal address
+  const originalRecipient = emailData.To.includes('@everling.io') ? emailData.To : 
+                           emailData.OriginalRecipient || emailData.To
   const toEmail = originalRecipient.toLowerCase()
   const emailPrefix = toEmail.split('@')[0]
   const senderEmail = extractEmailAddress(emailData.From)
