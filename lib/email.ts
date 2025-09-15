@@ -153,8 +153,16 @@ export async function processInboundEmail(emailData: EmailData) {
 
     if (!organization) {
       // Log the failed attempt (without organization ID since we don't have one)
-      console.error(`No organization found for email prefix: ${emailPrefix}`)
-      throw new Error(`No organization found for email prefix: ${emailPrefix}`)
+      console.log(`Email rejected: No organization found for prefix: ${emailPrefix} (from: ${senderEmail})`)
+      
+      // Return a status indicating the email was rejected (not an error)
+      return {
+        status: 'rejected',
+        reason: 'invalid_organization',
+        message: `No organization found for email prefix: ${emailPrefix}`,
+        emailPrefix,
+        senderEmail
+      }
     }
 
     // Check if sender is in allowed list
@@ -204,7 +212,16 @@ export async function processInboundEmail(emailData: EmailData) {
           error: `Sender not in allowed list: ${senderEmail}`
         }
       })
-      throw new Error(`Sender not in allowed list: ${senderEmail}`)
+      
+      console.log(`Email rejected: Sender not in allowed list: ${senderEmail} for org: ${organization.name}`)
+      
+      return {
+        status: 'rejected',
+        reason: 'unauthorized_sender',
+        message: `Sender not in allowed list: ${senderEmail}`,
+        organizationId: organization.id,
+        senderEmail
+      }
     }
 
     // Check if this is a reply to an existing thread with a task
