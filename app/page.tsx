@@ -46,12 +46,9 @@ export default async function HomePage() {
         <div className="mb-16">
           <div className="relative max-w-lg mx-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="urgent tasks from john..."
-              disabled
-              className="w-full pl-10 pr-4 py-3 border rounded-lg bg-background/50 text-center"
-            />
+            <div className="w-full pl-10 pr-4 py-3 border rounded-lg bg-background/50 text-center text-muted-foreground">
+              urgent tasks from john...
+            </div>
           </div>
           <p className="text-xs text-muted-foreground mt-2 text-center">
             AI-powered search understands natural language
