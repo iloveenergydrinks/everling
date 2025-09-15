@@ -6,6 +6,7 @@ import { formatDate, formatDateTime, generateApiKey } from "@/lib/utils"
 import { getSmartTaskList, interpretCommand, recordInteraction } from "@/lib/tasks"
 import { countries, getDefaultCountry, formatPhoneNumber } from "@/lib/countries"
 import { timezones, getTimeOptions, getUserTimezone } from "@/lib/timezones"
+import { NotificationSetup } from "@/components/notification-setup"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { 
@@ -101,6 +102,8 @@ export default function DashboardPage() {
   const [timezone, setTimezone] = useState(getUserTimezone())
   const [emailDigestEnabled, setEmailDigestEnabled] = useState(true)
   const [smsDigestEnabled, setSmsDigestEnabled] = useState(false)
+  const [showNotificationOnboarding, setShowNotificationOnboarding] = useState(false)
+  const [isNewUser, setIsNewUser] = useState(false)
 
   useEffect(() => {
     fetchTasks()
@@ -320,7 +323,17 @@ export default function DashboardPage() {
         setWhatsappVerified(data.verified)
         
         // Set notification preferences
-        if (data.notificationType) setNotificationType(data.notificationType)
+        if (data.notificationType) {
+          setNotificationType(data.notificationType)
+          // Hide onboarding if user has already set preferences
+          if (data.notificationType !== 'email' || data.digestTime !== '08:00') {
+            setShowNotificationOnboarding(false)
+          }
+        } else {
+          // New user - show onboarding
+          setShowNotificationOnboarding(true)
+          setIsNewUser(true)
+        }
         if (data.digestTime) setDigestTime(data.digestTime)
         if (data.timezone) setTimezone(data.timezone)
         if (data.emailDigestEnabled !== undefined) setEmailDigestEnabled(data.emailDigestEnabled)
@@ -595,6 +608,19 @@ export default function DashboardPage() {
             </p>
           </div>
 
+          {/* Notification Onboarding - Show for new users or if not configured */}
+          {showNotificationOnboarding && (
+            <div className="mb-6">
+              <NotificationSetup 
+                isOnboarding={true}
+                onComplete={() => {
+                  setShowNotificationOnboarding(false)
+                  // Refresh settings
+                  fetchWhatsAppSettings()
+                }}
+              />
+            </div>
+          )}
 
           {/* Smart Tasks List - Ultra Minimal */}
           <div className="space-y-3">
@@ -812,351 +838,18 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  {/* Notification Preferences */}
+                  {/* Quick Notification Link */}
                   <div className="border rounded p-4">
-                    <h3 className="text-sm font-medium mb-3">Daily Digest Settings</h3>
-                    <div className="space-y-4">
-                      
-                      {/* Notification Type */}
-                      <div>
-                        <label className="text-xs text-muted-foreground">How would you like to receive your daily digest?</label>
-                        <select 
-                          value={notificationType}
-                          onChange={(e) => setNotificationType(e.target.value)}
-                          className="w-full text-sm border rounded-sm px-2 py-1.5 mt-1"
-                        >
-                          <option value="email">Email only</option>
-                          <option value="sms">SMS only</option>
-                          <option value="both">Both Email and SMS</option>
-                          <option value="none">No daily digest</option>
-                        </select>
-                      </div>
-                      
-                      {/* Time and Timezone */}
-                      {notificationType !== "none" && (
-                        <>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <label className="text-xs text-muted-foreground">Time</label>
-                              <select 
-                                value={digestTime}
-                                onChange={(e) => setDigestTime(e.target.value)}
-                                className="w-full text-sm border rounded-sm px-2 py-1.5 mt-1"
-                              >
-                                {getTimeOptions().map(time => (
-                                  <option key={time.value} value={time.value}>
-                                    {time.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            
-                            <div>
-                              <label className="text-xs text-muted-foreground">Timezone</label>
-                              <select 
-                                value={timezone}
-                                onChange={(e) => setTimezone(e.target.value)}
-                                className="w-full text-sm border rounded-sm px-2 py-1.5 mt-1"
-                              >
-                                {timezones.map(group => (
-                                  <optgroup key={group.label} label={group.label}>
-                                    {group.options.map(tz => (
-                                      <option key={tz.value} value={tz.value}>
-                                        {tz.label}
-                                      </option>
-                                    ))}
-                                  </optgroup>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
-                          
-                          <p className="text-xs text-muted-foreground">
-                            You'll receive your daily task digest at {digestTime.replace(/(\d{2}):(\d{2})/, (_, h, m) => {
-                              const hour = parseInt(h)
-                              const period = hour >= 12 ? 'PM' : 'AM'
-                              const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour
-                              return `${displayHour}:${m} ${period}`
-                            })} every day.
-                          </p>
-                        </>
-                      )}
-                      
-                      {/* SMS Settings - only show if SMS or both is selected */}
-                      {(notificationType === "sms" || notificationType === "both") && (
-                        <div className="border-t pt-3">
-                          <h4 className="text-xs font-medium mb-2">SMS Settings</h4>
-                          <div className="space-y-3">
-                      {!whatsappEnabled ? (
-                        <>
-                          <p className="text-xs text-muted-foreground">
-                            Get instant SMS reminders for your tasks
-                          </p>
-                          <div>
-                            <label className="text-xs text-muted-foreground">Phone Number</label>
-                            <div className="flex gap-2 mt-1">
-                              {/* Country Selector */}
-                              <div className="relative">
-                                <button
-                                  onClick={() => setShowCountryDropdown(!showCountryDropdown)}
-                                  className="flex items-center gap-1 px-2 py-1 border rounded-sm text-sm hover:bg-muted"
-                                >
-                                  <span className="text-base">
-                                    {countries.find(c => c.code === selectedCountry)?.flag}
-                                  </span>
-                                  <span className="text-xs">
-                                    {countries.find(c => c.code === selectedCountry)?.dialCode}
-                                  </span>
-                                  <ChevronDown className="h-3 w-3" />
-                                </button>
-                                
-                                {showCountryDropdown && (
-                                  <>
-                                    <div 
-                                      className="fixed inset-0 z-40" 
-                                      onClick={() => setShowCountryDropdown(false)}
-                                    />
-                                    <div className="absolute top-full mt-1 left-0 w-56 max-h-64 overflow-y-auto bg-background border rounded-sm shadow-lg z-50">
-                                      {countries.map((country) => (
-                                        <button
-                                          key={country.code}
-                                          onClick={() => {
-                                            setSelectedCountry(country.code)
-                                            setShowCountryDropdown(false)
-                                          }}
-                                          className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-muted text-left"
-                                        >
-                                          <span className="text-base">{country.flag}</span>
-                                          <span className="text-xs flex-1">{country.name}</span>
-                                          <span className="text-xs text-muted-foreground">{country.dialCode}</span>
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                              
-                              {/* Phone Number Input */}
-                              <input
-                                type="tel"
-                                placeholder="234567890"
-                                value={whatsappPhone}
-                                onChange={(e) => setWhatsappPhone(e.target.value.replace(/\D/g, ''))}
-                                className="flex-1 text-sm border rounded-sm px-2 py-1"
-                              />
-                            </div>
-                          </div>
-                          <button
-                            onClick={async () => {
-                              if (!whatsappPhone) {
-                                toast({
-                                  title: "Error",
-                                  description: "Please enter your phone number",
-                                  variant: "error"
-                                })
-                                return
-                              }
-                              
-                              const fullPhoneNumber = formatPhoneNumber(selectedCountry, whatsappPhone)
-                              
-                              try {
-                                const response = await fetch('/api/user/sms', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ 
-                                    phoneNumber: fullPhoneNumber,
-                                    action: 'enable'
-                                  })
-                                })
-                                
-                                if (response.ok) {
-                                  const data = await response.json()
-                                  setWhatsappEnabled(true)
-                                  toast({
-                                    title: "Success",
-                                    description: data.message || "SMS reminders enabled",
-                                    variant: "success"
-                                  })
-                                } else {
-                                  const error = await response.json()
-                                  toast({
-                                    title: "Error",
-                                    description: error.error || "Failed to enable SMS",
-                                    variant: "error"
-                                  })
-                                }
-                              } catch (error) {
-                                toast({
-                                  title: "Error",
-                                  description: "Failed to enable SMS reminders",
-                                  variant: "error"
-                                })
-                              }
-                            }}
-                            className="w-full text-sm px-3 py-1.5 bg-blue-600 text-white rounded-sm hover:bg-blue-700"
-                          >
-                            Enable SMS Reminders
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm font-medium text-green-600">✓ SMS Enabled</p>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {countries.find(c => c.code === selectedCountry)?.flag}{' '}
-                                {countries.find(c => c.code === selectedCountry)?.dialCode}{' '}
-                                {whatsappPhone}
-                              </p>
-                            </div>
-                            <button
-                              onClick={async () => {
-                                try {
-                                  const response = await fetch('/api/user/sms', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ action: 'disable' })
-                                  })
-                                  
-                                  if (response.ok) {
-                                    setWhatsappEnabled(false)
-                                    setWhatsappPhone("")
-                                    toast({
-                                      title: "Success",
-                                      description: "SMS reminders disabled",
-                                      variant: "success"
-                                    })
-                                  }
-                                } catch (error) {
-                                  toast({
-                                    title: "Error",
-                                    description: "Failed to disable SMS",
-                                    variant: "error"
-                                  })
-                                }
-                              }}
-                              className="text-xs text-red-600 hover:text-red-700"
-                            >
-                              Disable
-                            </button>
-                          </div>
-                          {whatsappVerified ? (
-                            <p className="text-xs text-green-600">✓ Verified and ready to receive reminders</p>
-                          ) : (
-                            <p className="text-xs text-yellow-600">⚠️ Check your phone for verification SMS</p>
-                          )}
-                          <div className="flex gap-2">
-                            <button
-                              onClick={async () => {
-                                try {
-                                  const response = await fetch('/api/user/sms', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ action: 'test' })
-                                  })
-                                  
-                                  if (response.ok) {
-                                    const data = await response.json()
-                                    toast({
-                                      title: "Success",
-                                      description: data.message || "Test SMS sent",
-                                      variant: "success"
-                                    })
-                                  }
-                                } catch (error) {
-                                  toast({
-                                    title: "Error",
-                                    description: "Failed to send test SMS",
-                                    variant: "error"
-                                  })
-                                }
-                              }}
-                              className="text-xs px-2 py-1 border rounded-sm hover:bg-muted"
-                            >
-                              Send Test SMS
-                            </button>
-                            <button
-                              onClick={async () => {
-                                try {
-                                  const response = await fetch('/api/cron/daily-digest', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' }
-                                  })
-                                  
-                                  if (response.ok) {
-                                    toast({
-                                      title: "Success",
-                                      description: "Daily digest sent! Check your phone",
-                                      variant: "success"
-                                    })
-                                  } else {
-                                    toast({
-                                      title: "Error",
-                                      description: "Failed to send daily digest",
-                                      variant: "error"
-                                    })
-                                  }
-                                } catch (error) {
-                                  toast({
-                                    title: "Error",
-                                    description: "Failed to send daily digest",
-                                    variant: "error"
-                                  })
-                                }
-                              }}
-                              className="text-xs px-2 py-1 bg-blue-600 text-white rounded-sm hover:bg-blue-700"
-                            >
-                              Send Today's Digest
-                            </button>
-                          </div>
-                        </>
-                      )}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* Save Preferences Button */}
-                      <button
-                        onClick={async () => {
-                          try {
-                            const response = await fetch('/api/user/preferences', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                notificationType,
-                                digestTime,
-                                timezone,
-                                emailDigestEnabled: notificationType === 'email' || notificationType === 'both',
-                                smsDigestEnabled: notificationType === 'sms' || notificationType === 'both'
-                              })
-                            })
-                            
-                            if (response.ok) {
-                              toast({
-                                title: "Success",
-                                description: "Notification preferences saved",
-                                variant: "success"
-                              })
-                            } else {
-                              toast({
-                                title: "Error",
-                                description: "Failed to save preferences",
-                                variant: "error"
-                              })
-                            }
-                          } catch (error) {
-                            toast({
-                              title: "Error",
-                              description: "Failed to save preferences",
-                              variant: "error"
-                            })
-                          }
-                        }}
-                        className="w-full text-sm px-3 py-1.5 bg-primary text-white rounded-sm hover:bg-primary/90"
-                      >
-                        Save Notification Preferences
-                      </button>
-                    </div>
+                    <h3 className="text-sm font-medium mb-3">📬 Daily Digest</h3>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Get your tasks delivered via email or SMS every morning
+                    </p>
+                    <Link 
+                      href="/dashboard/notifications"
+                      className="inline-block w-full text-center text-sm px-3 py-1.5 bg-blue-600 text-white rounded-sm hover:bg-blue-700"
+                    >
+                      Configure Notifications
+                    </Link>
                   </div>
 
                   {/* Allowed Emails */}
