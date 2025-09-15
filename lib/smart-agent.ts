@@ -386,7 +386,11 @@ Extract comprehensive task information with smart analysis.`
       const jsonMatch = content.text.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
         console.log('🤖 Found JSON in response, parsing...')
-        const extracted = JSON.parse(jsonMatch[0])
+        let extracted = JSON.parse(jsonMatch[0])
+        // Handle nested `task` object responses
+        if (extracted && typeof extracted === 'object' && extracted.task && typeof extracted.task === 'object') {
+          extracted = extracted.task
+        }
         // Defensive defaults to avoid undefined.map errors
         extracted.stakeholders = Array.isArray(extracted.stakeholders) ? extracted.stakeholders : []
         extracted.dependencies = Array.isArray(extracted.dependencies) ? extracted.dependencies : []
