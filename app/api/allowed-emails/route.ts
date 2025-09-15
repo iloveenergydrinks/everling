@@ -3,15 +3,22 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
+export const dynamic = 'force-dynamic'
+
 // GET /api/allowed-emails - List allowed emails for the organization
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-  
-  if (!session?.user?.organizationId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
   try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.organizationId) {
+      console.error("Allowed emails: No session or organizationId", { 
+        session: !!session, 
+        user: !!session?.user,
+        organizationId: session?.user?.organizationId 
+      })
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const allowedEmails = await prisma.allowedEmail.findMany({
       where: {
         organizationId: session.user.organizationId,
@@ -33,7 +40,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Error fetching allowed emails:", error)
     return NextResponse.json(
-      { error: "Failed to fetch allowed emails" },
+      { error: "Failed to fetch allowed emails", details: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }
     )
   }

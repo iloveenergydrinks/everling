@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import crypto from "crypto"
 
+export const dynamic = 'force-dynamic'
+
 // GET /api/keys - List API keys for the organization
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions)

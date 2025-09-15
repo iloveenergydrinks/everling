@@ -3,6 +3,8 @@ import { authenticateRequest } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { getSmartTaskList, interpretCommand } from "@/lib/tasks"
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await authenticateRequest(request)
