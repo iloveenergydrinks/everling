@@ -79,7 +79,7 @@ export async function calculateSmartPriority(
 ): Promise<SmartPriorityScore> {
   try {
     const message = await anthropic.messages.create({
-      model: 'claude-3-sonnet-20241022', // Use more powerful model for complex analysis
+      model: 'claude-3-5-haiku-20241022', // Use more powerful model for complex analysis
       max_tokens: 800,
       temperature: 0.1, // Low temperature for consistent scoring
       system: `You are an expert email priority analyst. Your job is to score email priority from 0-100 based on multiple sophisticated factors, without using simple keyword matching.
@@ -194,7 +194,7 @@ export async function analyzeThreadContext(
     const sortedEmails = emails.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
     
     const message = await anthropic.messages.create({
-      model: 'claude-3-sonnet-20241022',
+      model: 'claude-3-5-haiku-20241022',
       max_tokens: 1200,
       temperature: 0.2,
       system: `You are an expert conversation analyst. Analyze email threads to understand:
@@ -311,7 +311,7 @@ export async function extractSmartTask(
 }> {
   try {
     const message = await anthropic.messages.create({
-      model: 'claude-3-sonnet-20241022',
+      model: 'claude-3-5-haiku-20241022',
       max_tokens: 1000,
       temperature: 0.2,
       system: `You are an expert task extraction specialist. Extract comprehensive task information from emails using advanced context understanding.

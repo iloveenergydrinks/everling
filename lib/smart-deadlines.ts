@@ -52,7 +52,7 @@ export async function analyzeDeadlineIntelligence(
   try {
     const now = new Date()
     const message = await anthropic.messages.create({
-      model: 'claude-3-sonnet-20241022',
+      model: 'claude-3-5-haiku-20241022',
       max_tokens: 1000,
       temperature: 0.1,
       system: `You are an expert deadline intelligence analyst. Your job is to understand time-sensitive requirements from business communications and suggest optimal due dates and reminder strategies.
@@ -453,7 +453,7 @@ export async function suggestDueDateFromContent(
     const now = new Date()
     
     const message = await anthropic.messages.create({
-      model: 'claude-3-sonnet-20241022',
+      model: 'claude-3-5-haiku-20241022',
       max_tokens: 600,
       temperature: 0.1,
       system: `You are a deadline extraction specialist. Analyze business communications to suggest realistic due dates based on content, urgency, and business context.

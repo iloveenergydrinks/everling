@@ -705,7 +705,7 @@ async function parseEmailCommand(command: string, context?: string): Promise<Ema
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
     
     const message = await anthropic.messages.create({
-      model: 'claude-3-haiku-20240307',
+      model: 'claude-3-5-haiku-20241022',
       max_tokens: 400,
       system: `You are a command parser for an email task management system.
       Parse natural language commands and extract actionable parameters.
@@ -775,7 +775,7 @@ async function classifyEmail({ subject, body, from }: {
 }): Promise<EmailClassification> {
   try {
     const message = await anthropic.messages.create({
-      model: 'claude-3-haiku-20240307',
+      model: 'claude-3-5-haiku-20241022',
       max_tokens: 300,
       system: `You are an email classifier. Analyze emails and determine if they require action.
       
@@ -872,7 +872,7 @@ Return ONLY the JSON object, no additional text.`
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-3-haiku-20240307',
+      model: 'claude-3-5-haiku-20241022',
       max_tokens: 500,
       temperature: 0.3,
       messages: [{
