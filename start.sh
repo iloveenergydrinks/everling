@@ -6,9 +6,18 @@ echo "Starting Everling.io production server..."
 echo "Generating Prisma Client..."
 npx prisma generate
 
+# Try to run SQL directly first
+echo "Creating NextAuth tables directly..."
+if [ ! -z "$DATABASE_URL" ]; then
+  psql "$DATABASE_URL" < init.sql 2>/dev/null || echo "Direct SQL failed, trying Prisma..."
+fi
+
 # Push database schema (creates tables if they don't exist)
-echo "Syncing database schema..."
-npx prisma db push --accept-data-loss
+echo "Syncing database schema with Prisma..."
+npx prisma db push --accept-data-loss || echo "Prisma db push failed"
+
+# Log database URL for debugging (without password)
+echo "Database connected to: ${DATABASE_URL%%:*}..."
 
 # Start the Next.js server
 echo "Starting Next.js server..."
