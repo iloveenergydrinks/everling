@@ -531,8 +531,8 @@ export async function processInboundEmail(emailData: EmailData) {
         rawData: {
           ...(emailData as any),
           smartAnalysis: {
-            priorityScore: priorityAnalysis.score,
-            reasoning: priorityAnalysis.reasoning,
+            priorityScore: safeScore,
+            reasoning: priorityAnalysis?.reasoning || 'N/A',
             threadContext: threadContext
           },
           command: emailCommand
@@ -550,8 +550,8 @@ export async function processInboundEmail(emailData: EmailData) {
           rawData: {
             ...(emailData as any),
             smartAnalysis: {
-              priorityScore: priorityAnalysis.score,
-              reasoning: priorityAnalysis.reasoning,
+              priorityScore: safeScore,
+              reasoning: priorityAnalysis?.reasoning || 'N/A',
               shouldCreateTask: false,
               threadContext: threadContext
             }
@@ -572,8 +572,8 @@ export async function processInboundEmail(emailData: EmailData) {
         success: true,
         taskId: null,
         isActionable: false,
-        classification: { isActionable: false, type: 'fyi', confidence: priorityAnalysis.score / 100 },
-        message: `Email logged but no task created (Priority: ${priorityAnalysis.score}/100 - ${priorityAnalysis.reasoning})`
+        classification: { isActionable: false, type: 'fyi', confidence: safeScore / 100 },
+        message: `Email logged but no task created (Priority: ${safeScore}/100 - ${priorityAnalysis?.reasoning || 'N/A'})`
       }
     }
 
