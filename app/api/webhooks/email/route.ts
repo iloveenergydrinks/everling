@@ -51,11 +51,13 @@ export async function POST(request: NextRequest) {
 
     // Process the email asynchronously
     // In production, you might want to use a queue here
-    const task = await processInboundEmail(emailData)
+    const result = await processInboundEmail(emailData)
 
     return NextResponse.json({
       success: true,
-      taskId: task.id
+      taskId: result.taskId || null,
+      message: result.message || 'Email processed',
+      isReply: result.isReply || false
     })
 
   } catch (error) {
