@@ -551,7 +551,14 @@ export async function processInboundEmail(emailData: EmailData) {
         priority: extractedTask.priority,
         dueDate: extractedTask.dueDate ? new Date(extractedTask.dueDate) : null,
         reminderDate: reminderDate, // Store reminder date on task
-        metadata: {
+        createdById: creator?.userId || null,
+        createdVia: 'email',
+        emailThreadId: emailData.MessageID || threadId, // Store thread ID for future replies
+        emailMetadata: {
+          from: emailData.From,
+          subject: emailData.Subject,
+          messageId: emailData.MessageID,
+          receivedAt: emailData.Date,
           smartAnalysis: {
             priorityScore: priorityAnalysis.score,
             priorityReasoning: priorityAnalysis.reasoning,
@@ -562,21 +569,7 @@ export async function processInboundEmail(emailData: EmailData) {
             dependencies: smartTask.dependencies,
             senderImportance: senderHistory.importanceScore,
             threadContext: threadContext
-          }
-        },
-        createdById: creator?.userId || null,
-        createdVia: 'email',
-        emailThreadId: emailData.MessageID || threadId, // Store thread ID for future replies
-        emailMetadata: {
-          from: emailData.From,
-          subject: emailData.Subject,
-          messageId: emailData.MessageID,
-          receivedAt: emailData.Date,
-          smartAnalysis: {
-          priorityScore: priorityAnalysis.score,
-          reasoning: priorityAnalysis.reasoning,
-          threadContext: threadContext
-        },
+          },
           command: emailCommand
         }
       }
