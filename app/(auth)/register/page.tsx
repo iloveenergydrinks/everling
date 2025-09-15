@@ -76,12 +76,12 @@ export default function RegisterPage() {
       if (!response.ok) {
         setError(data.error || "Registration failed")
       } else {
-        setSuccess(true)
-        setOrganizationEmail(data.organizationEmail)
-        // Redirect to login after 3 seconds
-        setTimeout(() => {
-          router.push("/login")
-        }, 3000)
+        // Redirect to success page with email info
+        const params = new URLSearchParams({
+          email: formData.email,
+          org: data.organizationEmail || ''
+        })
+        router.push(`/register-success?${params.toString()}`)
       }
     } catch (error) {
       setError("An error occurred. Please try again.")

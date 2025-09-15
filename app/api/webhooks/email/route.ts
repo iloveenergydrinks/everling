@@ -4,8 +4,14 @@ import crypto from "crypto"
 
 // Verify Postmark webhook signature
 function verifyPostmarkWebhook(body: string, signature: string | null): boolean {
-  if (!signature || !process.env.POSTMARK_WEBHOOK_SECRET) {
-    console.warn("Missing webhook signature or secret")
+  // If no webhook secret is configured, skip verification (development/testing)
+  if (!process.env.POSTMARK_WEBHOOK_SECRET) {
+    console.warn('POSTMARK_WEBHOOK_SECRET not configured - skipping webhook verification (not secure for production!)')
+    return true
+  }
+  
+  if (!signature) {
+    console.warn("Missing webhook signature")
     return false
   }
 

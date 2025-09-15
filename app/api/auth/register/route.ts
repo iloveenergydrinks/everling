@@ -2,6 +2,26 @@ import { NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 import { slugify } from "@/lib/utils"
+import { rateLimit, getClientIp } from "@/lib/rate-limit"
+import { createVerificationToken, sendVerificationEmail } from "@/lib/email-verification"
+
+// Stricter rate limit for registration: 3 attempts per hour per IP
+const registrationRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3 // Only 3 registration attempts per hour
+})
+
+// List of disposable email domains to block
+const DISPOSABLE_EMAIL_DOMAINS = [
+  'tempmail.com', 'throwaway.email', '10minutemail.com', 'guerrillamail.com',
+  'mailinator.com', 'temp-mail.org', 'yopmail.com', 'trashmail.com',
+  'getairmail.com', 'fakeinbox.com', 'dispostable.com', 'mailnesia.com'
+]
+
+function isDisposableEmail(email: string): boolean {
+  const domain = email.split('@')[1]?.toLowerCase()
+  return DISPOSABLE_EMAIL_DOMAINS.some(d => domain?.includes(d))
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,6 +32,53 @@ export async function POST(request: NextRequest) {
     if (!email || !password || !organizationName) {
       return NextResponse.json(
         { error: "Missing required fields" },
+        { status: 400 }
+      )
+    }
+
+    // Check rate limit
+    const clientIp = getClientIp(request)
+    const rateLimitResult = await registrationRateLimit(clientIp)
+    
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { 
+          error: "Too many registration attempts. Please try again later.",
+          retryAfter: rateLimitResult.reset.toISOString()
+        },
+        { 
+          status: 429,
+          headers: {
+            'Retry-After': Math.ceil((rateLimitResult.reset.getTime() - Date.now()) / 1000).toString(),
+            'X-RateLimit-Limit': rateLimitResult.limit.toString(),
+            'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
+            'X-RateLimit-Reset': rateLimitResult.reset.toISOString()
+          }
+        }
+      )
+    }
+
+    // Block disposable emails
+    if (isDisposableEmail(email)) {
+      return NextResponse.json(
+        { error: "Please use a permanent email address" },
+        { status: 400 }
+      )
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: "Invalid email format" },
+        { status: 400 }
+      )
+    }
+
+    // Validate password strength
+    if (password.length < 8) {
+      return NextResponse.json(
+        { error: "Password must be at least 8 characters long" },
         { status: 400 }
       )
     }
@@ -65,12 +132,13 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      // Create user
+      // Create user (unverified by default)
       const user = await tx.user.create({
         data: {
           email,
           password: hashedPassword,
           name,
+          emailVerified: null, // User must verify email before they can login
         }
       })
 
@@ -96,9 +164,20 @@ export async function POST(request: NextRequest) {
       return { user, organization }
     })
 
+    // Send verification email
+    try {
+      const token = await createVerificationToken(email)
+      await sendVerificationEmail(email, token, name)
+    } catch (error) {
+      console.error("Failed to send verification email:", error)
+      // Don't fail registration if email sending fails
+      // User can request a new verification email later
+    }
+
     return NextResponse.json({
-      message: "Registration successful",
-      organizationEmail: `${result.organization.emailPrefix}@${process.env.EMAIL_DOMAIN}`,
+      message: "Registration successful! Please check your email to verify your account.",
+      requiresVerification: true,
+      organizationEmail: `${result.organization.emailPrefix}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN || 'everling.io'}`,
       organizationSlug: result.organization.slug
     })
 
