@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { CheckCircle } from "lucide-react"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
@@ -60,10 +61,8 @@ export default function ForgotPasswordPage() {
           {sent ? (
             <CardContent className="text-center py-8">
               <div className="mb-4">
-                <div className="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
-                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
+                <div className="w-16 h-16 mx-auto mb-4 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
+                  <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
                 </div>
                 <h3 className="text-lg font-medium mb-2">Check your email</h3>
                 <p className="text-sm text-muted-foreground mb-4">

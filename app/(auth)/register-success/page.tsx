@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { Suspense } from "react"
+import { CheckCircle } from "lucide-react"
 
 function RegisterSuccessContent() {
   const searchParams = useSearchParams()
@@ -24,18 +25,8 @@ function RegisterSuccessContent() {
         {/* Success Message */}
         <div className="space-y-6 text-center">
           {/* Checkmark Icon */}
-          <div className="mx-auto h-16 w-16 rounded-full border-2 border-black flex items-center justify-center">
-            <svg
-              className="h-8 w-8 text-black"
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path d="M5 13l4 4L19 7"></path>
-            </svg>
+          <div className="mx-auto h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
+            <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
           </div>
 
           <div className="space-y-2">

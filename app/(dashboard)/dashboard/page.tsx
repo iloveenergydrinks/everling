@@ -1063,9 +1063,10 @@ export default function DashboardPage() {
                       </button>
                     )}
                     {'Notification' in window && Notification.permission === 'granted' && (
-                      <p className="text-xs text-green-600 dark:text-green-400 text-center">
-                        ✅ Desktop notifications enabled
-                      </p>
+                      <div className="flex items-center justify-center gap-1">
+                        <CheckCircle className="h-3 w-3 text-green-600 dark:text-green-400" />
+                        <p className="text-xs text-green-600 dark:text-green-400">Desktop notifications enabled</p>
+                      </div>
                     )}
                     {'Notification' in window && Notification.permission === 'denied' && (
                       <p className="text-xs text-muted-foreground text-center">
@@ -1479,9 +1480,10 @@ Body: {
                         )}
                         
                         {log.taskId && (
-                          <p className="text-xs text-green-600 mb-2">
-                            ✓ Task created successfully
-                          </p>
+                          <div className="flex items-center gap-1 mb-2">
+                            <CheckCircle className="h-3 w-3 text-green-600" />
+                            <p className="text-xs text-green-600">Task created successfully</p>
+                          </div>
                         )}
                         
                         {!log.error && !log.taskId && log.rawData?.classification && (
