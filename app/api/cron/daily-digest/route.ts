@@ -59,20 +59,47 @@ export async function POST(request: NextRequest) {
       where: { email: session.user.email }
     })
     
-    if (!user || !user.phoneNumber || !user.whatsappEnabled) {
+    if (!user) {
       return NextResponse.json(
-        { error: 'SMS not enabled' },
-        { status: 400 }
+        { error: 'User not found' },
+        { status: 404 }
       )
     }
     
-    // Send digest to current user only (for testing)
-    const { sendDailyDigest } = await import('@/lib/daily-digest')
-    const result = await sendDailyDigest(user.id, user.phoneNumber)
+    // Send digest to current user based on their preferences
+    const { sendEmailDigest, sendDailyDigest } = await import('@/lib/daily-digest')
+    
+    const results = {
+      email: { success: false, sent: false },
+      sms: { success: false, sent: false }
+    }
+    
+    // Send email digest if enabled
+    if ((user.notificationType === 'email' || user.notificationType === 'both') && user.emailDigestEnabled) {
+      const emailResponse = await sendEmailDigest(user.id, user.email)
+      results.email = { success: emailResponse.success, sent: true }
+    }
+    
+    // Send SMS digest if enabled
+    if ((user.notificationType === 'sms' || user.notificationType === 'both') && 
+        user.smsDigestEnabled && user.phoneNumber && user.whatsappVerified) {
+      const smsResponse = await sendDailyDigest(user.id, user.phoneNumber)
+      results.sms = { success: smsResponse.success, sent: true }
+    }
+    
+    // Build response message
+    const sentChannels = []
+    if (results.email.sent) sentChannels.push('email')
+    if (results.sms.sent) sentChannels.push('SMS')
+    
+    const message = sentChannels.length > 0 
+      ? `Test digest sent via ${sentChannels.join(' and ')}`
+      : 'No digest sent - check your notification preferences'
     
     return NextResponse.json({
-      success: result.success,
-      message: 'Test digest sent'
+      success: results.email.success || results.sms.success || sentChannels.length === 0,
+      message,
+      details: results
     })
     
   } catch (error) {

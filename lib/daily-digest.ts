@@ -359,7 +359,8 @@ export async function sendAllDailyDigests() {
       
       // Send email digest if enabled
       if ((user.notificationType === 'email' || user.notificationType === 'both') && user.emailDigestEnabled) {
-        emailResult.success = await sendEmailDigest(user.id, user.email)
+        const emailResponse = await sendEmailDigest(user.id, user.email)
+        emailResult.success = emailResponse.success
       }
       
       // Send SMS digest if enabled

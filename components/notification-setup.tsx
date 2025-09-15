@@ -299,19 +299,61 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
         )}
 
         {/* Action Buttons */}
-        <div className="flex gap-3 pt-2">
+        <div className="space-y-3 pt-2">
           <button
             onClick={handleSave}
             disabled={loading || (requiresPhone && !whatsappPhone)}
-            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           >
             {loading ? 'Saving...' : isOnboarding ? 'Get Started' : 'Save Preferences'}
           </button>
           
+          {/* Manual Send Digest Button - Always show in drawer */}
+          {!isOnboarding && (
+            <button
+              onClick={async () => {
+                try {
+                  const response = await fetch('/api/cron/daily-digest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                  })
+                  
+                  if (response.ok) {
+                    const data = await response.json()
+                    toast({
+                      title: "Digest Sent!",
+                      description: data.mock 
+                        ? "Test digest simulated (check console)" 
+                        : "Check your email/phone for today's digest",
+                      variant: "success"
+                    })
+                  } else {
+                    toast({
+                      title: "Error",
+                      description: "Failed to send digest. Make sure your preferences are saved first.",
+                      variant: "error"
+                    })
+                  }
+                } catch (error) {
+                  toast({
+                    title: "Error",
+                    description: "Failed to send digest",
+                    variant: "error"
+                  })
+                }
+              }}
+              disabled={notificationType === 'none'}
+              className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Zap className="h-4 w-4" />
+              {notificationType === 'none' ? 'Configure notifications first' : 'Send Today\'s Digest Now'}
+            </button>
+          )}
+          
           {isOnboarding && (
             <button
               onClick={onComplete}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              className="w-full px-4 py-2 text-gray-600 hover:text-gray-800"
             >
               Skip for now
             </button>

@@ -1,9 +1,13 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { prisma } from '@/lib/prisma'
+import { ServerClient } from 'postmark'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
 })
+
+// Initialize Postmark client
+const postmarkClient = new ServerClient(process.env.POSTMARK_SERVER_TOKEN || '')
 
 interface EmailData {
   From: string
@@ -790,5 +794,42 @@ Return ONLY the JSON object, no additional text.`
       priority: 'medium',
       dueDate: null
     }
+  }
+}
+
+/**
+ * Send email using Postmark
+ */
+export async function sendEmail({
+  to,
+  subject,
+  html,
+  text
+}: {
+  to: string
+  subject: string
+  html?: string
+  text?: string
+}) {
+  try {
+    if (!process.env.POSTMARK_SERVER_TOKEN) {
+      console.log('[MOCK EMAIL] Would send email:', { to, subject })
+      return { success: true, mock: true }
+    }
+
+    const result = await postmarkClient.sendEmail({
+      From: process.env.EMAIL_FROM || 'noreply@taskmanager.com',
+      To: to,
+      Subject: subject,
+      HtmlBody: html,
+      TextBody: text || html?.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+      MessageStream: 'outbound'
+    })
+
+    console.log('Email sent successfully:', result.MessageID)
+    return { success: true, messageId: result.MessageID }
+  } catch (error: any) {
+    console.error('Email sending error:', error)
+    return { success: false, error: error.message || 'Failed to send email' }
   }
 }
