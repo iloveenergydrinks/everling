@@ -3,46 +3,48 @@ import { processInboundEmail } from "@/lib/email"
 import crypto from "crypto"
 
 // Verify Postmark webhook signature
-function verifyPostmarkWebhook(body: string, signature: string | null): boolean {
-  // If no webhook secret is configured, skip verification (development/testing)
-  if (!process.env.POSTMARK_WEBHOOK_SECRET) {
-    console.warn('POSTMARK_WEBHOOK_SECRET not configured - skipping webhook verification (not secure for production!)')
-    return true
+// Postmark doesn't provide webhook secrets for inbound emails
+// Instead, we use Basic Auth in the webhook URL
+function verifyPostmarkAuth(request: NextRequest): boolean {
+  // Get the Authorization header
+  const authHeader = request.headers.get('authorization')
+  
+  // If we have a webhook auth token configured, verify it
+  if (process.env.POSTMARK_WEBHOOK_AUTH) {
+    if (!authHeader) {
+      console.warn('Missing authorization header')
+      return false
+    }
+    
+    // Basic auth format: "Basic base64(username:password)"
+    const expectedAuth = `Basic ${Buffer.from(process.env.POSTMARK_WEBHOOK_AUTH).toString('base64')}`
+    
+    return crypto.timingSafeEqual(
+      Buffer.from(authHeader),
+      Buffer.from(expectedAuth)
+    )
   }
   
-  if (!signature) {
-    console.warn("Missing webhook signature")
-    return false
+  // No auth configured - accept in development but warn
+  if (process.env.NODE_ENV === 'production') {
+    console.warn('POSTMARK_WEBHOOK_AUTH not configured - webhook is not secure!')
   }
-
-  const computedSignature = crypto
-    .createHmac('sha256', process.env.POSTMARK_WEBHOOK_SECRET)
-    .update(body)
-    .digest('base64')
-
-  // Use timing-safe comparison
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(computedSignature)
-  )
+  return true
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // Get raw body for signature verification
-    const body = await request.text()
-    const signature = request.headers.get('X-Postmark-Signature')
-
-    // Verify webhook signature in production
-    if (process.env.NODE_ENV === 'production') {
-      if (!verifyPostmarkWebhook(body, signature)) {
-        console.error('Invalid webhook signature')
-        return NextResponse.json(
-          { error: "Unauthorized" },
-          { status: 401 }
-        )
-      }
+    // Verify authentication
+    if (!verifyPostmarkAuth(request)) {
+      console.error('Webhook authentication failed')
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
     }
+    
+    // Get raw body
+    const body = await request.text()
 
     // Parse verified webhook data
     const emailData = JSON.parse(body)
