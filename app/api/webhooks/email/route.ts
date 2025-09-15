@@ -33,6 +33,8 @@ function verifyPostmarkAuth(request: NextRequest): boolean {
 }
 
 export async function POST(request: NextRequest) {
+  console.log('Email webhook received')
+  
   try {
     // Verify authentication
     if (!verifyPostmarkAuth(request)) {
@@ -43,11 +45,15 @@ export async function POST(request: NextRequest) {
       )
     }
     
+    console.log('Webhook authentication passed')
+    
     // Get raw body
     const body = await request.text()
+    console.log('Raw webhook body length:', body.length)
 
     // Parse verified webhook data
     const emailData = JSON.parse(body)
+    console.log('Parsed email data keys:', Object.keys(emailData))
 
     // Validate required fields
     if (!emailData.From || !emailData.To || !emailData.Subject) {

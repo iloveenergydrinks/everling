@@ -130,6 +130,14 @@ function extractCommandFromEmail(body: string): { command: string | null, forwar
 }
 
 export async function processInboundEmail(emailData: EmailData) {
+  // Log the incoming email data for debugging
+  console.log('Processing inbound email:', {
+    To: emailData.To,
+    OriginalRecipient: emailData.OriginalRecipient,
+    From: emailData.From,
+    Subject: emailData.Subject
+  })
+  
   // Extract the original recipient (not the Postmark forwarding address)
   // When using Cloudflare Email Routing, the original recipient is in OriginalRecipient
   // Otherwise fall back to To field
@@ -137,6 +145,13 @@ export async function processInboundEmail(emailData: EmailData) {
   const toEmail = originalRecipient.toLowerCase()
   const emailPrefix = toEmail.split('@')[0]
   const senderEmail = extractEmailAddress(emailData.From)
+  
+  console.log('Extracted email details:', {
+    originalRecipient,
+    toEmail,
+    emailPrefix,
+    senderEmail
+  })
   const threadId = getThreadId(emailData)
   
   let emailLog: any
