@@ -115,6 +115,11 @@ export default function DashboardPage() {
     fetchOrganization()
     fetchReminders()
     
+    // Request notification permission on mount
+    if ('Notification' in window && Notification.permission === 'default') {
+      // We'll ask for permission when they interact with the dashboard
+    }
+    
     // Set up polling for real-time updates
     const interval = setInterval(() => {
       fetchTasks()
@@ -134,11 +139,74 @@ export default function DashboardPage() {
       if (response.ok) {
         const data = await response.json()
         
-        // Check if there are new tasks
-        if (!loading && data.length > lastTaskCount) {
-          setNewTasksCount(data.length - lastTaskCount)
-          // Clear the notification after 5 seconds
-          setTimeout(() => setNewTasksCount(0), 5000)
+        // Check if there are new tasks from email
+        if (!loading && tasks.length > 0) {
+          const newEmailTasks = data.filter((task: Task) => {
+            // Check if this is a new task created via email that we haven't seen
+            const isFromEmail = task.createdVia === 'email'
+            const isNew = !tasks.find((t: Task) => t.id === task.id)
+            const createdRecently = new Date(task.createdAt).getTime() > Date.now() - 10000 // Created in last 10 seconds
+            return isFromEmail && isNew && createdRecently
+          })
+          
+          // Show notification for each new email task
+          newEmailTasks.forEach((task: Task) => {
+            const fromEmail = task.emailMetadata?.from?.match(/<(.+?)>/)
+            const sender = fromEmail ? fromEmail[1] : (task.emailMetadata?.from || 'Unknown sender')
+            
+            toast({
+              title: "📧 New task from email",
+              description: (
+                <div className="space-y-1">
+                  <p className="font-medium">{task.title}</p>
+                  <p className="text-xs text-muted-foreground">From: {sender}</p>
+                </div>
+              ),
+              variant: "success",
+              duration: 7000,
+            })
+            
+            // Play notification sound (using Web Audio API for a simple beep)
+            try {
+              const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+              const oscillator = audioContext.createOscillator()
+              const gainNode = audioContext.createGain()
+              
+              oscillator.connect(gainNode)
+              gainNode.connect(audioContext.destination)
+              
+              oscillator.frequency.value = 800 // Frequency in Hz
+              oscillator.type = 'sine'
+              
+              gainNode.gain.setValueAtTime(0.1, audioContext.currentTime)
+              gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3)
+              
+              oscillator.start(audioContext.currentTime)
+              oscillator.stop(audioContext.currentTime + 0.3)
+            } catch {
+              // Fallback: try to play an MP3 if it exists
+              try {
+                const audio = new Audio('/notification.mp3')
+                audio.volume = 0.3
+                audio.play().catch(() => {})
+              } catch {}
+            }
+            
+            // Browser notification (if permission granted)
+            if ('Notification' in window && Notification.permission === 'granted') {
+              new Notification('New task from email', {
+                body: task.title,
+                icon: '/icon.png',
+                tag: task.id,
+              })
+            }
+          })
+          
+          // Update the count for the banner (if you still want it)
+          if (data.length > lastTaskCount) {
+            setNewTasksCount(data.length - lastTaskCount)
+            setTimeout(() => setNewTasksCount(0), 5000)
+          }
         }
         
         setTasks(data)
@@ -631,6 +699,31 @@ export default function DashboardPage() {
                       <Copy className="h-4 w-4" />
                     </button>
                   </div>
+                  
+                  {/* Notification permission button */}
+                  {'Notification' in window && Notification.permission === 'default' && (
+                    <button
+                      onClick={async () => {
+                        const permission = await Notification.requestPermission()
+                        if (permission === 'granted') {
+                          toast({
+                            title: "Notifications enabled!",
+                            description: "You'll be notified when new emails create tasks",
+                            variant: "success",
+                          })
+                        }
+                      }}
+                      className="mt-2 text-xs px-3 py-1 border rounded-sm hover:bg-muted w-full"
+                    >
+                      🔔 Enable desktop notifications
+                    </button>
+                  )}
+                  
+                  {'Notification' in window && Notification.permission === 'granted' && (
+                    <p className="mt-2 text-xs text-muted-foreground text-center">
+                      ✅ Desktop notifications enabled
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

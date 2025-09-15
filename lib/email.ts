@@ -269,6 +269,81 @@ export async function processInboundEmail(emailData: EmailData) {
     try {
       console.log('📧 Step 3a: Reply detection check:', { inReplyTo, hasInReplyTo: !!inReplyTo, isForward })
 
+      // First, check if we've already processed this exact MessageID
+      if (emailData.MessageID) {
+        const duplicateEmail = await prisma.emailLog.findFirst({
+          where: {
+            organizationId: organization.id,
+            messageId: emailData.MessageID,
+            taskId: { not: null }
+          },
+          include: {
+            task: true
+          }
+        })
+
+        if (duplicateEmail?.task) {
+          console.log('📧 Duplicate email detected - task already exists for this MessageID')
+          await prisma.emailLog.update({
+            where: { id: emailLog.id },
+            data: { 
+              processed: true,
+              taskId: duplicateEmail.task.id,
+              emailMetadata: {
+                duplicate: true,
+                originalTaskId: duplicateEmail.task.id,
+                reason: 'Exact MessageID match'
+              } as any
+            }
+          })
+          
+          return {
+            success: true,
+            message: 'Duplicate email - task already exists',
+            taskId: duplicateEmail.task.id,
+            duplicate: true
+          }
+        }
+      }
+
+      // Check for recent similar tasks (same subject + sender within last hour)
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+      const recentSimilarTask = await prisma.task.findFirst({
+        where: {
+          organizationId: organization.id,
+          title: emailData.Subject,
+          createdAt: { gte: oneHourAgo },
+          createdVia: 'email',
+          emailMetadata: {
+            path: ['from'],
+            equals: emailData.From
+          }
+        }
+      })
+
+      if (recentSimilarTask) {
+        console.log('📧 Similar task detected - likely duplicate email')
+        await prisma.emailLog.update({
+          where: { id: emailLog.id },
+          data: { 
+            processed: true,
+            taskId: recentSimilarTask.id,
+            emailMetadata: {
+              duplicate: true,
+              originalTaskId: recentSimilarTask.id,
+              reason: 'Similar task created recently (same subject/sender)'
+            } as any
+          }
+        })
+        
+        return {
+          success: true,
+          message: 'Similar task already exists',
+          taskId: recentSimilarTask.id,
+          duplicate: true
+        }
+      }
+
       // Treat as reply ONLY if In-Reply-To is present and the subject does not indicate a forward
       if (inReplyTo && !isForward) {
         console.log('📧 Step 3b: Searching for existing task by In-Reply-To...')

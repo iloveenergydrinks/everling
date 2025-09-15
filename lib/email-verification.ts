@@ -49,8 +49,13 @@ export async function verifyToken(token: string): Promise<{ email: string } | nu
 }
 
 export async function sendVerificationEmail(email: string, token: string, name?: string) {
-  const verificationUrl = `${process.env.NEXTAUTH_URL || 'https://everling.io'}/api/auth/verify-email?token=${token}`
-
+  // Always use production URL for email links, regardless of NEXTAUTH_URL
+  const baseUrl = process.env.NODE_ENV === 'production' 
+    ? 'https://everling.io' 
+    : (process.env.NEXTAUTH_URL || 'http://localhost:3000')
+  
+  const verificationUrl = `${baseUrl}/api/auth/verify-email?token=${token}`
+  
   if (!postmark) {
     console.log('[MOCK EMAIL] Verification link:', verificationUrl)
     return
