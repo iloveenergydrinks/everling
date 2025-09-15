@@ -486,7 +486,7 @@ export default function DashboardPage() {
   const hiddenTaskCount = tasks.filter(t => t.status !== 'done').length - (showAllTasks ? 0 : Math.min(5, visibleTasks.length))
 
   const agentEmail = session?.user?.organizationSlug 
-    ? `${session.user.organizationSlug}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN || "yourdomain.com"}`
+    ? `${session.user.organizationSlug}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN || "everling.io"}`
     : "Loading..."
 
   const copyEmail = () => {
@@ -562,9 +562,9 @@ export default function DashboardPage() {
                     >
                       <span className="text-muted-foreground">{session?.user?.organizationSlug}@</span>
                       <span className="text-lg mx-0.5 bg-gradient-to-r from-emerald-500 to-teal-600 dark:from-emerald-400 dark:to-cyan-500 bg-clip-text text-transparent">
-                        {process.env.NEXT_PUBLIC_EMAIL_DOMAIN?.split('.')[0] || "everling"}
+                        {(process.env.NEXT_PUBLIC_EMAIL_DOMAIN || "everling.io").split('.')[0]}
                       </span>
-                      <span className="text-muted-foreground">.{process.env.NEXT_PUBLIC_EMAIL_DOMAIN?.split('.').slice(1).join('.') || "io"}</span>
+                      <span className="text-muted-foreground">.{(process.env.NEXT_PUBLIC_EMAIL_DOMAIN || "everling.io").split('.').slice(1).join('.')}</span>
                     </div>
                     <button
                       onClick={copyEmail}
