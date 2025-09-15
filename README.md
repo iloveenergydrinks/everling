@@ -1,6 +1,6 @@
-# TaskManager - Minimalist Task Management
+# Everling.io - Know Before It Matters
 
-A beautifully simple task management system with SMS reminders and email integration.
+The most minimal task manager that learns what matters to you. Minimalism meets intelligence.
 
 ## ✨ Features
 
@@ -15,8 +15,8 @@ A beautifully simple task management system with SMS reminders and email integra
 
 1. Clone and install:
 ```bash
-git clone https://github.com/yourusername/taskmanager
-cd taskmanager
+git clone https://github.com/iloveenergydrinks/everling
+cd everling
 npm install
 ```
 

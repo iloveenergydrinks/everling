@@ -14,23 +14,31 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen py-12">
       <div className="mx-auto max-w-3xl px-6">
-        {/* Minimal Header */}
-        <div className="mb-16 text-center">
-          <h1 className="text-2xl font-medium mb-2">TaskManager</h1>
-          <p className="text-sm text-muted-foreground">
-            The most frictionless way to manage tasks
-          </p>
+        {/* Minimal Header with Login */}
+        <div className="mb-16 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-medium">Everling.io</h1>
+            <p className="text-sm text-muted-foreground">
+              Know before it matters
+            </p>
+          </div>
+          <Link 
+            href="/login"
+            className="px-4 py-2 text-sm border rounded hover:bg-muted transition-colors"
+          >
+            Login
+          </Link>
         </div>
 
         {/* Hero Section - Minimal */}
         <div className="mb-16 text-center">
           <h2 className="text-4xl font-light mb-6 tracking-tight">
-            One search box.<br />
-            Infinite possibilities.
+            Minimalism meets<br />
+            intelligence.
           </h2>
           <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
-            Forward emails to create tasks. Get daily digests. 
-            Search with natural language. Everything just works.
+            The most minimal task manager that learns what matters to you. 
+            Know before it matters, act with zero friction.
           </p>
         </div>
 
@@ -50,44 +58,76 @@ export default async function HomePage() {
           </p>
         </div>
 
-        {/* Three Key Features */}
-        <div className="mb-16 grid gap-8 md:grid-cols-3">
-          <div className="text-center">
-            <Mail className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
-            <h3 className="font-medium mb-2">Email to Task</h3>
-            <p className="text-sm text-muted-foreground">
-              Forward any email to your unique address. AI extracts actionable tasks automatically.
-            </p>
-          </div>
-          
-          <div className="text-center">
-            <MessageSquare className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
-            <h3 className="font-medium mb-2">Daily Digest</h3>
-            <p className="text-sm text-muted-foreground">
-              Get your tasks delivered via email or SMS every morning. Reply to complete.
-            </p>
-          </div>
-          
-          <div className="text-center">
-            <Zap className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
-            <h3 className="font-medium mb-2">Smart Ordering</h3>
-            <p className="text-sm text-muted-foreground">
-              Tasks auto-organize by relevance, urgency, and your interaction patterns.
-            </p>
+        {/* Core Philosophy */}
+        <div className="mb-16 text-center">
+          <h3 className="text-lg font-medium mb-6">Three principles. Zero compromise.</h3>
+          <div className="grid gap-8 md:grid-cols-3">
+            <div>
+              <div className="w-12 h-12 mx-auto mb-4 border rounded-lg flex items-center justify-center">
+                <Search className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <h4 className="font-medium mb-2">Minimal Interface</h4>
+              <p className="text-sm text-muted-foreground">
+                One search box. No buttons, filters, or complexity. Just type what you need.
+              </p>
+            </div>
+            
+            <div>
+              <div className="w-12 h-12 mx-auto mb-4 border rounded-lg flex items-center justify-center">
+                <Zap className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <h4 className="font-medium mb-2">Know Before It Matters</h4>
+              <p className="text-sm text-muted-foreground">
+                AI learns your patterns. Important tasks surface automatically when you need them.
+              </p>
+            </div>
+            
+            <div>
+              <div className="w-12 h-12 mx-auto mb-4 border rounded-lg flex items-center justify-center">
+                <Mail className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <h4 className="font-medium mb-2">Zero Friction</h4>
+              <p className="text-sm text-muted-foreground">
+                Forward emails, get morning digests, reply to complete. Never leave your workflow.
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Simple Flow */}
-        <div className="mb-16 p-6 border rounded-lg bg-muted/30">
-          <h3 className="font-medium mb-4 text-center">How it works</h3>
-          <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
-            <span>Forward email</span>
-            <span>→</span>
-            <span>AI creates task</span>
-            <span>→</span>
-            <span>Get daily digest</span>
-            <span>→</span>
-            <span>Reply to complete</span>
+        {/* The Promise */}
+        <div className="mb-16 p-8 border rounded-lg bg-gradient-to-br from-blue-50/50 via-purple-50/30 to-pink-50/50">
+          <div className="text-center">
+            <h3 className="text-xl font-medium mb-4">Know before it matters</h3>
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+              Your most important tasks surface exactly when you need them. 
+              No overwhelming lists, no decision fatigue.
+            </p>
+            <div className="text-sm text-muted-foreground">
+              Forward email → AI learns → Morning digest → One-tap complete
+            </div>
+          </div>
+        </div>
+
+        {/* Anti-Features (What we DON'T have) */}
+        <div className="mb-16 p-6 border rounded-lg">
+          <h3 className="font-medium mb-4 text-center">What we removed</h3>
+          <div className="grid gap-4 md:grid-cols-2 text-sm text-muted-foreground">
+            <div className="text-center">
+              <span className="line-through">Complex filters</span>
+              <p className="text-xs mt-1">Just search naturally</p>
+            </div>
+            <div className="text-center">
+              <span className="line-through">Endless notifications</span>
+              <p className="text-xs mt-1">One daily digest</p>
+            </div>
+            <div className="text-center">
+              <span className="line-through">Manual organization</span>
+              <p className="text-xs mt-1">AI orders by relevance</p>
+            </div>
+            <div className="text-center">
+              <span className="line-through">App switching</span>
+              <p className="text-xs mt-1">Works in your email</p>
+            </div>
           </div>
         </div>
 
@@ -95,24 +135,20 @@ export default async function HomePage() {
         <div className="text-center">
           <Link 
             href="/register"
-            className="inline-block px-6 py-2 bg-foreground text-background rounded hover:bg-foreground/90 transition-colors font-medium"
+            className="inline-block px-8 py-3 bg-foreground text-background rounded hover:bg-foreground/90 transition-colors font-medium"
           >
-            Get Started
+            Start with zero friction
           </Link>
           <p className="text-xs text-muted-foreground mt-3">
-            Free to try • No credit card required
+            Free • No setup required • Works immediately
           </p>
         </div>
 
         {/* Footer */}
         <div className="mt-16 pt-8 border-t text-center">
-          <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
-            <Link href="/login" className="hover:text-foreground">
-              Login
-            </Link>
-            <span>•</span>
-            <span>© 2025 TaskManager</span>
-          </div>
+          <p className="text-xs text-muted-foreground">
+            © 2025 Everling.io • Built for minimalists
+          </p>
         </div>
       </div>
     </div>

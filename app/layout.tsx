@@ -1,37 +1,40 @@
 import type { Metadata } from "next"
-import { Space_Grotesk } from "next/font/google"
+import { Inter } from "next/font/google"
 import "./globals.css"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
 import AuthProvider from "@/components/auth-provider"
 import { Toaster } from "@/components/ui/toaster"
-import { GlobalModal } from "@/components/global-modal"
 
-const spaceGrotesk = Space_Grotesk({ 
-  subsets: ["latin"],
-  display: 'swap',
-  variable: '--font-space-grotesk',
-})
+const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "TaskManager - Email to Task Automation",
-  description: "Convert emails into actionable tasks automatically with AI",
+  title: "Everling.io - Know before it matters",
+  description: "The most minimal task manager that learns what matters to you. AI-powered relevance, daily digests, zero friction.",
+  keywords: ["task manager", "minimal", "AI", "productivity", "email", "SMS"],
+  openGraph: {
+    title: "Everling.io - Know before it matters",
+    description: "Minimalism meets intelligence. The task manager that learns what matters to you.",
+    url: "https://everling.io",
+    siteName: "Everling.io",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Everling.io - Know before it matters",
+    description: "The most minimal task manager that learns what matters to you.",
+  },
 }
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const session = await getServerSession(authOptions)
-
   return (
-    <html lang="en" className={spaceGrotesk.variable}>
-      <body className={spaceGrotesk.className}>
-        <AuthProvider session={session}>
+    <html lang="en">
+      <body className={inter.className}>
+        <AuthProvider session={null}>
           {children}
           <Toaster />
-          <GlobalModal />
         </AuthProvider>
       </body>
     </html>
