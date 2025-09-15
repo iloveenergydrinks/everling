@@ -258,6 +258,16 @@ export const authOptions: NextAuthOptions = {
         session.user.organizationId = token.organizationId as string
         session.user.organizationRole = token.organizationRole as string
         session.user.organizationSlug = token.organizationSlug as string
+        
+        // Debug logging
+        if (!session.user.organizationSlug) {
+          console.log('Missing organizationSlug in session:', {
+            tokenOrganizationSlug: token.organizationSlug,
+            tokenOrganizationId: token.organizationId,
+            userEmail: session.user.email,
+            userId: session.user.id
+          })
+        }
       }
 
       return session
