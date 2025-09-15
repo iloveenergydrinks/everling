@@ -20,14 +20,18 @@ export default function ForgotPasswordPage() {
     setLoading(true)
 
     try {
-      const result = await signIn("email", {
-        email,
-        callbackUrl: `${window.location.origin}/dashboard`,
-        redirect: false,
+      const response = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
       })
 
-      if (result?.error) {
-        setError("Failed to send reset link. Please check your email address.")
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.error || "Failed to send reset link")
       } else {
         setSent(true)
       }
@@ -66,7 +70,7 @@ export default function ForgotPasswordPage() {
                   We sent a password reset link to <strong>{email}</strong>
                 </p>
                 <p className="text-xs text-muted-foreground mb-6">
-                  Click the link in your email to sign in and access your account
+                  Click the link in your email to set a new password
                 </p>
               </div>
               <div className="space-y-3">

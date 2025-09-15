@@ -20,11 +20,43 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [organizationEmail, setOrganizationEmail] = useState("")
+  const [orgCheck, setOrgCheck] = useState<any>(null)
+  const [checkingOrg, setCheckingOrg] = useState(false)
+  const [selectedSuggestion, setSelectedSuggestion] = useState<any>(null)
+
+  // Check organization availability
+  const checkOrganization = async (orgName: string) => {
+    if (!orgName.trim()) {
+      setOrgCheck(null)
+      return
+    }
+
+    setCheckingOrg(true)
+    try {
+      const response = await fetch("/api/auth/check-organization", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ organizationName: orgName }),
+      })
+
+      const data = await response.json()
+      setOrgCheck(data)
+    } catch (error) {
+      console.error("Failed to check organization:", error)
+    } finally {
+      setCheckingOrg(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setLoading(true)
+
+    // Use selected suggestion if available
+    const finalOrgName = selectedSuggestion?.name || formData.organizationName
 
     try {
       const response = await fetch("/api/auth/register", {
@@ -32,7 +64,10 @@ export default function RegisterPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          organizationName: finalOrgName
+        }),
       })
 
       const data = await response.json()
@@ -55,10 +90,22 @@ export default function RegisterPage() {
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target
     setFormData({
       ...formData,
-      [e.target.id]: e.target.value,
+      [id]: value,
     })
+    
+    // Check organization availability when organization name changes
+    if (id === 'organizationName') {
+      setSelectedSuggestion(null)
+      // Debounce the check
+      setTimeout(() => {
+        if (value.trim() && value === formData.organizationName) {
+          checkOrganization(value)
+        }
+      }, 500)
+    }
   }
 
   if (success) {
@@ -158,13 +205,71 @@ export default function RegisterPage() {
                 id="organizationName"
                 type="text"
                 placeholder="Acme Inc"
-                value={formData.organizationName}
-                onChange={handleChange}
+                value={selectedSuggestion?.name || formData.organizationName}
+                onChange={(e) => {
+                  handleChange(e)
+                  checkOrganization(e.target.value)
+                }}
                 required
               />
-              <p className="text-xs text-muted-foreground">
-                This will be used to create your unique email address
-              </p>
+              
+              {/* Organization Check Results */}
+              {checkingOrg && (
+                <div className="text-xs text-muted-foreground">
+                  Checking availability...
+                </div>
+              )}
+              
+              {orgCheck && !orgCheck.available && (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800 mb-3">
+                    <strong>"{formData.organizationName}"</strong> is already taken
+                  </p>
+                  <p className="text-xs text-yellow-700 mb-3">
+                    Choose one of these available alternatives:
+                  </p>
+                  <div className="space-y-2">
+                    {orgCheck.suggestions?.map((suggestion: any, index: number) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => {
+                          setSelectedSuggestion(suggestion)
+                          setFormData({
+                            ...formData,
+                            organizationName: suggestion.name
+                          })
+                        }}
+                        className={`w-full p-2 text-left border rounded text-sm transition-colors ${
+                          selectedSuggestion?.name === suggestion.name
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="font-medium">{suggestion.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          Agent email: {suggestion.agentEmail}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {orgCheck && orgCheck.available && (
+                <div className="flex items-center gap-2 text-xs text-green-600">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Available! Your agent email will be: {orgCheck.suggested?.agentEmail}
+                </div>
+              )}
+              
+              {!orgCheck && formData.organizationName && (
+                <p className="text-xs text-muted-foreground">
+                  This will be used to create your unique email address
+                </p>
+              )}
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
