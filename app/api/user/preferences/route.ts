@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       )
     }
     
-    return NextResponse.json({
+    const preferences = {
       notificationType: user.notificationType || 'email',
       digestTime: user.digestTime || '08:00',
       timezone: user.timezone || 'America/New_York',
@@ -44,7 +44,11 @@ export async function GET(request: NextRequest) {
       phoneNumber: user.phoneNumber,
       smsEnabled: user.whatsappEnabled,
       smsVerified: user.whatsappVerified
-    })
+    }
+
+    console.log('Returning preferences:', preferences)
+
+    return NextResponse.json(preferences)
     
   } catch (error) {
     console.error('Error fetching preferences:', error)
@@ -90,6 +94,14 @@ export async function POST(request: NextRequest) {
       )
     }
     
+    console.log('Updating preferences:', {
+      notificationType,
+      digestTime,
+      timezone,
+      emailDigestEnabled,
+      smsDigestEnabled
+    })
+
     // Update user preferences
     const updatedUser = await prisma.user.update({
       where: { email: session.user.email },
@@ -101,6 +113,8 @@ export async function POST(request: NextRequest) {
         smsDigestEnabled: smsDigestEnabled ?? false
       }
     })
+
+    console.log('Updated user timezone:', updatedUser.timezone)
     
     return NextResponse.json({
       success: true,

@@ -19,6 +19,39 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
   const [selectedCountry, setSelectedCountry] = useState(getDefaultCountry())
   const [showCountryDropdown, setShowCountryDropdown] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [loadingPreferences, setLoadingPreferences] = useState(true)
+
+  // Load current preferences on mount
+  useEffect(() => {
+    const loadPreferences = async () => {
+      try {
+        const response = await fetch('/api/user/preferences')
+        if (response.ok) {
+          const data = await response.json()
+          setNotificationType(data.notificationType || 'email')
+          setDigestTime(data.digestTime || '08:00')
+          setTimezone(data.timezone || getUserTimezone())
+          
+          // Load SMS settings if available
+          if (data.phoneNumber) {
+            const fullNumber = data.phoneNumber
+            const country = countries.find(c => fullNumber.startsWith(c.dialCode))
+            if (country) {
+              setSelectedCountry(country.code)
+              const numberWithoutCode = fullNumber.replace(country.dialCode, '')
+              setWhatsappPhone(numberWithoutCode)
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load preferences:', error)
+      } finally {
+        setLoadingPreferences(false)
+      }
+    }
+
+    loadPreferences()
+  }, [])
 
   const handleSave = async () => {
     setLoading(true)
@@ -78,6 +111,17 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
   }
 
   const requiresPhone = notificationType === 'sms' || notificationType === 'both'
+
+  // Show loading while preferences are being fetched
+  if (loadingPreferences) {
+    return (
+      <div className={`border rounded-lg p-6 bg-white shadow-sm ${isOnboarding ? 'border-blue-200 bg-blue-50/50' : ''}`}>
+        <div className="text-center py-8">
+          <p className="text-sm text-muted-foreground">Loading preferences...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className={`border rounded-lg p-6 bg-white shadow-sm ${isOnboarding ? 'border-blue-200 bg-blue-50/50' : ''}`}>
