@@ -309,7 +309,16 @@ export async function extractSmartTask(
   projectTag: string | null
   dependencies: string[]
 }> {
+  console.log('🤖 Starting AI task extraction:', {
+    from: emailData.from,
+    subject: emailData.subject,
+    bodyLength: emailData.body?.length || 0,
+    hasThreadContext: !!threadContext,
+    priorityScore: priorityScore.score
+  })
   try {
+    console.log('🤖 Calling Claude API for task extraction...')
+    
     const message = await anthropic.messages.create({
       model: 'claude-3-5-haiku-20241022',
       max_tokens: 1000,
@@ -367,18 +376,30 @@ Extract comprehensive task information with smart analysis.`
       }],
     })
 
+    console.log('🤖 Claude API response received, processing...')
+    
     const content = message.content[0]
     if (content.type === 'text') {
+      console.log('🤖 Claude response text length:', content.text.length)
+      console.log('🤖 Claude response preview:', content.text.substring(0, 200) + '...')
+      
       const jsonMatch = content.text.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
+        console.log('🤖 Found JSON in response, parsing...')
         const extracted = JSON.parse(jsonMatch[0])
+        console.log('🤖 Extracted task data:', {
+          title: extracted.title,
+          priority: extracted.priority,
+          hasDueDate: !!extracted.dueDate,
+          hasReminderDate: !!extracted.reminderDate
+        })
         
         // Map priority score to category
         let priority: 'low' | 'medium' | 'high' = 'medium'
         if (priorityScore.score <= 30) priority = 'low'
         else if (priorityScore.score >= 71) priority = 'high'
         
-        return {
+        const finalTask = {
           ...extracted,
           priority,
           stakeholders: extracted.stakeholders || [],
@@ -387,6 +408,11 @@ Extract comprehensive task information with smart analysis.`
           estimatedEffort: extracted.estimatedEffort || 'medium',
           businessImpact: extracted.businessImpact || 'medium'
         }
+        
+        console.log('🤖 Task extraction successful:', finalTask.title)
+        return finalTask
+      } else {
+        console.error('🤖 No JSON found in Claude response')
       }
     }
 

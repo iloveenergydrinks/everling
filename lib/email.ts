@@ -440,6 +440,14 @@ export async function processInboundEmail(emailData: EmailData) {
     }
 
     // Use smart task extraction instead of basic classification
+    console.log('📧 Calling AI task extraction with data:', {
+      from: emailData.From,
+      subject: emailData.Subject,
+      bodyLength: (forwardedContent || bodyText)?.length || 0,
+      hasThreadContext: !!threadContext,
+      priorityScore: priorityAnalysis.score
+    })
+    
     const smartTask = await extractSmartTask(
       {
         from: emailData.From,
@@ -450,6 +458,8 @@ export async function processInboundEmail(emailData: EmailData) {
       threadContext,
       priorityAnalysis
     )
+    
+    console.log('📧 AI task extraction result:', smartTask ? 'SUCCESS' : 'FAILED')
 
     // Determine if this should create a task based on AI analysis
     const shouldCreateTask = priorityAnalysis.score > 20 && // Minimum threshold
