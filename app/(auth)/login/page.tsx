@@ -42,12 +42,22 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Welcome back</CardTitle>
+    <div className="min-h-screen py-12">
+      <div className="mx-auto max-w-md px-6">
+        {/* Header */}
+        <div className="mb-8 text-center">
+          <Link href="/" className="text-2xl font-medium">Everling.io</Link>
+          <p className="text-sm text-muted-foreground mt-2">
+            Welcome back
+          </p>
+        </div>
+
+        {/* Login Form */}
+        <Card className="w-full">
+        <CardHeader className="text-center">
+          <CardTitle className="text-xl">Sign in</CardTitle>
           <CardDescription>
-            Sign in to your account to continue
+            Enter your credentials to continue
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
@@ -91,7 +101,8 @@ export default function LoginPage() {
             </p>
           </CardFooter>
         </form>
-      </Card>
+        </Card>
+      </div>
     </div>
   )
 }

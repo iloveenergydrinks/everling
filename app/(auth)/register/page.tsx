@@ -91,12 +91,22 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Create an account</CardTitle>
+    <div className="min-h-screen py-12">
+      <div className="mx-auto max-w-md px-6">
+        {/* Header */}
+        <div className="mb-8 text-center">
+          <Link href="/" className="text-2xl font-medium">Everling.io</Link>
+          <p className="text-sm text-muted-foreground mt-2">
+            Know before it matters
+          </p>
+        </div>
+
+        {/* Register Form */}
+        <Card className="w-full">
+        <CardHeader className="text-center">
+          <CardTitle className="text-xl">Create account</CardTitle>
           <CardDescription>
-            Get started with TaskManager in seconds
+            Get started in seconds
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
@@ -167,7 +177,8 @@ export default function RegisterPage() {
             </p>
           </CardFooter>
         </form>
-      </Card>
+        </Card>
+      </div>
     </div>
   )
 }
