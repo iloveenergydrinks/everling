@@ -27,6 +27,7 @@ interface EmailData {
   Headers?: Array<{ Name: string; Value: string }>
   Cc?: string
   ReplyTo?: string
+  OriginalRecipient?: string  // Added for Cloudflare Email Routing forwarding
 }
 
 interface ExtractedTask {
@@ -129,8 +130,11 @@ function extractCommandFromEmail(body: string): { command: string | null, forwar
 }
 
 export async function processInboundEmail(emailData: EmailData) {
-  // Extract tenant from email
-  const toEmail = emailData.To.toLowerCase()
+  // Extract the original recipient (not the Postmark forwarding address)
+  // When using Cloudflare Email Routing, the original recipient is in OriginalRecipient
+  // Otherwise fall back to To field
+  const originalRecipient = emailData.OriginalRecipient || emailData.To
+  const toEmail = originalRecipient.toLowerCase()
   const emailPrefix = toEmail.split('@')[0]
   const senderEmail = extractEmailAddress(emailData.From)
   const threadId = getThreadId(emailData)
