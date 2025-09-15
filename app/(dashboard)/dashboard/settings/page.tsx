@@ -5,3 +5,4 @@ export default function SettingsPage() {
   // This can be expanded later for user settings
   redirect("/dashboard")
 }
+

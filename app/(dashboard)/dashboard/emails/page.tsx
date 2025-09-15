@@ -5,3 +5,4 @@ export default function EmailsPage() {
   // This can be expanded later to show email logs
   redirect("/dashboard")
 }
+
