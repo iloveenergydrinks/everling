@@ -190,6 +190,13 @@ export async function processInboundEmail(emailData: EmailData) {
       allowed => allowed.email === senderEmail
     )
     
+    console.log('📧 Sender authorization check:', {
+      senderEmail,
+      isAllowed,
+      allowedEmailsCount: organization.allowedEmails.length,
+      allowedEmails: organization.allowedEmails.map(ae => ae.email)
+    })
+    
     // Check if this is part of an existing thread
     let isThreadReply = false
     if (threadId && !isAllowed) {
