@@ -420,7 +420,11 @@ export async function processInboundEmail(emailData: EmailData) {
       data: { 
         rawData: {
           ...(emailData as any),
-          classification,
+          smartAnalysis: {
+            priorityScore: priorityAnalysis.score,
+            reasoning: priorityAnalysis.reasoning,
+            threadContext: threadContext
+          },
           command: emailCommand
         }
       }
@@ -568,7 +572,11 @@ export async function processInboundEmail(emailData: EmailData) {
           subject: emailData.Subject,
           messageId: emailData.MessageID,
           receivedAt: emailData.Date,
-          classification,
+          smartAnalysis: {
+          priorityScore: priorityAnalysis.score,
+          reasoning: priorityAnalysis.reasoning,
+          threadContext: threadContext
+        },
           command: emailCommand
         }
       }
