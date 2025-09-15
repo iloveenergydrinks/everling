@@ -127,15 +127,17 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async signIn({ user, account, profile }) {
-      try {
-        // Handle OAuth account linking
-        if (account?.provider === "google" && user.email) {
+      // Allow all sign-ins - NextAuth adapter will handle user creation
+      // We only need to handle linking for existing users
+      
+      if (account?.provider === "google" && user.email) {
+        try {
           const existingUser = await prisma.user.findUnique({
             where: { email: user.email }
           })
           
           if (existingUser) {
-            // Link the Google account to the existing user
+            // Check if this Google account is already linked
             const existingAccount = await prisma.account.findFirst({
               where: {
                 userId: existingUser.id,
@@ -145,6 +147,7 @@ export const authOptions: NextAuthOptions = {
             })
             
             if (!existingAccount) {
+              // Link the Google account to the existing user
               await prisma.account.create({
                 data: {
                   userId: existingUser.id,
@@ -164,13 +167,14 @@ export const authOptions: NextAuthOptions = {
             // Update user.id to match existing user
             user.id = existingUser.id
           }
+        } catch (error) {
+          console.error('Error linking Google account:', error)
+          // Don't fail the sign-in, just log the error
         }
-        
-        return true
-      } catch (error) {
-        console.error('SignIn callback error:', error)
-        return false
       }
+      
+      // Always return true to allow sign-in
+      return true
     },
     async jwt({ token, user, trigger, session, account }) {
       if (user) {
