@@ -1,6 +1,9 @@
 import { prisma } from '@/lib/prisma'
 import { sendTestSMS } from '@/lib/sms'
-import { sendEmail } from '@/lib/email'
+import { ServerClient } from 'postmark'
+
+// Use the same Postmark client as the email system
+const postmarkClient = new ServerClient(process.env.POSTMARK_SERVER_TOKEN || '')
 
 interface DailyTask {
   id: string
@@ -263,11 +266,45 @@ export async function sendEmailDigest(userId: string, email: string) {
       </div>
     `
     
-    return await sendEmail({
-      to: email,
-      subject: 'Your tasks for today',
-      html
+    // Get user's organization to use their agent email as sender
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        organizations: {
+          include: {
+            organization: true
+          }
+        }
+      }
     })
+    
+    const organization = user?.organizations[0]?.organization
+    const fromEmail = organization ? 
+      `${organization.emailPrefix}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN || 'everling.io'}` :
+      process.env.EMAIL_FROM || 'noreply@taskmanager.com'
+    
+    // Send via Postmark using agent email
+    try {
+      if (!process.env.POSTMARK_SERVER_TOKEN) {
+        console.log('[MOCK EMAIL] Would send digest to:', email)
+        return { success: true, mock: true }
+      }
+
+      const result = await postmarkClient.sendEmail({
+        From: fromEmail,
+        To: email,
+        Subject: 'Your tasks for today',
+        HtmlBody: html,
+        TextBody: html.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+        MessageStream: 'outbound'
+      })
+
+      console.log('Email digest sent successfully:', result.MessageID)
+      return { success: true, messageId: result.MessageID }
+    } catch (error: any) {
+      console.error('Email digest error:', error)
+      return { success: false, error: error.message }
+    }
   }
   
   // Build email HTML
@@ -309,11 +346,28 @@ export async function sendEmailDigest(userId: string, email: string) {
     </div>
   `
   
-  return await sendEmail({
-    to: email,
-    subject: `${tasks.length} task${tasks.length === 1 ? '' : 's'} for today`,
-    html
-  })
+  // Send via Postmark using agent email
+  try {
+    if (!process.env.POSTMARK_SERVER_TOKEN) {
+      console.log('[MOCK EMAIL] Would send digest to:', email)
+      return { success: true, mock: true }
+    }
+
+    const result = await postmarkClient.sendEmail({
+      From: fromEmail,
+      To: email,
+      Subject: `${tasks.length} task${tasks.length === 1 ? '' : 's'} for today`,
+      HtmlBody: html,
+      TextBody: html.replace(/<[^>]*>/g, ''), // Strip HTML for text version
+      MessageStream: 'outbound'
+    })
+
+    console.log('Email digest sent successfully:', result.MessageID)
+    return { success: true, messageId: result.MessageID }
+  } catch (error: any) {
+    console.error('Email digest error:', error)
+    return { success: false, error: error.message }
+  }
 }
 
 /**
