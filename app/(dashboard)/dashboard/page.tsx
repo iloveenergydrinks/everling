@@ -87,6 +87,9 @@ export default function DashboardPage() {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
   const [organization, setOrganization] = useState<any>(null)
   const [allowedEmails, setAllowedEmails] = useState<any[]>([])
+  const [showAddEmailForm, setShowAddEmailForm] = useState(false)
+  const [newEmailAddress, setNewEmailAddress] = useState("")
+  const [newEmailNote, setNewEmailNote] = useState("")
   const [reminders, setReminders] = useState<any>({ upcoming: [], overdue: [], dueSoon: [] })
   const [loadingLogs, setLoadingLogs] = useState(false)
   const [loadingSettings, setLoadingSettings] = useState(false)
@@ -219,6 +222,15 @@ export default function DashboardPage() {
   }
 
   const addAllowedEmail = async (email: string, note: string) => {
+    if (!email || !email.includes('@')) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid email address",
+        variant: "error",
+      })
+      return
+    }
+    
     try {
       const response = await fetch("/api/allowed-emails", {
         method: "POST",
@@ -233,6 +245,9 @@ export default function DashboardPage() {
           variant: "success",
         })
         fetchAllowedEmails()
+        setShowAddEmailForm(false)
+        setNewEmailAddress("")
+        setNewEmailNote("")
       } else {
         const error = await response.json()
         toast({
@@ -872,24 +887,50 @@ export default function DashboardPage() {
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="text-sm font-medium">Allowed Senders</h3>
                       <button
-                        onClick={async () => {
-                          const email = await showPrompt(
-                            "Add Allowed Email",
-                            "Enter the email address to allow",
-                            {
-                              confirmText: "Add",
-                              cancelText: "Cancel"
-                            }
-                          )
-                          if (email) {
-                            addAllowedEmail(email, "")
-                          }
-                        }}
+                        onClick={() => setShowAddEmailForm(!showAddEmailForm)}
                         className="text-xs px-2 py-1 rounded-sm border hover:bg-muted"
                       >
-                        + Add Email
+                        {showAddEmailForm ? 'Cancel' : '+ Add Email'}
                       </button>
                     </div>
+                    
+                    {showAddEmailForm && (
+                      <div className="mb-4 p-3 border rounded-sm space-y-2 bg-muted/50">
+                        <input
+                          type="email"
+                          placeholder="Email address"
+                          value={newEmailAddress}
+                          onChange={(e) => setNewEmailAddress(e.target.value)}
+                          className="w-full px-2 py-1 text-sm border rounded-sm bg-background"
+                          autoFocus
+                        />
+                        <input
+                          type="text"
+                          placeholder="Note (optional)"
+                          value={newEmailNote}
+                          onChange={(e) => setNewEmailNote(e.target.value)}
+                          className="w-full px-2 py-1 text-sm border rounded-sm bg-background"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => addAllowedEmail(newEmailAddress, newEmailNote)}
+                            className="flex-1 px-2 py-1 text-sm bg-black text-white rounded-sm hover:bg-gray-800"
+                          >
+                            Add Email
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowAddEmailForm(false)
+                              setNewEmailAddress("")
+                              setNewEmailNote("")
+                            }}
+                            className="px-2 py-1 text-sm border rounded-sm hover:bg-muted"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     
                     <p className="text-xs text-muted-foreground mb-3">
                       Only emails from these addresses can create tasks. Thread replies are automatically allowed.
