@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { sendTestSMS } from '@/lib/sms'
+import { sendEmail } from '@/lib/email'
 
 interface DailyTask {
   id: string
@@ -210,28 +211,168 @@ export async function handleDigestReply(
 }
 
 /**
- * Send daily digests to all users with SMS enabled
- * This should be called by cron at 8am every day
+ * Send email digest with all tasks for today
+ */
+export async function sendEmailDigest(userId: string, email: string) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  
+  // Get all tasks due today or with reminders today
+  const tasks = await prisma.task.findMany({
+    where: {
+      createdById: userId,
+      status: { not: 'done' },
+      OR: [
+        {
+          dueDate: {
+            gte: today,
+            lt: tomorrow
+          }
+        },
+        {
+          reminderDate: {
+            gte: today,
+            lt: tomorrow
+          }
+        }
+      ]
+    },
+    orderBy: [
+      { priority: 'desc' },
+      { dueDate: 'asc' },
+      { reminderDate: 'asc' }
+    ]
+  })
+  
+  if (tasks.length === 0) {
+    // Send a "no tasks" email
+    const html = `
+      <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #333;">Good morning! ☀️</h2>
+        <p style="color: #666; line-height: 1.6;">
+          You have no tasks scheduled for today. Enjoy your day!
+        </p>
+        <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 30px 0;">
+        <p style="color: #999; font-size: 12px;">
+          You're receiving this because you have email digests enabled. 
+          <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" style="color: #0066cc;">Manage preferences</a>
+        </p>
+      </div>
+    `
+    
+    return await sendEmail({
+      to: email,
+      subject: 'Your tasks for today',
+      html
+    })
+  }
+  
+  // Build email HTML
+  let tasksHtml = tasks.map((task, index) => {
+    const time = task.dueDate || task.reminderDate
+    const timeStr = time ? formatTime(time) : ''
+    const priority = task.priority === 'high' ? 
+      '<span style="color: #ef4444;">⚡ High Priority</span>' : ''
+    
+    return `
+      <div style="padding: 15px; background: #f9f9f9; border-radius: 8px; margin-bottom: 10px;">
+        <h3 style="margin: 0 0 8px 0; color: #333;">
+          ${index + 1}. ${task.title} ${priority}
+        </h3>
+        ${task.description ? `<p style="margin: 0 0 8px 0; color: #666;">${task.description}</p>` : ''}
+        ${timeStr ? `<p style="margin: 0; color: #999; font-size: 14px;">⏰ ${timeStr}</p>` : ''}
+      </div>
+    `
+  }).join('')
+  
+  const html = `
+    <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h2 style="color: #333;">Your tasks for today 📋</h2>
+      <p style="color: #666; margin-bottom: 30px;">
+        You have ${tasks.length} task${tasks.length === 1 ? '' : 's'} scheduled for today:
+      </p>
+      ${tasksHtml}
+      <div style="text-align: center; margin-top: 30px;">
+        <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" 
+           style="display: inline-block; padding: 12px 24px; background: #0066cc; color: white; text-decoration: none; border-radius: 6px;">
+          View in Dashboard
+        </a>
+      </div>
+      <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 30px 0;">
+      <p style="color: #999; font-size: 12px;">
+        You're receiving this because you have email digests enabled. 
+        <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" style="color: #0066cc;">Manage preferences</a>
+      </p>
+    </div>
+  `
+  
+  return await sendEmail({
+    to: email,
+    subject: `${tasks.length} task${tasks.length === 1 ? '' : 's'} for today`,
+    html
+  })
+}
+
+/**
+ * Send daily digests to all users based on their preferences and timezone
+ * This should be called frequently (every hour) to catch all timezones
  */
 export async function sendAllDailyDigests() {
+  const currentHour = new Date().getUTCHours()
+  
+  // Find users whose digest time matches current hour in their timezone
   const users = await prisma.user.findMany({
     where: {
-      whatsappEnabled: true, // Using for SMS
-      whatsappVerified: true,
-      phoneNumber: { not: null }
+      notificationType: { not: 'none' },
+      OR: [
+        { emailDigestEnabled: true },
+        { smsDigestEnabled: true }
+      ]
     }
   })
   
   const results = []
   
   for (const user of users) {
-    if (!user.phoneNumber) continue
+    // Check if it's time to send digest for this user's timezone
+    const userTime = getUserLocalTime(user.timezone || 'America/New_York')
+    const [targetHour, targetMinute] = (user.digestTime || '08:00').split(':').map(Number)
+    
+    // Only send if it's within the hour window
+    if (userTime.hour !== targetHour || userTime.minute >= 30) {
+      continue // Not time for this user yet
+    }
+    
+    // Check if we already sent today
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    // You might want to track sent digests in a separate table
+    // For now, we'll send based on preferences
     
     try {
-      const result = await sendDailyDigest(user.id, user.phoneNumber)
+      const emailResult = { success: false }
+      const smsResult = { success: false }
+      
+      // Send email digest if enabled
+      if ((user.notificationType === 'email' || user.notificationType === 'both') && user.emailDigestEnabled) {
+        emailResult.success = await sendEmailDigest(user.id, user.email)
+      }
+      
+      // Send SMS digest if enabled
+      if ((user.notificationType === 'sms' || user.notificationType === 'both') && 
+          user.smsDigestEnabled && user.phoneNumber && user.whatsappVerified) {
+        const smsResponse = await sendDailyDigest(user.id, user.phoneNumber)
+        smsResult.success = smsResponse.success
+      }
+      
       results.push({
         userId: user.id,
-        status: result.success ? 'sent' : 'failed'
+        email: emailResult.success ? 'sent' : 'skipped',
+        sms: smsResult.success ? 'sent' : 'skipped'
       })
     } catch (error) {
       results.push({
@@ -244,8 +385,26 @@ export async function sendAllDailyDigests() {
   
   return {
     total: users.length,
-    sent: results.filter(r => r.status === 'sent').length,
-    failed: results.filter(r => r.status === 'failed').length,
+    processed: results.length,
     results
   }
+}
+
+/**
+ * Get user's current local time based on timezone
+ */
+function getUserLocalTime(timezone: string): { hour: number, minute: number } {
+  const now = new Date()
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false
+  })
+  
+  const parts = formatter.formatToParts(now)
+  const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0')
+  const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0')
+  
+  return { hour, minute }
 }

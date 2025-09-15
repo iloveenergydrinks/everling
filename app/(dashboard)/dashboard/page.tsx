@@ -5,6 +5,7 @@ import { useSession, signOut } from "next-auth/react"
 import { formatDate, formatDateTime, generateApiKey } from "@/lib/utils"
 import { getSmartTaskList, interpretCommand, recordInteraction } from "@/lib/tasks"
 import { countries, getDefaultCountry, formatPhoneNumber } from "@/lib/countries"
+import { timezones, getTimeOptions, getUserTimezone } from "@/lib/timezones"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { 
@@ -93,6 +94,13 @@ export default function DashboardPage() {
   const [whatsappVerified, setWhatsappVerified] = useState(false)
   const [selectedCountry, setSelectedCountry] = useState(getDefaultCountry())
   const [showCountryDropdown, setShowCountryDropdown] = useState(false)
+  
+  // Notification preferences
+  const [notificationType, setNotificationType] = useState("email") // "email", "sms", "both", "none"
+  const [digestTime, setDigestTime] = useState("08:00")
+  const [timezone, setTimezone] = useState(getUserTimezone())
+  const [emailDigestEnabled, setEmailDigestEnabled] = useState(true)
+  const [smsDigestEnabled, setSmsDigestEnabled] = useState(false)
 
   useEffect(() => {
     fetchTasks()
@@ -310,6 +318,13 @@ export default function DashboardPage() {
         }
         setWhatsappEnabled(data.enabled)
         setWhatsappVerified(data.verified)
+        
+        // Set notification preferences
+        if (data.notificationType) setNotificationType(data.notificationType)
+        if (data.digestTime) setDigestTime(data.digestTime)
+        if (data.timezone) setTimezone(data.timezone)
+        if (data.emailDigestEnabled !== undefined) setEmailDigestEnabled(data.emailDigestEnabled)
+        if (data.smsDigestEnabled !== undefined) setSmsDigestEnabled(data.smsDigestEnabled)
       }
     } catch (error) {
       console.error('Error fetching WhatsApp settings:', error)
@@ -797,10 +812,81 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  {/* SMS Reminders */}
+                  {/* Notification Preferences */}
                   <div className="border rounded p-4">
-                    <h3 className="text-sm font-medium mb-3">SMS Reminders</h3>
-                    <div className="space-y-3">
+                    <h3 className="text-sm font-medium mb-3">Daily Digest Settings</h3>
+                    <div className="space-y-4">
+                      
+                      {/* Notification Type */}
+                      <div>
+                        <label className="text-xs text-muted-foreground">How would you like to receive your daily digest?</label>
+                        <select 
+                          value={notificationType}
+                          onChange={(e) => setNotificationType(e.target.value)}
+                          className="w-full text-sm border rounded-sm px-2 py-1.5 mt-1"
+                        >
+                          <option value="email">Email only</option>
+                          <option value="sms">SMS only</option>
+                          <option value="both">Both Email and SMS</option>
+                          <option value="none">No daily digest</option>
+                        </select>
+                      </div>
+                      
+                      {/* Time and Timezone */}
+                      {notificationType !== "none" && (
+                        <>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-xs text-muted-foreground">Time</label>
+                              <select 
+                                value={digestTime}
+                                onChange={(e) => setDigestTime(e.target.value)}
+                                className="w-full text-sm border rounded-sm px-2 py-1.5 mt-1"
+                              >
+                                {getTimeOptions().map(time => (
+                                  <option key={time.value} value={time.value}>
+                                    {time.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            
+                            <div>
+                              <label className="text-xs text-muted-foreground">Timezone</label>
+                              <select 
+                                value={timezone}
+                                onChange={(e) => setTimezone(e.target.value)}
+                                className="w-full text-sm border rounded-sm px-2 py-1.5 mt-1"
+                              >
+                                {timezones.map(group => (
+                                  <optgroup key={group.label} label={group.label}>
+                                    {group.options.map(tz => (
+                                      <option key={tz.value} value={tz.value}>
+                                        {tz.label}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                          
+                          <p className="text-xs text-muted-foreground">
+                            You'll receive your daily task digest at {digestTime.replace(/(\d{2}):(\d{2})/, (_, h, m) => {
+                              const hour = parseInt(h)
+                              const period = hour >= 12 ? 'PM' : 'AM'
+                              const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour
+                              return `${displayHour}:${m} ${period}`
+                            })} every day.
+                          </p>
+                        </>
+                      )}
+                      
+                      {/* SMS Settings - only show if SMS or both is selected */}
+                      {(notificationType === "sms" || notificationType === "both") && (
+                        <div className="border-t pt-3">
+                          <h4 className="text-xs font-medium mb-2">SMS Settings</h4>
+                          <div className="space-y-3">
                       {!whatsappEnabled ? (
                         <>
                           <p className="text-xs text-muted-foreground">
@@ -1025,6 +1111,51 @@ export default function DashboardPage() {
                           </div>
                         </>
                       )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Save Preferences Button */}
+                      <button
+                        onClick={async () => {
+                          try {
+                            const response = await fetch('/api/user/preferences', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                notificationType,
+                                digestTime,
+                                timezone,
+                                emailDigestEnabled: notificationType === 'email' || notificationType === 'both',
+                                smsDigestEnabled: notificationType === 'sms' || notificationType === 'both'
+                              })
+                            })
+                            
+                            if (response.ok) {
+                              toast({
+                                title: "Success",
+                                description: "Notification preferences saved",
+                                variant: "success"
+                              })
+                            } else {
+                              toast({
+                                title: "Error",
+                                description: "Failed to save preferences",
+                                variant: "error"
+                              })
+                            }
+                          } catch (error) {
+                            toast({
+                              title: "Error",
+                              description: "Failed to save preferences",
+                              variant: "error"
+                            })
+                          }
+                        }}
+                        className="w-full text-sm px-3 py-1.5 bg-primary text-white rounded-sm hover:bg-primary/90"
+                      >
+                        Save Notification Preferences
+                      </button>
                     </div>
                   </div>
 

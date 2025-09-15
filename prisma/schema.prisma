@@ -28,17 +28,25 @@ model Organization {
 }
 
 model User {
-  id               String    @id @default(cuid())
-  email            String    @unique
-  name             String?
-  password         String?
-  emailVerified    DateTime? @map("email_verified")
-  image            String?
-  phoneNumber      String?   @map("phone_number")
-  whatsappEnabled  Boolean   @default(false) @map("whatsapp_enabled")
-  whatsappVerified Boolean   @default(false) @map("whatsapp_verified")
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
+  id                   String    @id @default(cuid())
+  email                String    @unique
+  name                 String?
+  password             String?
+  emailVerified        DateTime? @map("email_verified")
+  image                String?
+  phoneNumber          String?   @map("phone_number")
+  whatsappEnabled      Boolean   @default(false) @map("whatsapp_enabled")
+  whatsappVerified     Boolean   @default(false) @map("whatsapp_verified")
+  
+  // Notification preferences
+  notificationType     String    @default("email") @map("notification_type") // "email", "sms", "both", "none"
+  digestTime           String    @default("08:00") @map("digest_time") // HH:MM format
+  timezone             String    @default("America/New_York") @map("timezone")
+  emailDigestEnabled   Boolean   @default(true) @map("email_digest_enabled")
+  smsDigestEnabled     Boolean   @default(false) @map("sms_digest_enabled")
+  
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
 
   organizations  OrganizationMember[]
   tasksCreated   Task[] @relation("CreatedBy")

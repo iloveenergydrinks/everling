@@ -1,13 +1,10 @@
-name: Daily SMS Digest
+name: Hourly Digest Check
 
 on:
   schedule:
-    # Run at 8am UTC every day
-    # Adjust the time based on your timezone:
-    # 8am EST = 13:00 UTC
-    # 8am PST = 16:00 UTC  
-    # 8am CET = 07:00 UTC
-    - cron: '0 8 * * *'
+    # Run every hour to check all timezones
+    # This ensures users get their digest at their preferred time
+    - cron: '0 * * * *'
   
   # Allow manual trigger from GitHub Actions UI
   workflow_dispatch:

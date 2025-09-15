@@ -163,14 +163,24 @@ export async function GET(request: NextRequest) {
       select: {
         phoneNumber: true,
         whatsappEnabled: true,
-        whatsappVerified: true
+        whatsappVerified: true,
+        notificationType: true,
+        digestTime: true,
+        timezone: true,
+        emailDigestEnabled: true,
+        smsDigestEnabled: true
       }
     })
     
     return NextResponse.json({
       phoneNumber: user?.phoneNumber || null,
       enabled: user?.whatsappEnabled || false,
-      verified: user?.whatsappVerified || false
+      verified: user?.whatsappVerified || false,
+      notificationType: user?.notificationType || 'email',
+      digestTime: user?.digestTime || '08:00',
+      timezone: user?.timezone || 'America/New_York',
+      emailDigestEnabled: user?.emailDigestEnabled ?? true,
+      smsDigestEnabled: user?.smsDigestEnabled ?? false
     })
     
   } catch (error) {
