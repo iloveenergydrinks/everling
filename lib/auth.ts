@@ -15,6 +15,7 @@ export const authOptions: NextAuthOptions = {
     signIn: "/login",
     signOut: "/",
     error: "/login",
+    verifyRequest: "/login", // Redirect here after magic link is sent
   },
   providers: [
     EmailProvider({
@@ -138,6 +139,25 @@ export const authOptions: NextAuthOptions = {
       }
 
       return token
+    },
+    async redirect({ url, baseUrl }) {
+      // After successful magic link verification, redirect to dashboard
+      if (url.includes("/api/auth/callback/email")) {
+        return `${baseUrl}/dashboard`
+      }
+      
+      // If it's a relative URL, make it absolute
+      if (url.startsWith("/")) {
+        return `${baseUrl}${url}`
+      }
+      
+      // If it's the same origin, allow it
+      if (new URL(url).origin === baseUrl) {
+        return url
+      }
+      
+      // Default to dashboard for successful logins
+      return `${baseUrl}/dashboard`
     },
     async session({ session, token }) {
       if (token && session.user) {
