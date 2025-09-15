@@ -26,7 +26,7 @@ Let me know if you have any questions.
 
 Best,
 John`,
-    HtmlBody: null,
+    HtmlBody: undefined,
     Date: new Date().toISOString(),
     MessageID: `test-${Date.now()}@example.com`
   }

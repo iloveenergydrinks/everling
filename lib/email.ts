@@ -350,7 +350,7 @@ export async function processInboundEmail(emailData: EmailData) {
             from: emailData.From,
             subject: emailData.Subject,
             date: emailData.Date,
-            command: replyEmailCommand,
+            command: replyEmailCommand ? JSON.parse(JSON.stringify(replyEmailCommand)) : null,
             updates: activityMessages
           }
         }
@@ -504,7 +504,7 @@ export async function processInboundEmail(emailData: EmailData) {
           const dueDate = typeof emailCommand.parameters.dueDate === 'string' 
             ? new Date(emailCommand.parameters.dueDate)
             : new Date(emailCommand.parameters.dueDate)
-          extractedTask.dueDate = dueDate.toISOString()
+          extractedTask.dueDate = dueDate
         } catch (e) {
           console.error('Error parsing due date:', emailCommand.parameters.dueDate, e)
         }
@@ -514,7 +514,7 @@ export async function processInboundEmail(emailData: EmailData) {
           const reminderDate = typeof emailCommand.parameters.reminderDate === 'string'
             ? new Date(emailCommand.parameters.reminderDate)
             : new Date(emailCommand.parameters.reminderDate)
-          extractedTask.dueDate = reminderDate.toISOString()
+          extractedTask.dueDate = reminderDate
         } catch (e) {
           console.error('Error parsing reminder date:', emailCommand.parameters.reminderDate, e)
         }
@@ -558,7 +558,7 @@ export async function processInboundEmail(emailData: EmailData) {
         createdById: creator?.userId || null,
         createdVia: 'email',
         emailThreadId: emailData.MessageID || threadId, // Store thread ID for future replies
-        emailMetadata: {
+        emailMetadata: JSON.parse(JSON.stringify({
           from: emailData.From,
           subject: emailData.Subject,
           messageId: emailData.MessageID,
@@ -575,7 +575,7 @@ export async function processInboundEmail(emailData: EmailData) {
             threadContext: threadContext
           },
           command: emailCommand
-        }
+        }))
       }
     })
     

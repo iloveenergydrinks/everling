@@ -183,7 +183,7 @@ export function calculateOptimalReminders(
 ): Array<{ reminderDate: Date; type: 'initial' | 'follow_up' | 'urgent' | 'escalation' }> {
   if (!dueDate) return []
 
-  const reminders = []
+  const reminders: Array<{ reminderDate: Date; type: 'initial' | 'follow_up' | 'urgent' | 'escalation' }> = []
   const now = new Date()
   const timeToDue = dueDate.getTime() - now.getTime()
   const daysUntilDue = Math.floor(timeToDue / (1000 * 60 * 60 * 24))
@@ -311,10 +311,10 @@ export async function applySmartDeadlines(
         taskId,
         type: 'system',
         content: `🤖 AI Deadline Analysis: ${deadlineAnalysis.reasoning}`,
-        metadata: {
+        metadata: JSON.parse(JSON.stringify({
           deadlineAnalysis,
           aiGenerated: true
-        }
+        }))
       }
     })
 

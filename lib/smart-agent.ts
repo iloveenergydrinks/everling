@@ -579,14 +579,17 @@ export async function analyzeEmailThread(
     }
 
     // Prepare emails for AI analysis
-    const emailsForAnalysis = threadEmails.map(email => ({
-      from: email.fromEmail,
-      to: email.toEmail,
-      subject: email.subject,
-      body: email.rawData?.TextBody || email.rawData?.HtmlBody || '',
-      timestamp: email.createdAt,
-      messageId: email.messageId || email.id
-    }))
+    const emailsForAnalysis = threadEmails.map(email => {
+      const rawData = email.rawData as any
+      return {
+        from: email.fromEmail,
+        to: email.toEmail,
+        subject: email.subject,
+        body: rawData?.TextBody || rawData?.HtmlBody || '',
+        timestamp: email.createdAt,
+        messageId: email.messageId || email.id
+      }
+    })
 
     return await analyzeThreadContext(emailsForAnalysis)
   } catch (error) {

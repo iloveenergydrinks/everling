@@ -222,6 +222,23 @@ export async function sendEmailDigest(userId: string, email: string) {
   
   const tomorrow = new Date(today)
   tomorrow.setDate(tomorrow.getDate() + 1)
+
+  // Get user's organization to use their agent email as sender
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      organizations: {
+        include: {
+          organization: true
+        }
+      }
+    }
+  })
+  
+  const organization = user?.organizations[0]?.organization
+  const fromEmail = organization ? 
+    `${organization.emailPrefix}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN || 'everling.io'}` :
+    process.env.EMAIL_FROM || 'noreply@taskmanager.com'
   
   // Get all tasks due today or with reminders today
   const tasks = await prisma.task.findMany({
@@ -265,23 +282,6 @@ export async function sendEmailDigest(userId: string, email: string) {
         </p>
       </div>
     `
-    
-    // Get user's organization to use their agent email as sender
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        organizations: {
-          include: {
-            organization: true
-          }
-        }
-      }
-    })
-    
-    const organization = user?.organizations[0]?.organization
-    const fromEmail = organization ? 
-      `${organization.emailPrefix}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN || 'everling.io'}` :
-      process.env.EMAIL_FROM || 'noreply@taskmanager.com'
     
     // Send via Postmark using agent email
     try {

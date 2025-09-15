@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       To: to,
       Subject: forwardedEmail?.subject || command || 'Test Command',
       TextBody: emailBody,
-      HtmlBody: null,
+      HtmlBody: undefined,
       Date: new Date().toISOString(),
       MessageID: `test-command-${Date.now()}@example.com`,
       Headers: []
