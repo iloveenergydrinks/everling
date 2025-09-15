@@ -289,11 +289,14 @@ export async function processInboundEmail(emailData: EmailData) {
             data: { 
               processed: true,
               taskId: duplicateEmail.task.id,
-              emailMetadata: {
-                duplicate: true,
-                originalTaskId: duplicateEmail.task.id,
-                reason: 'Exact MessageID match'
-              } as any
+              rawData: {
+                ...emailData,
+                _metadata: {
+                  duplicate: true,
+                  originalTaskId: duplicateEmail.task.id,
+                  reason: 'Exact MessageID match'
+                }
+              }
             }
           })
           
@@ -328,11 +331,14 @@ export async function processInboundEmail(emailData: EmailData) {
           data: { 
             processed: true,
             taskId: recentSimilarTask.id,
-            emailMetadata: {
-              duplicate: true,
-              originalTaskId: recentSimilarTask.id,
-              reason: 'Similar task created recently (same subject/sender)'
-            } as any
+            rawData: {
+              ...emailData,
+              _metadata: {
+                duplicate: true,
+                originalTaskId: recentSimilarTask.id,
+                reason: 'Similar task created recently (same subject/sender)'
+              }
+            }
           }
         })
         
