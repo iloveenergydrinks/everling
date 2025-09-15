@@ -1,6 +1,7 @@
 import { NextAuthOptions, getServerSession } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import EmailProvider from "next-auth/providers/email"
+import GoogleProvider from "next-auth/providers/google"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
@@ -18,6 +19,17 @@ export const authOptions: NextAuthOptions = {
     verifyRequest: "/login", // Redirect here after magic link is sent
   },
   providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          prompt: "consent",
+          access_type: "offline",
+          response_type: "code"
+        }
+      }
+    }),
     EmailProvider({
       server: {
         host: process.env.EMAIL_SERVER_HOST,
@@ -114,7 +126,7 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   callbacks: {
-    async jwt({ token, user, trigger, session }) {
+    async jwt({ token, user, trigger, session, account }) {
       if (user) {
         // For both email and credentials providers, find user by email
         const dbUser = await prisma.user.findUnique({
@@ -131,7 +143,39 @@ export const authOptions: NextAuthOptions = {
         if (dbUser) {
           token.userId = dbUser.id
           
-          if (dbUser.organizations.length > 0) {
+          // If user has no organization (e.g., signed up with Google), create one
+          if (dbUser.organizations.length === 0) {
+            // Generate a unique organization slug from email
+            const emailPrefix = user.email!.split('@')[0]
+            let slug = emailPrefix.toLowerCase().replace(/[^a-z0-9]/g, '')
+            
+            // Check if slug exists and make it unique
+            let counter = 0
+            let finalSlug = slug
+            while (await prisma.organization.findUnique({ where: { slug: finalSlug } })) {
+              counter++
+              finalSlug = `${slug}${counter}`
+            }
+            
+            // Create organization and member
+            const org = await prisma.organization.create({
+              data: {
+                name: user.name || emailPrefix,
+                slug: finalSlug,
+                emailPrefix: finalSlug,
+                members: {
+                  create: {
+                    userId: dbUser.id,
+                    role: 'admin'
+                  }
+                }
+              }
+            })
+            
+            token.organizationId = org.id
+            token.organizationRole = 'admin'
+            token.organizationSlug = org.slug
+          } else if (dbUser.organizations.length > 0) {
             token.organizationId = dbUser.organizations[0].organizationId
             token.organizationRole = dbUser.organizations[0].role
             token.organizationSlug = dbUser.organizations[0].organization.slug
