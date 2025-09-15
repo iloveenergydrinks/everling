@@ -76,6 +76,7 @@ export default function DashboardPage() {
   const [showEmailLogs, setShowEmailLogs] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showApi, setShowApi] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
   const [selectedRawData, setSelectedRawData] = useState<any>(null)
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null)
   const [showApiKeyModal, setShowApiKeyModal] = useState(false)
@@ -514,7 +515,7 @@ export default function DashboardPage() {
     )
   }
 
-  const isDrawerOpen = showEmailLogs || showSettings || showApi
+  const isDrawerOpen = showEmailLogs || showSettings || showApi || showNotifications
   const isWideDrawer = showEmailLogs && selectedRawData
 
   return (
@@ -714,6 +715,15 @@ export default function DashboardPage() {
                 Email logs
               </button>
               <button
+                onClick={() => {
+                  setShowNotifications(true)
+                  fetchWhatsAppSettings()
+                }}
+                className="hover:text-foreground"
+              >
+                Digest
+              </button>
+              <button
                 onClick={openApi}
                 className="hover:text-foreground"
               >
@@ -740,6 +750,7 @@ export default function DashboardPage() {
             setShowEmailLogs(false)
             setShowSettings(false)
             setShowApi(false)
+            setShowNotifications(false)
             setSelectedRawData(null)
             setSelectedEmailId(null)
           }}
@@ -840,16 +851,19 @@ export default function DashboardPage() {
 
                   {/* Quick Notification Link */}
                   <div className="border rounded p-4">
-                    <h3 className="text-sm font-medium mb-3">📬 Daily Digest</h3>
+                    <h3 className="text-sm font-medium mb-3">Daily Digest</h3>
                     <p className="text-xs text-muted-foreground mb-3">
                       Get your tasks delivered via email or SMS every morning
                     </p>
-                    <Link 
-                      href="/dashboard/notifications"
-                      className="inline-block w-full text-center text-sm px-3 py-1.5 bg-blue-600 text-white rounded-sm hover:bg-blue-700"
+                    <button 
+                      onClick={() => {
+                        setShowNotifications(true)
+                        fetchWhatsAppSettings()
+                      }}
+                      className="w-full text-center text-sm px-3 py-1.5 bg-blue-600 text-white rounded-sm hover:bg-blue-700"
                     >
-                      Configure Notifications
-                    </Link>
+                      Configure Digest
+                    </button>
                   </div>
 
                   {/* Allowed Emails */}
@@ -1404,6 +1418,37 @@ Body: {
             </div>
           </div>
         </>
+      )}
+
+      {/* Notifications Drawer */}
+      {showNotifications && (
+        <div className="fixed right-0 top-0 h-full w-[640px] bg-background border-l shadow-xl z-50 overflow-y-auto">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold">Daily Digest Settings</h2>
+              <button
+                onClick={() => setShowNotifications(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              <NotificationSetup 
+                onComplete={() => {
+                  // Refresh settings after save
+                  fetchWhatsAppSettings()
+                  toast({
+                    title: "Success",
+                    description: "Notification preferences saved",
+                    variant: "success"
+                  })
+                }}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </>
   )

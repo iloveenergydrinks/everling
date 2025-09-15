@@ -9,7 +9,6 @@ const navigation = [
   { name: "Dashboard", href: "/dashboard" },
   { name: "Tasks", href: "/dashboard/tasks" },
   { name: "Emails", href: "/dashboard/emails" },
-  { name: "Notifications", href: "/dashboard/notifications" },
   { name: "Settings", href: "/dashboard/settings" },
 ]
 

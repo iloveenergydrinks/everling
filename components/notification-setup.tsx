@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { timezones, getTimeOptions, getUserTimezone } from "@/lib/timezones"
 import { countries, getDefaultCountry, formatPhoneNumber } from "@/lib/countries"
-import { ChevronDown, X } from "lucide-react"
+import { ChevronDown, X, Mail, MessageSquare, Ban, Zap } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 
 interface NotificationSetupProps {
@@ -84,7 +84,10 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
       {isOnboarding && (
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h3 className="text-lg font-medium text-gray-900">📬 Set up your daily digest</h3>
+            <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Set up your daily digest
+            </h3>
             <p className="text-sm text-gray-600 mt-1">
               Get your tasks delivered the way you prefer, when you prefer.
             </p>
@@ -107,7 +110,10 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
                   : 'border-gray-200 hover:border-gray-300'
               }`}
             >
-              <div className="font-medium">📧 Email</div>
+              <div className="font-medium flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                Email
+              </div>
               <div className="text-xs text-gray-500 mt-1">Clean, detailed digest</div>
             </button>
             
@@ -119,7 +125,10 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
                   : 'border-gray-200 hover:border-gray-300'
               }`}
             >
-              <div className="font-medium">📱 SMS</div>
+              <div className="font-medium flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                SMS
+              </div>
               <div className="text-xs text-gray-500 mt-1">Quick, instant alerts</div>
             </button>
             
@@ -131,7 +140,11 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
                   : 'border-gray-200 hover:border-gray-300'
               }`}
             >
-              <div className="font-medium">📧📱 Both</div>
+              <div className="font-medium flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                <MessageSquare className="h-4 w-4" />
+                Both
+              </div>
               <div className="text-xs text-gray-500 mt-1">Never miss anything</div>
             </button>
             
@@ -143,7 +156,10 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
                   : 'border-gray-200 hover:border-gray-300'
               }`}
             >
-              <div className="font-medium">🚫 None</div>
+              <div className="font-medium flex items-center gap-2">
+                <Ban className="h-4 w-4" />
+                None
+              </div>
               <div className="text-xs text-gray-500 mt-1">Manual check only</div>
             </button>
           </div>
@@ -205,8 +221,8 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
                   onClick={() => setShowCountryDropdown(!showCountryDropdown)}
                   className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                 >
-                  <span className="text-lg">
-                    {countries.find(c => c.code === selectedCountry)?.flag}
+                  <span className="text-sm font-medium">
+                    {countries.find(c => c.code === selectedCountry)?.code}
                   </span>
                   <span className="text-sm">
                     {countries.find(c => c.code === selectedCountry)?.dialCode}
@@ -230,7 +246,7 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
                           }}
                           className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-50 text-left"
                         >
-                          <span className="text-lg">{country.flag}</span>
+                          <span className="text-sm font-medium w-8">{country.code}</span>
                           <span className="text-sm flex-1">{country.name}</span>
                           <span className="text-sm text-gray-500">{country.dialCode}</span>
                         </button>
@@ -255,8 +271,16 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
         {/* Preview */}
         {notificationType !== 'none' && (
           <div className="bg-gray-50 rounded-lg p-3">
-            <div className="text-sm text-gray-600">
-              📅 <strong>You'll receive your daily digest</strong> at{' '}
+            <div className="text-sm text-gray-600 flex items-center gap-2">
+              {notificationType === 'email' && <Mail className="h-4 w-4" />}
+              {notificationType === 'sms' && <MessageSquare className="h-4 w-4" />}
+              {notificationType === 'both' && (
+                <>
+                  <Mail className="h-4 w-4" />
+                  <MessageSquare className="h-4 w-4" />
+                </>
+              )}
+              <strong>You'll receive your daily digest</strong> at{' '}
               <span className="font-medium">
                 {digestTime.replace(/(\d{2}):(\d{2})/, (_, h, m) => {
                   const hour = parseInt(h)
