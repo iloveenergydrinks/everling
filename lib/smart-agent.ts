@@ -314,7 +314,7 @@ export async function extractSmartTask(
     subject: emailData.subject,
     bodyLength: emailData.body?.length || 0,
     hasThreadContext: !!threadContext,
-    priorityScore: priorityScore.score
+    priorityScore: Number(priorityScore?.score) || 50
   })
   try {
     console.log('🤖 Calling Claude API for task extraction...')
@@ -360,16 +360,16 @@ Body: ${emailData.body.substring(0, 2000)}
 Timestamp: ${emailData.timestamp.toISOString()}
 
 PRIORITY ANALYSIS:
-Score: ${priorityScore.score}/100
-Reasoning: ${priorityScore.reasoning}
+Score: ${Number(priorityScore?.score) || 50}/100
+Reasoning: ${priorityScore?.reasoning || 'N/A'}
 
 THREAD CONTEXT:
 ${threadContext ? `
-- Conversation status: ${threadContext.currentStatus}
-- Key participants: ${threadContext.keyParticipants.map(p => `${p.email} (${p.role})`).join(', ')}
+- Conversation status: ${threadContext.currentStatus ?? 'active'}
+- Key participants: ${(threadContext.keyParticipants ?? []).map(p => `${p.email} (${p.role})`).join(', ')}
 - Project context: ${threadContext.projectContext || 'None identified'}
-- Active action items: ${threadContext.actionItems.length}
-- Recent decisions: ${threadContext.decisions.length}
+- Active action items: ${(threadContext.actionItems ?? []).length}
+- Recent decisions: ${(threadContext.decisions ?? []).length}
 ` : 'No thread context (new conversation)'}
 
 Extract comprehensive task information with smart analysis.`
@@ -387,6 +387,9 @@ Extract comprehensive task information with smart analysis.`
       if (jsonMatch) {
         console.log('🤖 Found JSON in response, parsing...')
         const extracted = JSON.parse(jsonMatch[0])
+        // Defensive defaults to avoid undefined.map errors
+        extracted.stakeholders = Array.isArray(extracted.stakeholders) ? extracted.stakeholders : []
+        extracted.dependencies = Array.isArray(extracted.dependencies) ? extracted.dependencies : []
         console.log('🤖 Extracted task data:', {
           title: extracted.title,
           priority: extracted.priority,

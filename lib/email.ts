@@ -495,10 +495,11 @@ export async function processInboundEmail(emailData: EmailData) {
     console.log('📧 AI task extraction result:', smartTask ? 'SUCCESS' : 'FAILED')
 
     // Determine if this should create a task based on AI analysis
-    const shouldCreateTask = priorityAnalysis.score > 20 && // Minimum threshold
+    const score = Number(priorityAnalysis?.score) || 50
+    const shouldCreateTask = score > 20 && // Minimum threshold
       (smartTask.businessImpact !== 'low' || smartTask.estimatedEffort !== 'quick')
       
-    console.log('📧 Step 7: Should create task?', shouldCreateTask, 'Priority score:', priorityAnalysis.score)
+    console.log('📧 Step 7: Should create task?', shouldCreateTask, 'Priority score:', score)
     
     } catch (aiError) {
       console.error('📧 Error in AI processing:', aiError)
