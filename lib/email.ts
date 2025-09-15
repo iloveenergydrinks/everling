@@ -289,6 +289,8 @@ export async function processInboundEmail(emailData: EmailData) {
           existingTask = existingEmailWithTask.task
         }
       }
+    } catch (threadError) {
+      console.error('📧 Error in thread checking:', threadError)
     }
 
     // If this is a reply to an existing task, add it as an activity
@@ -426,9 +428,6 @@ export async function processInboundEmail(emailData: EmailData) {
           : `Reply added to existing task: ${existingTask.title}`,
         updates: activityMessages
       }
-    }
-    } catch (threadError) {
-      console.error('📧 Error in thread checking:', threadError)
     }
 
     console.log('📧 Step 4: Getting sender history for smart analysis...')
