@@ -1,10 +1,10 @@
 import Link from "next/link"
-import { Mail, MessageSquare, Search, Zap } from "lucide-react"
-import { RedirectIfAuthenticated } from "@/components/redirect-if-authenticated"
+import { ClientRedirect } from "@/components/client-redirect"
 
 export default function HomePage() {
   return (
-    <RedirectIfAuthenticated>
+    <>
+      <ClientRedirect />
     <div className="min-h-screen py-12">
       <div className="mx-auto max-w-3xl px-6">
         {/* Minimal Header with Login */}
@@ -38,7 +38,12 @@ export default function HomePage() {
         {/* Demo Search Bar */}
         <div className="mb-16">
           <div className="relative max-w-lg mx-auto">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+            </div>
             <div className="w-full pl-10 pr-4 py-3 border rounded-lg bg-background/50 text-center text-muted-foreground">
               urgent tasks from john...
             </div>
@@ -54,7 +59,10 @@ export default function HomePage() {
           <div className="grid gap-8 md:grid-cols-3">
             <div>
               <div className="w-12 h-12 mx-auto mb-4 border rounded-lg flex items-center justify-center">
-                <Search className="h-6 w-6 text-muted-foreground" />
+                <svg className="h-6 w-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.35-4.35"></path>
+                </svg>
               </div>
               <h4 className="font-medium mb-2">Minimal Interface</h4>
               <p className="text-sm text-muted-foreground">
@@ -64,7 +72,9 @@ export default function HomePage() {
             
             <div>
               <div className="w-12 h-12 mx-auto mb-4 border rounded-lg flex items-center justify-center">
-                <Zap className="h-6 w-6 text-muted-foreground" />
+                <svg className="h-6 w-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <polygon points="13,2 3,14 12,14 11,22 21,10 12,10"></polygon>
+                </svg>
               </div>
               <h4 className="font-medium mb-2">Know Before It Matters</h4>
               <p className="text-sm text-muted-foreground">
@@ -74,7 +84,10 @@ export default function HomePage() {
             
             <div>
               <div className="w-12 h-12 mx-auto mb-4 border rounded-lg flex items-center justify-center">
-                <Mail className="h-6 w-6 text-muted-foreground" />
+                <svg className="h-6 w-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
               </div>
               <h4 className="font-medium mb-2">Zero Friction</h4>
               <p className="text-sm text-muted-foreground">
@@ -142,6 +155,6 @@ export default function HomePage() {
         </div>
       </div>
     </div>
-    </RedirectIfAuthenticated>
+    </>
   )
 }
