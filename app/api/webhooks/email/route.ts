@@ -53,11 +53,32 @@ export async function POST(request: NextRequest) {
     // In production, you might want to use a queue here
     const result = await processInboundEmail(emailData)
 
+    // Handle different return types from processInboundEmail
+    if (result && typeof result === 'object') {
+      // If it's a task object (has id property)
+      if ('id' in result) {
+        return NextResponse.json({
+          success: true,
+          taskId: result.id
+        })
+      }
+      
+      // If it's a status object (has taskId property)
+      if ('taskId' in result) {
+        return NextResponse.json({
+          success: true,
+          taskId: result.taskId,
+          message: result.message || 'Email processed',
+          isReply: result.isReply || false
+        })
+      }
+    }
+
+    // Fallback
     return NextResponse.json({
       success: true,
-      taskId: result.taskId || null,
-      message: result.message || 'Email processed',
-      isReply: result.isReply || false
+      taskId: null,
+      message: 'Email processed'
     })
 
   } catch (error) {
