@@ -18,8 +18,6 @@ export const authOptions: NextAuthOptions = {
     error: "/login",
     verifyRequest: "/login", // Redirect here after magic link is sent
   },
-  // Allow users to sign in with different providers using the same email
-  allowDangerousEmailAccountLinking: true,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
