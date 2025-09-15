@@ -177,10 +177,12 @@ export const authOptions: NextAuthOptions = {
       return true
     },
     async jwt({ token, user, trigger, session, account }) {
-      if (user) {
-        // For both email and credentials providers, find user by email
+      // Always check for user in database and set organization
+      const email = user?.email || token.email
+      
+      if (email) {
         const dbUser = await prisma.user.findUnique({
-          where: { email: user.email! },
+          where: { email: email as string },
           include: {
             organizations: {
               include: {
@@ -192,11 +194,13 @@ export const authOptions: NextAuthOptions = {
 
         if (dbUser) {
           token.userId = dbUser.id
+          token.email = dbUser.email
+          token.name = dbUser.name
           
-          // If user has no organization (e.g., signed up with Google), create one
+          // If user has no organization, create one
           if (dbUser.organizations.length === 0) {
             // Generate a unique organization slug from email
-            const emailPrefix = user.email!.split('@')[0]
+            const emailPrefix = (email as string).split('@')[0]
             let slug = emailPrefix.toLowerCase().replace(/[^a-z0-9]/g, '')
             
             // Check if slug exists and make it unique
@@ -210,7 +214,7 @@ export const authOptions: NextAuthOptions = {
             // Create organization and member
             const org = await prisma.organization.create({
               data: {
-                name: user.name || emailPrefix,
+                name: dbUser.name || emailPrefix,
                 slug: finalSlug,
                 emailPrefix: finalSlug,
                 members: {
