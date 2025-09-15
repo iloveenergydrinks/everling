@@ -157,8 +157,7 @@ export default function DashboardPage() {
             toast({
               title: "📧 New task from email",
               description: `${task.title} - From: ${sender}`,
-              variant: "success",
-              duration: 7000,
+              variant: "success"
             })
             
             // Play notification sound (using Web Audio API for a simple beep)
