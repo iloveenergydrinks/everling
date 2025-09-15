@@ -18,6 +18,8 @@ export const authOptions: NextAuthOptions = {
     error: "/login",
     verifyRequest: "/login", // Redirect here after magic link is sent
   },
+  // Allow users to sign in with different providers using the same email
+  allowDangerousEmailAccountLinking: true,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -126,6 +128,46 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   callbacks: {
+    async signIn({ user, account, profile }) {
+      // Handle OAuth account linking
+      if (account?.provider === "google") {
+        const existingUser = await prisma.user.findUnique({
+          where: { email: user.email! }
+        })
+        
+        if (existingUser) {
+          // Link the Google account to the existing user
+          const existingAccount = await prisma.account.findFirst({
+            where: {
+              userId: existingUser.id,
+              provider: account.provider,
+              providerAccountId: account.providerAccountId
+            }
+          })
+          
+          if (!existingAccount) {
+            await prisma.account.create({
+              data: {
+                userId: existingUser.id,
+                type: account.type,
+                provider: account.provider,
+                providerAccountId: account.providerAccountId,
+                refresh_token: account.refresh_token,
+                access_token: account.access_token,
+                expires_at: account.expires_at,
+                token_type: account.token_type,
+                scope: account.scope,
+                id_token: account.id_token,
+              }
+            })
+          }
+          
+          return true
+        }
+      }
+      
+      return true
+    },
     async jwt({ token, user, trigger, session, account }) {
       if (user) {
         // For both email and credentials providers, find user by email

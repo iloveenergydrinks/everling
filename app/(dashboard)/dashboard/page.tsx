@@ -702,6 +702,15 @@ export default function DashboardPage() {
           {/* Footer */}
           <div className="mt-12 pt-8 border-t text-center">
             <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
+            <button
+                onClick={() => {
+                  setShowNotifications(true)
+                  fetchWhatsAppSettings()
+                }}
+                className="hover:text-foreground"
+              >
+                Daily Digest
+              </button>
               <button
                 onClick={openSettings}
                 className="hover:text-foreground"
@@ -714,15 +723,7 @@ export default function DashboardPage() {
               >
                 Email logs
               </button>
-              <button
-                onClick={() => {
-                  setShowNotifications(true)
-                  fetchWhatsAppSettings()
-                }}
-                className="hover:text-foreground"
-              >
-                Digest
-              </button>
+
               <button
                 onClick={openApi}
                 className="hover:text-foreground"
