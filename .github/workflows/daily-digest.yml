@@ -1,0 +1,40 @@
+name: Daily SMS Digest
+
+on:
+  schedule:
+    # Run at 8am UTC every day
+    # Adjust the time based on your timezone:
+    # 8am EST = 13:00 UTC
+    # 8am PST = 16:00 UTC  
+    # 8am CET = 07:00 UTC
+    - cron: '0 8 * * *'
+  
+  # Allow manual trigger from GitHub Actions UI
+  workflow_dispatch:
+
+jobs:
+  send-daily-digest:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Send Daily SMS Digest
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X GET "${{ secrets.APP_URL }}/api/cron/daily-digest?secret=${{ secrets.CRON_SECRET }}")
+          status_code=$(echo "$response" | tail -n 1)
+          body=$(echo "$response" | head -n -1)
+          
+          echo "Response: $body"
+          echo "Status Code: $status_code"
+          
+          if [ "$status_code" != "200" ]; then
+            echo "Failed to send daily digest"
+            exit 1
+          fi
+          
+      - name: Log Success
+        if: success()
+        run: echo "✅ Daily digest sent successfully at $(date)"
+        
+      - name: Log Failure
+        if: failure()
+        run: echo "❌ Failed to send daily digest at $(date)"
