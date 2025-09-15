@@ -1,12 +1,18 @@
+import { redirect } from "next/navigation"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
 import Link from "next/link"
-import { ClientRedirect } from "@/components/client-redirect"
 
-export default function HomePage() {
+export default async function HomePage() {
+  const session = await getServerSession(authOptions)
+
+  if (session) {
+    redirect("/dashboard")
+  }
+
   return (
-    <>
-      <ClientRedirect />
     <div className="min-h-screen py-12">
-      <div className="mx-auto max-w-3xl px-6">
+        <div className="mx-auto max-w-3xl px-6">
         {/* Minimal Header with Login */}
         <div className="mb-16 flex items-center justify-between">
           <div>
@@ -153,8 +159,7 @@ export default function HomePage() {
             © 2025 Everling.io • Built for minimalists
           </p>
         </div>
-      </div>
+        </div>
     </div>
-    </>
   )
 }
