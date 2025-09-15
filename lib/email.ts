@@ -1,5 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { prisma } from '@/lib/prisma'
+import { 
+  calculateSmartPriority, 
+  analyzeEmailThread, 
+  extractSmartTask, 
+  getSenderHistory,
+  updateSenderIntelligence 
+} from '@/lib/smart-agent'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -356,6 +363,31 @@ export async function processInboundEmail(emailData: EmailData) {
       }
     }
 
+    // Get sender history for smart analysis
+    const senderHistory = await getSenderHistory(senderEmail, organization.id)
+    
+    // Analyze thread context if this is part of a thread
+    let threadContext = null
+    if (threadId) {
+      threadContext = await analyzeEmailThread(threadId, organization.id)
+    }
+
+    // Calculate smart priority using AI
+    const priorityAnalysis = await calculateSmartPriority(
+      {
+        from: emailData.From,
+        subject: emailData.Subject,
+        body: emailData.TextBody || emailData.HtmlBody || '',
+        timestamp: new Date(emailData.Date)
+      },
+      senderHistory,
+      {
+        id: organization.id,
+        businessDomain: organization.name,
+        teamSize: organization.members?.length || 1
+      }
+    )
+
     // Extract any command from the email
     const bodyText = emailData.TextBody || emailData.HtmlBody || ''
     const { command, forwardedContent } = extractCommandFromEmail(bodyText)
@@ -366,24 +398,21 @@ export async function processInboundEmail(emailData: EmailData) {
       emailCommand = await parseEmailCommand(command, forwardedContent || emailData.Subject)
     }
 
-    // Classify the email content (use forwarded content if available)
-    const contentToClassify = forwardedContent || bodyText
-    const classification = await classifyEmail({
-      subject: emailData.Subject,
-      body: contentToClassify,
-      from: emailData.From
-    })
+    // Use smart task extraction instead of basic classification
+    const smartTask = await extractSmartTask(
+      {
+        from: emailData.From,
+        subject: emailData.Subject,
+        body: forwardedContent || bodyText,
+        timestamp: new Date(emailData.Date)
+      },
+      threadContext,
+      priorityAnalysis
+    )
 
-    // Override classification if we have a valid command
-    if (emailCommand?.hasCommand && emailCommand.confidence > 0.6) {
-      classification.isActionable = true
-      if (emailCommand.commandType === 'remind') {
-        classification.type = 'reminder'
-      } else if (emailCommand.commandType === 'status' && 
-                 emailCommand.parameters?.status?.toLowerCase().includes('done')) {
-        classification.isActionable = false // Don't create task if marking as done
-      }
-    }
+    // Determine if this should create a task based on AI analysis
+    const shouldCreateTask = priorityAnalysis.score > 20 && // Minimum threshold
+      (smartTask.businessImpact !== 'low' || smartTask.estimatedEffort !== 'quick')
 
     // Store classification and command in email log
     await prisma.emailLog.update({
@@ -397,8 +426,8 @@ export async function processInboundEmail(emailData: EmailData) {
       }
     })
 
-    // If email is not actionable, just log it
-    if (!classification.isActionable) {
+    // If AI determines email is not actionable, just log it
+    if (!shouldCreateTask) {
       await prisma.emailLog.update({
         where: { id: emailLog.id },
         data: { 
@@ -406,18 +435,31 @@ export async function processInboundEmail(emailData: EmailData) {
           error: null,
           rawData: {
             ...(emailData as any),
-            classification,
-            skippedReason: `Email classified as ${classification.type}: ${classification.reason}`
+            smartAnalysis: {
+              priorityScore: priorityAnalysis.score,
+              reasoning: priorityAnalysis.reasoning,
+              shouldCreateTask: false,
+              threadContext: threadContext
+            }
           }
         }
+      })
+
+      // Update sender intelligence
+      await updateSenderIntelligence(senderEmail, organization.id, {
+        taskCreated: false,
+        priority: 'low',
+        userResponseTime: null,
+        taskCompleted: false,
+        taskCompletionTime: null
       })
 
       return {
         success: true,
         taskId: null,
         isActionable: false,
-        classification,
-        message: `Email logged but no task created (${classification.type})`
+        classification: { isActionable: false, type: 'fyi', confidence: priorityAnalysis.score / 100 },
+        message: `Email logged but no task created (Priority: ${priorityAnalysis.score}/100 - ${priorityAnalysis.reasoning})`
       }
     }
 
@@ -433,12 +475,13 @@ export async function processInboundEmail(emailData: EmailData) {
       throw new Error('Organization has reached task limit')
     }
 
-    // Extract task details using Claude for actionable emails
-    const extractedTask = await extractTaskFromEmail({
-      subject: emailData.Subject,
-      body: contentToClassify, // Use forwarded content if available
-      from: emailData.From
-    })
+    // Use smart task extraction (already done above)
+    const extractedTask = {
+      title: smartTask.title,
+      description: smartTask.description,
+      priority: smartTask.priority,
+      dueDate: smartTask.dueDate ? new Date(smartTask.dueDate) : null
+    }
 
     // Apply command parameters if available
     if (emailCommand?.hasCommand && emailCommand.parameters) {
@@ -495,7 +538,7 @@ export async function processInboundEmail(emailData: EmailData) {
       }
     }
     
-    // Create new task with thread ID for tracking
+    // Create new task with smart metadata and thread tracking
     const task = await prisma.task.create({
       data: {
         organizationId: organization.id,
@@ -504,6 +547,19 @@ export async function processInboundEmail(emailData: EmailData) {
         priority: extractedTask.priority,
         dueDate: extractedTask.dueDate ? new Date(extractedTask.dueDate) : null,
         reminderDate: reminderDate, // Store reminder date on task
+        metadata: {
+          smartAnalysis: {
+            priorityScore: priorityAnalysis.score,
+            priorityReasoning: priorityAnalysis.reasoning,
+            estimatedEffort: smartTask.estimatedEffort,
+            businessImpact: smartTask.businessImpact,
+            stakeholders: smartTask.stakeholders,
+            projectTag: smartTask.projectTag,
+            dependencies: smartTask.dependencies,
+            senderImportance: senderHistory.importanceScore,
+            threadContext: threadContext
+          }
+        },
         createdById: creator?.userId || null,
         createdVia: 'email',
         emailThreadId: emailData.MessageID || threadId, // Store thread ID for future replies
@@ -551,6 +607,15 @@ export async function processInboundEmail(emailData: EmailData) {
     await prisma.organization.update({
       where: { id: organization.id },
       data: { tasksCreated: { increment: 1 } }
+    })
+
+    // Update sender intelligence with task creation
+    await updateSenderIntelligence(senderEmail, organization.id, {
+      taskCreated: true,
+      priority: extractedTask.priority,
+      userResponseTime: null, // Will be updated when user responds
+      taskCompleted: false,
+      taskCompletionTime: null
     })
 
     // Update email log

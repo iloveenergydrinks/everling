@@ -20,9 +20,10 @@ model Organization {
 
   members       OrganizationMember[]
   tasks         Task[]
-  emailLogs     EmailLog[]
-  apiKeys       ApiKey[]
-  allowedEmails AllowedEmail[]
+  emailLogs          EmailLog[]
+  apiKeys            ApiKey[]
+  allowedEmails      AllowedEmail[]
+  senderIntelligence SenderIntelligence[]
 
   @@map("organizations")
 }
@@ -245,4 +246,33 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map("verification_tokens")
+}
+
+model SenderIntelligence {
+  id               String   @id @default(cuid())
+  organizationId   String   @map("organization_id")
+  senderEmail      String   @map("sender_email")
+  
+  // Statistics
+  totalEmails      Int      @default(0) @map("total_emails")
+  tasksCreated     Int      @default(0) @map("tasks_created")
+  avgPriority      Float    @default(50) @map("avg_priority")
+  avgResponseTime  Float    @default(24) @map("avg_response_time") // hours
+  completionRate   Float    @default(0.8) @map("completion_rate")
+  
+  // Patterns (JSON)
+  patterns         Json     @default("{}")
+  
+  // Timestamps
+  lastInteraction  DateTime @map("last_interaction")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  @@unique([organizationId, senderEmail])
+  @@index([organizationId])
+  @@index([senderEmail])
+  @@map("sender_intelligence")
 }

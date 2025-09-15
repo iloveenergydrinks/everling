@@ -99,6 +99,7 @@ export default function RegisterPage() {
     // Check organization availability when organization name changes
     if (id === 'organizationName') {
       setSelectedSuggestion(null)
+      setOrgCheck(null) // Clear previous check
       // Debounce the check
       setTimeout(() => {
         if (value.trim() && value === formData.organizationName) {
@@ -106,6 +107,16 @@ export default function RegisterPage() {
         }
       }, 500)
     }
+  }
+
+  const selectSuggestion = (suggestion: any) => {
+    setSelectedSuggestion(suggestion)
+    setFormData({
+      ...formData,
+      organizationName: suggestion.name
+    })
+    // Clear the org check since we selected a known-good suggestion
+    setOrgCheck({ available: true, suggested: suggestion })
   }
 
   if (success) {
@@ -207,8 +218,18 @@ export default function RegisterPage() {
                 placeholder="Acme Inc"
                 value={selectedSuggestion?.name || formData.organizationName}
                 onChange={(e) => {
+                  // Clear selection when user manually types
+                  if (selectedSuggestion) {
+                    setSelectedSuggestion(null)
+                    setOrgCheck(null)
+                  }
                   handleChange(e)
-                  checkOrganization(e.target.value)
+                }}
+                onBlur={(e) => {
+                  // Check availability when user finishes typing
+                  if (e.target.value.trim() && !selectedSuggestion) {
+                    checkOrganization(e.target.value)
+                  }
                 }}
                 required
               />
@@ -233,13 +254,7 @@ export default function RegisterPage() {
                       <button
                         key={index}
                         type="button"
-                        onClick={() => {
-                          setSelectedSuggestion(suggestion)
-                          setFormData({
-                            ...formData,
-                            organizationName: suggestion.name
-                          })
-                        }}
+                        onClick={() => selectSuggestion(suggestion)}
                         className={`w-full p-2 text-left border rounded text-sm transition-colors ${
                           selectedSuggestion?.name === suggestion.name
                             ? 'border-blue-500 bg-blue-50'
