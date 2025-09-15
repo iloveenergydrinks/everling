@@ -9,7 +9,7 @@ import { ServerClient } from 'postmark'
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as any,
   session: {
-    strategy: "database", // Required for email provider
+    strategy: "jwt", // Back to JWT for better compatibility
   },
   pages: {
     signIn: "/login",
@@ -116,8 +116,9 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user, trigger, session }) {
       if (user) {
+        // For both email and credentials providers, find user by email
         const dbUser = await prisma.user.findUnique({
-          where: { id: user.id },
+          where: { email: user.email! },
           include: {
             organizations: {
               include: {
@@ -127,10 +128,14 @@ export const authOptions: NextAuthOptions = {
           }
         })
 
-        if (dbUser && dbUser.organizations.length > 0) {
-          token.organizationId = dbUser.organizations[0].organizationId
-          token.organizationRole = dbUser.organizations[0].role
-          token.organizationSlug = dbUser.organizations[0].organization.slug
+        if (dbUser) {
+          token.userId = dbUser.id
+          
+          if (dbUser.organizations.length > 0) {
+            token.organizationId = dbUser.organizations[0].organizationId
+            token.organizationRole = dbUser.organizations[0].role
+            token.organizationSlug = dbUser.organizations[0].organization.slug
+          }
         }
       }
 
@@ -141,27 +146,17 @@ export const authOptions: NextAuthOptions = {
       return token
     },
     async redirect({ url, baseUrl }) {
-      // After successful magic link verification, redirect to dashboard
-      if (url.includes("/api/auth/callback/email")) {
-        return `${baseUrl}/dashboard`
-      }
-      
-      // If it's a relative URL, make it absolute
-      if (url.startsWith("/")) {
-        return `${baseUrl}${url}`
-      }
-      
-      // If it's the same origin, allow it
-      if (new URL(url).origin === baseUrl) {
+      // Always redirect to dashboard after successful auth
+      if (url.includes("/dashboard")) {
         return url
       }
       
-      // Default to dashboard for successful logins
+      // Default to dashboard for any auth success
       return `${baseUrl}/dashboard`
     },
     async session({ session, token }) {
       if (token && session.user) {
-        session.user.id = token.sub!
+        session.user.id = token.userId as string || token.sub!
         session.user.organizationId = token.organizationId as string
         session.user.organizationRole = token.organizationRole as string
         session.user.organizationSlug = token.organizationSlug as string
