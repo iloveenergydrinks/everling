@@ -192,14 +192,14 @@ export async function processInboundEmail(emailData: EmailData) {
 
     // Check if sender is in allowed list
     const isAllowed = organization.allowedEmails.some(
-      allowed => allowed.email === senderEmail
+      (allowed: { email: string }) => allowed.email === senderEmail
     )
     
     console.log('📧 Sender authorization check:', {
       senderEmail,
       isAllowed,
       allowedEmailsCount: organization.allowedEmails.length,
-      allowedEmails: organization.allowedEmails.map(ae => ae.email)
+      allowedEmails: organization.allowedEmails.map((ae: { email: string }) => ae.email)
     })
     
     console.log('📧 Proceeding with email processing - sender is authorized')
@@ -490,7 +490,7 @@ export async function processInboundEmail(emailData: EmailData) {
         timestamp: new Date(emailData.Date)
       },
       threadContext,
-      { score: safeScore, reasoning: priorityAnalysis?.reasoning || 'N/A' }
+      priorityAnalysis
     )
     
     console.log('📧 AI task extraction result:', smartTask ? 'SUCCESS' : 'FAILED')
@@ -555,7 +555,7 @@ export async function processInboundEmail(emailData: EmailData) {
     }
 
     // Build task payload from AI result
-    const extractedTask = {
+    let extractedTask = {
       title: smartTask.title,
       description: smartTask.description,
       priority: smartTask.priority,
@@ -577,85 +577,8 @@ export async function processInboundEmail(emailData: EmailData) {
       }
     }
 
-    // Create the task and return
-    return await createTaskFromEmail(extractedTask, emailData, organization, emailLog)
-
-    } catch (aiError) {
-      console.error('📧 Error in AI processing:', aiError)
-      
-      // Fallback: create a simple task without AI
-      console.log('📧 Falling back to simple task creation...')
-      
-      const fallbackTask = {
-        title: emailData.Subject,
-        description: `Email from ${senderEmail}\n\n${emailData.TextBody || emailData.HtmlBody || ''}`,
-        priority: 'medium' as const,
-        dueDate: null,
-        reminderDate: null,
-        estimatedEffort: 'medium',
-        businessImpact: 'medium',
-        stakeholders: [senderEmail],
-        projectTag: null,
-        dependencies: []
-      }
-      
-      return await createTaskFromEmail(fallbackTask, emailData, organization, emailLog)
-    }
-
-    // Store classification and command in email log
-    await prisma.emailLog.update({
-      where: { id: emailLog.id },
-      data: { 
-        rawData: {
-          ...(emailData as any),
-          smartAnalysis: {
-            priorityScore: safeScore,
-            reasoning: priorityAnalysis?.reasoning || 'N/A',
-            threadContext: threadContext
-          },
-          command: emailCommand
-        }
-      }
-    })
-
-    // If AI determines email is not actionable, just log it
-    if (!shouldCreateTask) {
-      await prisma.emailLog.update({
-        where: { id: emailLog.id },
-        data: { 
-          processed: true,
-          error: null,
-          rawData: {
-            ...(emailData as any),
-            smartAnalysis: {
-              priorityScore: safeScore,
-              reasoning: priorityAnalysis?.reasoning || 'N/A',
-              shouldCreateTask: false,
-              threadContext: threadContext
-            }
-          }
-        }
-      })
-
-      // Update sender intelligence
-      await updateSenderIntelligence(senderEmail, organization.id, {
-        taskCreated: false,
-        priority: 'low',
-        userResponseTime: null,
-        taskCompleted: false,
-        taskCompletionTime: null
-      })
-
-      return {
-        success: true,
-        taskId: null,
-        isActionable: false,
-        classification: { isActionable: false, type: 'fyi', confidence: safeScore / 100 },
-        message: `Email logged but no task created (Priority: ${safeScore}/100 - ${priorityAnalysis?.reasoning || 'N/A'})`
-      }
-    }
-
-    // Check task limit only when creating new tasks
+    // Create new task with smart metadata and thread tracking (inside main try)
+    /* DUPLICATE BLOCK COMMENTED OUT: Check task limit only when creating new tasks */
     if (organization.tasksCreated >= organization.taskLimit) {
       await prisma.emailLog.update({
         where: { id: emailLog.id },
@@ -667,13 +590,7 @@ export async function processInboundEmail(emailData: EmailData) {
       throw new Error('Organization has reached task limit')
     }
 
-    // Use smart task extraction (already done above)
-    const extractedTask = {
-      title: smartTask.title,
-      description: smartTask.description,
-      priority: smartTask.priority,
-      dueDate: smartTask.dueDate ? new Date(smartTask.dueDate) : null
-    }
+    // Use smart task extraction result to prepare payload (already defined above)
 
     // Apply command parameters if available
     if (emailCommand?.hasCommand && emailCommand.parameters) {
@@ -681,34 +598,27 @@ export async function processInboundEmail(emailData: EmailData) {
       if (emailCommand.parameters.priority) {
         extractedTask.priority = emailCommand.parameters.priority === 'urgent' ? 'high' : emailCommand.parameters.priority
       }
-      
       // Use command due date if specified
       if (emailCommand.parameters.dueDate) {
         try {
           const dueDate = typeof emailCommand.parameters.dueDate === 'string' 
             ? new Date(emailCommand.parameters.dueDate)
-            : new Date(emailCommand.parameters.dueDate)
+            : emailCommand.parameters.dueDate
           extractedTask.dueDate = dueDate
-        } catch (e) {
-          console.error('Error parsing due date:', emailCommand.parameters.dueDate, e)
-        }
+        } catch {}
       } else if (emailCommand.parameters.reminderDate) {
         // Use reminder date as due date if no explicit due date
         try {
-          const reminderDate = typeof emailCommand.parameters.reminderDate === 'string'
+          const reminderDateTmp = typeof emailCommand.parameters.reminderDate === 'string'
             ? new Date(emailCommand.parameters.reminderDate)
-            : new Date(emailCommand.parameters.reminderDate)
-          extractedTask.dueDate = reminderDate
-        } catch (e) {
-          console.error('Error parsing reminder date:', emailCommand.parameters.reminderDate, e)
-        }
+            : emailCommand.parameters.reminderDate
+          extractedTask.dueDate = reminderDateTmp
+        } catch {}
       }
-      
       // Add command notes to description
       if (emailCommand.parameters.notes) {
         extractedTask.description = `${extractedTask.description}\n\n📝 Note: ${emailCommand.parameters.notes}`
       }
-      
       // Add original command to description for context
       if (emailCommand.originalCommand) {
         extractedTask.description = `${extractedTask.description}\n\n💬 Command: "${emailCommand.originalCommand}"`
@@ -716,28 +626,25 @@ export async function processInboundEmail(emailData: EmailData) {
     }
 
     // Get the first admin or member to assign as creator
-    const creator = organization.members.find(m => m.role === 'admin') || organization.members[0]
-    
+    const creator = organization.members.find((m: any) => m.role === 'admin') || organization.members[0]
+
     // Prepare reminder date if specified
-    let reminderDate = null
+    let reminderDate: Date | null = null
     if (emailCommand?.commandType === 'remind' && emailCommand.parameters?.reminderDate) {
       try {
         reminderDate = typeof emailCommand.parameters.reminderDate === 'string'
           ? new Date(emailCommand.parameters.reminderDate)
           : new Date(emailCommand.parameters.reminderDate)
-      } catch (e) {
-        console.error('Error parsing reminder date:', emailCommand.parameters.reminderDate, e)
-      }
+      } catch {}
     }
-    
-    // Create new task with smart metadata and thread tracking
+
     const task = await prisma.task.create({
       data: {
         organizationId: organization.id,
         title: extractedTask.title,
         description: extractedTask.description,
         priority: extractedTask.priority,
-        dueDate: extractedTask.dueDate ? new Date(extractedTask.dueDate) : null,
+        dueDate: extractedTask.dueDate ? new Date(extractedTask.dueDate!) : null,
         reminderDate: reminderDate, // Store reminder date on task
         createdById: creator?.userId || null,
         createdVia: 'email',
@@ -755,6 +662,7 @@ export async function processInboundEmail(emailData: EmailData) {
             stakeholders: smartTask.stakeholders,
             projectTag: smartTask.projectTag,
             dependencies: smartTask.dependencies,
+            tags: smartTask.tags || null,
             senderImportance: senderHistory.importanceScore,
             threadContext: threadContext
           },
@@ -762,7 +670,7 @@ export async function processInboundEmail(emailData: EmailData) {
         }))
       }
     })
-    
+
     // If this is a reminder, create a TaskReminder record
     if (reminderDate) {
       await prisma.taskReminder.create({
@@ -776,7 +684,6 @@ export async function processInboundEmail(emailData: EmailData) {
           }
         }
       })
-      
       // Also create an activity for tracking
       await prisma.taskActivity.create({
         data: {
@@ -830,6 +737,30 @@ export async function processInboundEmail(emailData: EmailData) {
     })
 
     return task
+
+    } catch (aiError) {
+      console.error('📧 Error in AI processing:', aiError)
+      
+      // Fallback: create a simple task without AI
+      console.log('📧 Falling back to simple task creation...')
+      
+      const fallbackTask = {
+        title: emailData.Subject,
+        description: `Email from ${senderEmail}\n\n${emailData.TextBody || emailData.HtmlBody || ''}`,
+        priority: 'medium' as const,
+        dueDate: null,
+        reminderDate: null,
+        estimatedEffort: 'medium',
+        businessImpact: 'medium',
+        stakeholders: [senderEmail],
+        projectTag: null,
+        dependencies: []
+      }
+      
+      return await createTaskFromEmail(fallbackTask, emailData, organization, emailLog)
+    }
+
+    // duplicate block removed
   } catch (error) {
     // Only update email log if it exists (it won't exist if org wasn't found)
     if (typeof emailLog !== 'undefined') {

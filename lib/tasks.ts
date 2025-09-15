@@ -29,179 +29,30 @@ interface Task {
   } | null
 }
 
-// VIP detection - learns from user behavior
-const VIP_DOMAINS = ['client.com', 'important.com'] // This would be dynamic in production
-const VIP_KEYWORDS = ['ceo', 'cfo', 'urgent', 'asap', 'critical']
+// Pure LLM mode: no hardcoded domains/keywords
 
 /**
  * Calculate relevance score for a task based on current context
  * Higher score = more relevant right now
  */
-export function calculateRelevanceScore(task: Task, now: Date = new Date()): number {
-  let score = 100 // Base score
-  
-  const taskAge = Math.floor((now.getTime() - new Date(task.createdAt).getTime()) / (1000 * 60 * 60 * 24))
-  
-  // 1. OVERDUE - Absolute highest priority
-  if (task.dueDate && new Date(task.dueDate) < now && task.status !== 'done') {
-    const daysOverdue = Math.floor((now.getTime() - new Date(task.dueDate).getTime()) / (1000 * 60 * 60 * 24))
-    score += 1000 + (daysOverdue * 50) // More overdue = higher priority
+export function calculateRelevanceScore(task: Task): number {
+  const aiScore = Number(task.emailMetadata?.smartAnalysis?.priorityScore)
+  if (!Number.isFinite(aiScore)) {
+    return 50
   }
-  
-  // 2. REMINDERS - Very high priority when triggered
-  if (task.reminderDate) {
-    const reminderTime = new Date(task.reminderDate).getTime()
-    const timeDiff = reminderTime - now.getTime()
-    
-    if (timeDiff <= 0 && task.status !== 'done') {
-      score += 800 // Reminder is now or passed
-    } else if (timeDiff <= 60 * 60 * 1000) {
-      score += 400 // Reminder within next hour
-    }
-  }
-  
-  // 3. DUE TODAY - High priority
-  if (task.dueDate && isToday(new Date(task.dueDate), now) && task.status !== 'done') {
-    const hoursUntilDue = Math.floor((new Date(task.dueDate).getTime() - now.getTime()) / (1000 * 60 * 60))
-    if (hoursUntilDue <= 2) {
-      score += 600 // Due very soon
-    } else if (hoursUntilDue <= 8) {
-      score += 400 // Due today
-    } else {
-      score += 200 // Due later today
-    }
-  }
-  
-  // 4. VIP SENDER - Important people get priority
-  if (task.createdBy?.email) {
-    const email = task.createdBy.email.toLowerCase()
-    const domain = email.split('@')[1]
-    
-    // Check if from VIP domain
-    if (VIP_DOMAINS.some(vip => domain?.includes(vip))) {
-      score += 300
-    }
-    
-    // Check for VIP keywords in email or title
-    const titleLower = task.title.toLowerCase()
-    if (VIP_KEYWORDS.some(keyword => 
-      titleLower.includes(keyword) || 
-      email.includes(keyword)
-    )) {
-      score += 250
-    }
-  }
-  
-  // 5. PRIORITY FIELD - Respect manual priority
-  if (task.priority === 'high') {
-    score += 200
-  } else if (task.priority === 'low') {
-    score -= 100
-  }
-  
-  // 6. IN PROGRESS - Boost tasks already started
-  if (task.status === 'in_progress') {
-    score += 150
-  }
-  
-  // 7. TIME OF DAY PATTERNS
-  const hour = now.getHours()
-  const dayOfWeek = now.getDay()
-  
-  // Morning boost for daily/standup tasks
-  if (hour >= 8 && hour <= 10) {
-    if (task.title.toLowerCase().includes('standup') || 
-        task.title.toLowerCase().includes('daily')) {
-      score += 200
-    }
-  }
-  
-  // End of day boost for reports/reviews
-  if (hour >= 16 && hour <= 18) {
-    if (task.title.toLowerCase().includes('report') || 
-        task.title.toLowerCase().includes('review') ||
-        task.title.toLowerCase().includes('summary')) {
-      score += 150
-    }
-  }
-  
-  // Monday boost for weekly planning
-  if (dayOfWeek === 1 && (
-    task.title.toLowerCase().includes('weekly') ||
-    task.title.toLowerCase().includes('planning')
-  )) {
-    score += 100
-  }
-  
-  // Friday boost for week wrap-up
-  if (dayOfWeek === 5 && (
-    task.title.toLowerCase().includes('wrap') ||
-    task.title.toLowerCase().includes('summary') ||
-    task.title.toLowerCase().includes('weekly')
-  )) {
-    score += 100
-  }
-  
-  // 8. RECENCY DECAY - Older tasks slowly fade (unless they're important)
-  if (!task.dueDate && !task.reminderDate) {
-    score -= taskAge * 5 // Lose 5 points per day if no date set
-  }
-  
-  // 9. EMAIL THREADS - Active threads get priority
-  if (task.emailMetadata?.threadLength > 1) {
-    score += Math.min(task.emailMetadata.threadLength * 20, 200) // Cap at 200
-  }
-  
-  // 10. QUESTIONS - Tasks that are questions get slight boost
-  if (task.title.includes('?') || 
-      task.description?.includes('?') ||
-      task.title.toLowerCase().includes('question')) {
-    score += 50
-  }
-  
-  // Never let score go below 0
-  return Math.max(0, Math.round(score))
+  return Math.max(0, Math.min(100, Math.round(aiScore)))
 }
 
 /**
  * Get smart explanation for why a task is prioritized
  */
-export function getRelevanceReason(task: Task, now: Date = new Date()): string {
-  const reasons = []
-  
-  if (task.dueDate && new Date(task.dueDate) < now && task.status !== 'done') {
-    const daysOverdue = Math.floor((now.getTime() - new Date(task.dueDate).getTime()) / (1000 * 60 * 60 * 24))
-    reasons.push(`${daysOverdue} ${daysOverdue === 1 ? 'day' : 'days'} overdue`)
+export function getRelevanceReason(task: Task): string {
+  const reason = task.emailMetadata?.smartAnalysis?.priorityReasoning
+  if (typeof reason === 'string' && reason.trim().length > 0) {
+    return reason.trim().slice(0, 140)
   }
-  
-  if (task.reminderDate && new Date(task.reminderDate) <= now && task.status !== 'done') {
-    reasons.push('Reminder triggered')
-  }
-  
-  if (task.dueDate && isToday(new Date(task.dueDate), now) && task.status !== 'done') {
-    const hoursUntilDue = Math.floor((new Date(task.dueDate).getTime() - now.getTime()) / (1000 * 60 * 60))
-    if (hoursUntilDue <= 2 && hoursUntilDue > 0) {
-      reasons.push(`Due in ${hoursUntilDue} ${hoursUntilDue === 1 ? 'hour' : 'hours'}`)
-    } else if (hoursUntilDue <= 0) {
-      reasons.push('Due now')
-    } else {
-      reasons.push('Due today')
-    }
-  }
-  
-  if (task.status === 'in_progress') {
-    reasons.push('In progress')
-  }
-  
-  if (task.priority === 'high') {
-    reasons.push('High priority')
-  }
-  
-  if (task.createdBy?.email && VIP_DOMAINS.some(vip => task.createdBy?.email.includes(vip))) {
-    reasons.push('From VIP')
-  }
-  
-  return reasons.slice(0, 2).join(' • ') // Show max 2 reasons
+  const score = task.emailMetadata?.smartAnalysis?.priorityScore
+  return Number.isFinite(score) ? `AI priority ${Math.round(score)} / 100` : ''
 }
 
 /**
@@ -210,14 +61,14 @@ export function getRelevanceReason(task: Task, now: Date = new Date()): string {
 export function getSmartTaskList(
   tasks: Task[], 
   limit: number = 5,
-  now: Date = new Date()
+  _now: Date = new Date()
 ): TaskWithScore[] {
   return tasks
     .filter(task => task.status !== 'done') // Hide completed tasks
     .map(task => ({
       ...task,
-      relevanceScore: calculateRelevanceScore(task, now),
-      relevanceReason: getRelevanceReason(task, now)
+      relevanceScore: calculateRelevanceScore(task),
+      relevanceReason: getRelevanceReason(task)
     }))
     .sort((a, b) => b.relevanceScore - a.relevanceScore)
     .slice(0, limit)
@@ -300,35 +151,94 @@ function isTomorrow(date: Date, now: Date): boolean {
 /**
  * Smart search/command interpreter
  */
-export function interpretCommand(query: string, tasks: Task[]): Task[] {
-  const q = query.toLowerCase().trim()
-  
-  // Special commands
-  if (q === 'done' || q === 'completed') {
-    return tasks.filter(t => t.status === 'done')
+export function interpretCommand(query: string, tasks: Task[], filters: string[] = []): Task[] {
+  const q = (query || '').toLowerCase().trim()
+
+  // Parse key:value tokens from query and filters
+  const tokenRegex = /(\w+):([^\s]+)/g
+  const kv: Record<string, Set<string>> = {}
+  const addKv = (k: string, v: string) => {
+    const key = k.toLowerCase()
+    if (!kv[key]) kv[key] = new Set<string>()
+    kv[key].add(v.toLowerCase())
   }
-  
-  if (q === 'today') {
-    return tasks.filter(t => t.dueDate && isToday(new Date(t.dueDate), new Date()))
+  let m: RegExpExecArray | null
+  while ((m = tokenRegex.exec(q)) !== null) {
+    addKv(m[1], m[2])
   }
-  
-  if (q === 'tomorrow') {
-    return tasks.filter(t => t.dueDate && isTomorrow(new Date(t.dueDate), new Date()))
+  for (const f of filters) {
+    const fm = f.match(/^(\w+):(.+)$/)
+    if (fm) addKv(fm[1], fm[2])
   }
-  
-  if (q === 'overdue') {
-    return tasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'done')
+
+  const freeText = q.replace(tokenRegex, '').trim()
+
+  const matchesKv = (task: Task): boolean => {
+    const tags = task.emailMetadata?.smartAnalysis?.tags || {}
+    const projectTag = task.emailMetadata?.smartAnalysis?.projectTag
+    const when: string | null = tags.when || null
+    const where: string | null = tags.where || null
+    const who: string | null = tags.who || null
+    const what: string | null = tags.what || null
+    const extras: string[] = Array.isArray(tags.extras) ? tags.extras : []
+
+    for (const [key, values] of Object.entries(kv)) {
+      // Each key: any of its values may match
+      const needleList = Array.from(values)
+      const includesAny = (s?: string | null) => s ? needleList.some(v => s.toLowerCase().includes(v)) : false
+      switch (key) {
+        case 'what':
+          if (!includesAny(what)) return false
+          break
+        case 'who':
+          if (!includesAny(who)) return false
+          break
+        case 'where':
+          if (!includesAny(where)) return false
+          break
+        case 'when':
+          if (!includesAny(when)) return false
+          break
+        case 'tag':
+          if (!(includesAny(what) || includesAny(who) || includesAny(where) || includesAny(when) || extras.some(e => includesAny(e)))) return false
+          break
+        case 'project':
+          if (!includesAny(projectTag)) return false
+          break
+        case 'from':
+          if (!includesAny(task.createdBy?.email)) return false
+          break
+        default:
+          // Unknown key → require presence in haystack
+          const hay = buildHaystack(task)
+          if (!needleList.some(v => hay.includes(v))) return false
+      }
+    }
+    return true
   }
-  
-  if (q === 'urgent' || q === 'high') {
-    return tasks.filter(t => t.priority === 'high' || t.title.toLowerCase().includes('urgent'))
+
+  const matchesFree = (task: Task): boolean => {
+    if (!freeText) return true
+    const hay = buildHaystack(task)
+    return hay.includes(freeText)
   }
-  
-  // Otherwise, search in title and description
-  return tasks.filter(t => 
-    t.title.toLowerCase().includes(q) ||
-    t.description?.toLowerCase().includes(q) ||
-    t.createdBy?.email.toLowerCase().includes(q) ||
-    t.createdBy?.name?.toLowerCase().includes(q)
-  )
+
+  return tasks.filter(t => matchesKv(t) && matchesFree(t))
+}
+
+function buildHaystack(task: Task): string {
+  const tags = task.emailMetadata?.smartAnalysis?.tags || {}
+  const extras = Array.isArray(tags.extras) ? tags.extras.join(' ') : ''
+  return [
+    task.title || '',
+    task.description || '',
+    task.createdBy?.email || '',
+    task.createdBy?.name || '',
+    String(task.emailMetadata?.smartAnalysis?.projectTag || ''),
+    String(tags.when || ''),
+    String(tags.where || ''),
+    String(tags.who || ''),
+    String(tags.what || ''),
+    extras
+  ].join(' ').toLowerCase()
 }

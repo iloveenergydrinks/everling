@@ -3,6 +3,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import AuthProvider from "@/components/auth-provider"
 import { Toaster } from "@/components/ui/toaster"
+import { GlobalModal } from "@/components/global-modal"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -36,6 +37,7 @@ export default function RootLayout({
           {children}
         </AuthProvider>
         <Toaster />
+        <GlobalModal />
       </body>
     </html>
   )

@@ -63,49 +63,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Process the email asynchronously
-    // In production, you might want to use a queue here
-    const result = await processInboundEmail(emailData)
-
-    // Handle different return types from processInboundEmail
-    if (result && typeof result === 'object') {
-      // Check if email was rejected (not an error, just not processed)
-      if ('status' in result && (result as any).status === 'rejected') {
-        const rejectedResult = result as any
-        console.log(`Email rejected: ${rejectedResult.reason} - ${rejectedResult.message}`)
-        return NextResponse.json({
-          success: false,
-          status: 'rejected',
-          reason: rejectedResult.reason,
-          message: rejectedResult.message
-        }, { status: 200 }) // Return 200 OK even for rejected emails (not an error)
-      }
-      
-      // If it's a task object (has id property)
-      if ('id' in result) {
-        return NextResponse.json({
-          success: true,
-          taskId: result.id
+    // Queue processing and return immediately
+    setTimeout(() => {
+      processInboundEmail(emailData)
+        .then((res) => {
+          if (res && typeof res === 'object' && 'status' in res && (res as any).status === 'rejected') {
+            const r: any = res
+            console.log(`Async email rejected: ${r.reason} - ${r.message}`)
+          } else if (res && typeof res === 'object' && 'id' in res) {
+            console.log(`Async email processed: taskId=${(res as any).id}`)
+          } else if (res && typeof res === 'object' && 'taskId' in res) {
+            const r: any = res
+            console.log(`Async email processed: taskId=${r.taskId}`)
+          } else {
+            console.log('Async email processed (no task)')
+          }
         })
-      }
-      
-      // If it's a status object (has taskId property)
-      if ('taskId' in result) {
-        return NextResponse.json({
-          success: true,
-          taskId: result.taskId,
-          message: result.message || 'Email processed',
-          isReply: result.isReply || false
+        .catch((err) => {
+          console.error('Async email processing error:', err)
         })
-      }
-    }
+    }, 0)
 
-    // Fallback
-    return NextResponse.json({
-      success: true,
-      taskId: null,
-      message: 'Email processed'
-    })
+    return NextResponse.json({ success: true, queued: true }, { status: 200 })
 
   } catch (error) {
     console.error("Email webhook error:", error)

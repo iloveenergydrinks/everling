@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useSession, signOut } from "next-auth/react"
 import { formatDate, formatDateTime, generateApiKey } from "@/lib/utils"
 import { getSmartTaskList, interpretCommand, recordInteraction } from "@/lib/tasks"
@@ -66,6 +66,7 @@ export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [activeFilters, setActiveFilters] = useState<string[]>([])
   const [showAllTasks, setShowAllTasks] = useState(false)
   const [copied, setCopied] = useState(false)
   const [copiedText, setCopiedText] = useState("")
@@ -149,6 +150,40 @@ export default function DashboardPage() {
       setLoading(false)
     }
   }
+  // Build dynamic chips from tags present in tasks
+  const chips = useMemo(() => {
+    const counts: Record<string, { key: string; value: string; label: string; count: number }> = {}
+    const add = (key: string, value?: string | null) => {
+      if (!value) return
+      const v = String(value).trim()
+      if (!v) return
+      const id = `${key}:${v.toLowerCase()}`
+      if (!counts[id]) counts[id] = { key, value: v.toLowerCase(), label: v, count: 0 }
+      counts[id].count++
+    }
+    for (const t of tasks) {
+      const sa = t.emailMetadata?.smartAnalysis || {}
+      const tags = sa.tags || {}
+      add('what', tags.what)
+      add('who', tags.who)
+      add('where', tags.where)
+      if (sa.projectTag) add('project', sa.projectTag)
+      if (Array.isArray(tags.extras)) {
+        for (const ex of tags.extras) add('tag', ex)
+      }
+    }
+    // Only include extras that appear more than once to avoid noise
+    const list = Object.values(counts).filter(c => c.key !== 'tag' || c.count > 1)
+    // Sort by frequency desc, then label
+    list.sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+    return list.slice(0, 12)
+  }, [tasks])
+
+  const toggleFilter = (key: string, value: string) => {
+    const token = `${key}:${value.toLowerCase()}`
+    setActiveFilters(prev => prev.includes(token) ? prev.filter(f => f !== token) : [...prev, token])
+  }
+
 
   const fetchOrganization = async () => {
     try {
@@ -481,9 +516,9 @@ export default function DashboardPage() {
 
   // Get smart task list based on search or default ordering
   const getVisibleTasks = (): Task[] => {
-    if (searchQuery.trim()) {
+    if (searchQuery.trim() || activeFilters.length > 0) {
       // If searching, use the command interpreter
-      const searchResults = interpretCommand(searchQuery, tasks)
+      const searchResults = interpretCommand(searchQuery, tasks, activeFilters)
       // Add relevance info to search results
       return searchResults.map((task, index) => ({
         ...task,
@@ -620,8 +655,36 @@ export default function DashboardPage() {
               )}
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Try: "urgent", "tomorrow", "from john", or just start typing
+              Try filters: what:meeting, who:john, where:office, project:alpha, tag:invoice
             </p>
+
+            {/* Dynamic tag chips */}
+            {chips.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {chips.map(chip => {
+                  const token = `${chip.key}:${chip.value}`
+                  const active = activeFilters.includes(token)
+                  return (
+                    <button
+                      key={token}
+                      onClick={() => toggleFilter(chip.key, chip.value)}
+                      className={`text-xs px-2 py-0.5 border rounded-sm ${active ? 'bg-foreground text-background' : ''}`}
+                      title={`${chip.key}: ${chip.label}`}
+                    >
+                      {chip.label}
+                    </button>
+                  )
+                })}
+                {activeFilters.length > 0 && (
+                  <button
+                    onClick={() => setActiveFilters([])}
+                    className="text-xs px-2 py-0.5 border rounded-sm text-muted-foreground hover:text-foreground"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Notification Onboarding - Show for new users or if not configured */}
@@ -664,17 +727,60 @@ export default function DashboardPage() {
                             {task.description}
                           </p>
                         )}
+                        {/* Meta line (reason/priority) */}
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
                           {task.relevanceReason && (
                             <span className="font-medium">{task.relevanceReason}</span>
-                          )}
-                          {task.createdBy?.email && (
-                            <span>from {task.createdBy.email.split('@')[0]}</span>
                           )}
                           {task.priority === 'high' && (
                             <span className="text-red-600">High priority</span>
                           )}
                         </div>
+
+                        {/* Source line (only for email-created tasks) */}
+                        {task.createdVia === 'email' && task.emailMetadata?.from && (
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {(() => {
+                              const raw = String(task.emailMetadata.from)
+                              const match = raw.match(/<(.+?)>/)
+                              const addr = (match ? match[1] : raw).toLowerCase()
+                              const label = addr.includes('@') ? addr.split('@')[0] : addr
+                              return <span>via email from {label}</span>
+                            })()}
+                          </div>
+                        )}
+
+                        {/* Tags line */}
+                        {task.emailMetadata?.smartAnalysis?.tags && (
+                          <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                            {task.emailMetadata.smartAnalysis.tags.when && (
+                              <span className="px-2 py-0.5 border rounded-sm bg-transparent">
+                                {task.emailMetadata.smartAnalysis.tags.when}
+                              </span>
+                            )}
+                            {task.emailMetadata.smartAnalysis.tags.where && (
+                              <span className="px-2 py-0.5 border rounded-sm">
+                                {task.emailMetadata.smartAnalysis.tags.where}
+                              </span>
+                            )}
+                            {task.emailMetadata.smartAnalysis.tags.who && (
+                              <span className="px-2 py-0.5 border rounded-sm">
+                                {task.emailMetadata.smartAnalysis.tags.who}
+                              </span>
+                            )}
+                            {task.emailMetadata.smartAnalysis.tags.what && (
+                              <span className="px-2 py-0.5 border rounded-sm">
+                                {task.emailMetadata.smartAnalysis.tags.what}
+                              </span>
+                            )}
+                            {Array.isArray(task.emailMetadata.smartAnalysis.tags.extras) &&
+                              task.emailMetadata.smartAnalysis.tags.extras.slice(0, 2).map((ex: string, idx: number) => (
+                                <span key={idx} className="px-2 py-0.5 border rounded-sm max-w-[200px] truncate">
+                                  {ex}
+                                </span>
+                              ))}
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <button

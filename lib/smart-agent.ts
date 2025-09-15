@@ -308,6 +308,13 @@ export async function extractSmartTask(
   stakeholders: string[]
   projectTag: string | null
   dependencies: string[]
+  tags?: {
+    when?: string | null
+    where?: string | null
+    who?: string | null
+    what?: string | null
+    extras?: string[]
+  }
 }> {
   console.log('🤖 Starting AI task extraction:', {
     from: emailData.from,
@@ -333,6 +340,26 @@ EXTRACTION PRINCIPLES:
 5. Extract dates and deadlines intelligently
 6. Tag with project/initiative if applicable
 
+TAGS (for minimal display):
+- when: human-readable date/time if present (e.g., "Thu, Sep 18, 2025 10:00")
+- where: location if present (address, venue, city) or null
+- who: primary counterpart contact name or email (not the user)
+- what: short type keyword like "appointment", "meeting", "call", "payment", "doc"
+- extras: array of short extra hints (e.g., reference numbers)
+
+LANGUAGE & LOCALE AWARENESS:
+- Detect the email language. If Italian (it) or EU formats are present, correctly interpret:
+  - Dates like DD/MM/YYYY (e.g., 18/09/2025)
+  - Time phrases like "alle ore 14:00", "ore 14.00", "h 14"
+  - Location after "presso:" (e.g., address lines)
+  - Contact names after "collega" or "con"
+  - References like "rif. immobile 225265" and phone like "cell. 3479461723"
+
+REQUIREMENTS:
+- Always return a top-level "tags" with best-effort values from the email content.
+- If a precise ISO due date/time can be inferred, set dueDate and also set tags.when to a readable version.
+- Do not invent data; leave fields null only when truly not present.
+
 PRIORITY MAPPING (based on AI priority score):
 - 0-30: low
 - 31-70: medium  
@@ -348,7 +375,7 @@ BUSINESS IMPACT:
 - medium: Team affecting, process improvement
 - high: Revenue affecting, customer facing, critical operations
 
-Return comprehensive JSON with all extracted information.`,
+Return comprehensive JSON with all extracted information. Include a top-level "tags" object as described.`,
       messages: [{
         role: 'user',
         content: `Extract task from this email:
@@ -356,7 +383,7 @@ Return comprehensive JSON with all extracted information.`,
 EMAIL:
 From: ${emailData.from}
 Subject: ${emailData.subject}
-Body: ${emailData.body.substring(0, 2000)}
+Body: ${emailData.body.substring(0, 6000)}
 Timestamp: ${emailData.timestamp.toISOString()}
 
 PRIORITY ANALYSIS:
@@ -394,6 +421,19 @@ Extract comprehensive task information with smart analysis.`
         // Defensive defaults to avoid undefined.map errors
         extracted.stakeholders = Array.isArray(extracted.stakeholders) ? extracted.stakeholders : []
         extracted.dependencies = Array.isArray(extracted.dependencies) ? extracted.dependencies : []
+        // Ensure tags object exists with safe defaults
+        if (!extracted.tags || typeof extracted.tags !== 'object') {
+          extracted.tags = { when: null, where: null, who: null, what: null, extras: [] }
+        } else {
+          extracted.tags.when = extracted.tags.when ?? null
+          extracted.tags.where = extracted.tags.where ?? null
+          extracted.tags.who = extracted.tags.who ?? null
+          extracted.tags.what = extracted.tags.what ?? null
+          extracted.tags.extras = Array.isArray(extracted.tags.extras) ? extracted.tags.extras : []
+        }
+
+        // No fallback heuristics: rely on model to produce tags and metadata
+        console.log('🤖 Extracted tags:', extracted.tags)
         console.log('🤖 Extracted task data:', {
           title: extracted.title,
           priority: extracted.priority,
@@ -413,7 +453,8 @@ Extract comprehensive task information with smart analysis.`
           dependencies: extracted.dependencies || [],
           projectTag: extracted.projectTag || null,
           estimatedEffort: extracted.estimatedEffort || 'medium',
-          businessImpact: extracted.businessImpact || 'medium'
+          businessImpact: extracted.businessImpact || 'medium',
+          tags: extracted.tags
         }
         
         console.log('🤖 Task extraction successful:', finalTask.title)
@@ -612,7 +653,7 @@ export async function analyzeEmailThread(
     }
 
     // Prepare emails for AI analysis
-    const emailsForAnalysis = threadEmails.map(email => {
+    const emailsForAnalysis = threadEmails.map((email: any) => {
       const rawData = email.rawData as any
       return {
         from: email.fromEmail,
