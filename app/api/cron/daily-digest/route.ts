@@ -28,8 +28,8 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
       summary: {
         total: results.total,
-        sent: results.sent,
-        failed: results.failed
+        processed: results.processed,
+        details: results.results
       }
     })
     
