@@ -95,7 +95,9 @@ export default function RegisterPage() {
       <div className="mx-auto max-w-md px-6">
         {/* Header */}
         <div className="mb-8 text-center">
-          <Link href="/" className="text-2xl font-medium">Everling.io</Link>
+          <Link href="/" className="text-2xl font-medium hover:text-muted-foreground transition-colors">
+            ← Everling.io
+          </Link>
           <p className="text-sm text-muted-foreground mt-2">
             Know before it matters
           </p>

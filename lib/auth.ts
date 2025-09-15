@@ -1,13 +1,15 @@
 import { NextAuthOptions, getServerSession } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
+import EmailProvider from "next-auth/providers/email"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
+import { ServerClient } from 'postmark'
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as any,
   session: {
-    strategy: "jwt",
+    strategy: "database", // Required for email provider
   },
   pages: {
     signIn: "/login",
@@ -15,6 +17,56 @@ export const authOptions: NextAuthOptions = {
     error: "/login",
   },
   providers: [
+    EmailProvider({
+      server: {
+        host: process.env.EMAIL_SERVER_HOST,
+        port: parseInt(process.env.EMAIL_SERVER_PORT || "587"),
+        auth: {
+          user: process.env.EMAIL_SERVER_USER,
+          pass: process.env.EMAIL_SERVER_PASSWORD,
+        },
+      },
+      from: process.env.EMAIL_FROM || "noreply@everling.io",
+      // Use Postmark for sending magic links
+      sendVerificationRequest: async ({ identifier: email, url, provider }) => {
+        if (!process.env.POSTMARK_SERVER_TOKEN) {
+          console.log('[MOCK EMAIL] Would send magic link to:', email)
+          return
+        }
+
+        const postmark = new ServerClient(process.env.POSTMARK_SERVER_TOKEN)
+        
+        try {
+          await postmark.sendEmail({
+            From: provider.from as string,
+            To: email,
+            Subject: 'Sign in to Everling.io',
+            HtmlBody: `
+              <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h1 style="color: #333; margin-bottom: 20px;">Sign in to Everling.io</h1>
+                <p style="color: #666; line-height: 1.6; margin-bottom: 30px;">
+                  Click the link below to sign in to your account. This link will expire in 24 hours.
+                </p>
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="${url}" 
+                     style="display: inline-block; padding: 12px 24px; background: #000; color: white; text-decoration: none; border-radius: 6px; font-weight: 500;">
+                    Sign in to Everling.io
+                  </a>
+                </div>
+                <p style="color: #999; font-size: 12px; margin-top: 30px;">
+                  If you didn't request this email, you can safely ignore it.
+                </p>
+              </div>
+            `,
+            TextBody: `Sign in to Everling.io\n\nClick this link to sign in: ${url}\n\nThis link will expire in 24 hours.\n\nIf you didn't request this email, you can safely ignore it.`,
+            MessageStream: 'outbound'
+          })
+        } catch (error) {
+          console.error('Failed to send magic link:', error)
+          throw error
+        }
+      },
+    }),
     CredentialsProvider({
       name: "credentials",
       credentials: {
