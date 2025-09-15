@@ -21,12 +21,20 @@ export default async function HomePage() {
               Know before it matters
             </p>
           </div>
-          <Link 
-            href="/login"
-            className="px-4 py-2 text-sm border rounded hover:bg-muted transition-colors"
-          >
-            Login
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link 
+              href="/register"
+              className="px-4 py-2 text-sm bg-foreground text-background rounded hover:bg-foreground/90 transition-colors"
+            >
+              Sign up
+            </Link>
+            <Link 
+              href="/login"
+              className="px-4 py-2 text-sm border rounded hover:bg-muted transition-colors"
+            >
+              Login
+            </Link>
+          </div>
         </div>
 
         {/* Hero Section - Minimal */}

@@ -124,20 +124,22 @@ export default function RegisterPage() {
       <div className="flex min-h-screen items-center justify-center px-4">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle className="text-green-600">Registration Successful!</CardTitle>
+            <CardTitle className="text-green-600">🎉 Your AI Assistant is Ready!</CardTitle>
             <CardDescription>
-              Your account has been created successfully.
+              Your personal task manager that understands email
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="rounded-md bg-green-50 p-4">
-              <p className="mb-2 text-sm font-medium">Your organization email:</p>
-              <code className="block rounded bg-green-100 p-2 text-sm">
+              <p className="mb-2 text-sm font-medium">Your AI assistant email:</p>
+              <code className="block rounded bg-green-100 p-2 text-sm font-mono">
                 {organizationEmail}
               </code>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Forward emails to this address to create tasks automatically
-              </p>
+              <div className="mt-3 space-y-2 text-xs text-muted-foreground">
+                <p>✨ Forward any email here to instantly create a task</p>
+                <p>🤖 AI automatically extracts deadlines, priorities, and context</p>
+                <p>📱 Get smart reminders via SMS or email digest</p>
+              </div>
             </div>
             <p className="text-center text-sm text-muted-foreground">
               Redirecting to login page...
@@ -211,43 +213,62 @@ export default function RegisterPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="organizationName">Organization Name</Label>
-              <Input
-                id="organizationName"
-                type="text"
-                placeholder="Acme Inc"
-                value={selectedSuggestion?.name || formData.organizationName}
-                onChange={(e) => {
-                  // Clear selection when user manually types
-                  if (selectedSuggestion) {
-                    setSelectedSuggestion(null)
-                    setOrgCheck(null)
-                  }
-                  handleChange(e)
-                }}
-                onBlur={(e) => {
-                  // Check availability when user finishes typing
-                  if (e.target.value.trim() && !selectedSuggestion) {
-                    checkOrganization(e.target.value)
-                  }
-                }}
-                required
-              />
+              <Label htmlFor="organizationName">
+                Choose Your AI Assistant Email
+              </Label>
+              <div className="space-y-1">
+                <div className="relative">
+                  <Input
+                    id="organizationName"
+                    type="text"
+                    placeholder="acme"
+                    value={selectedSuggestion?.name || formData.organizationName}
+                    onChange={(e) => {
+                      // Clear selection when user manually types
+                      if (selectedSuggestion) {
+                        setSelectedSuggestion(null)
+                        setOrgCheck(null)
+                      }
+                      handleChange(e)
+                    }}
+                    onBlur={(e) => {
+                      // Check availability when user finishes typing
+                      if (e.target.value.trim() && !selectedSuggestion) {
+                        checkOrganization(e.target.value)
+                      }
+                    }}
+                    required
+                    className="pr-24"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    @everling.io
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Forward emails here to instantly create tasks. Your personal AI inbox that never forgets.
+                </p>
+              </div>
               
               {/* Organization Check Results */}
               {checkingOrg && (
                 <div className="text-xs text-muted-foreground">
-                  Checking availability...
+                  🔍 Checking if your email is available...
+                </div>
+              )}
+              
+              {orgCheck && orgCheck.available && !checkingOrg && (
+                <div className="text-xs text-green-600">
+                  ✅ Perfect! {formData.organizationName}@everling.io is all yours
                 </div>
               )}
               
               {orgCheck && !orgCheck.available && (
                 <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-sm text-yellow-800 mb-3">
-                    <strong>"{formData.organizationName}"</strong> is already taken
+                    ⚠️ <strong>{formData.organizationName}@everling.io</strong> is already taken
                   </p>
                   <p className="text-xs text-yellow-700 mb-3">
-                    Choose one of these available alternatives:
+                    Pick one of these available alternatives:
                   </p>
                   <div className="space-y-2">
                     {orgCheck.suggestions?.map((suggestion: any, index: number) => (
@@ -261,22 +282,13 @@ export default function RegisterPage() {
                             : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                         }`}
                       >
-                        <div className="font-medium">{suggestion.name}</div>
+                        <div className="font-medium">{suggestion.name}@everling.io</div>
                         <div className="text-xs text-muted-foreground">
-                          Agent email: {suggestion.agentEmail}
+                          Your AI assistant email address
                         </div>
                       </button>
                     ))}
                   </div>
-                </div>
-              )}
-              
-              {orgCheck && orgCheck.available && (
-                <div className="flex items-center gap-2 text-xs text-green-600">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Available! Your agent email will be: {orgCheck.suggested?.agentEmail}
                 </div>
               )}
               
