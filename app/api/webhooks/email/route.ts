@@ -2,6 +2,19 @@ import { NextRequest, NextResponse } from "next/server"
 import { processInboundEmail } from "@/lib/email"
 import crypto from "crypto"
 
+export const dynamic = 'force-dynamic'
+
+// Handle GET requests with a helpful message
+export async function GET(request: NextRequest) {
+  return NextResponse.json({
+    message: "This is a webhook endpoint for Postmark inbound emails",
+    status: "healthy",
+    method: "Please use POST to send email data",
+    timestamp: new Date().toISOString(),
+    instructions: "Configure your Postmark inbound webhook to POST to this URL"
+  }, { status: 200 })
+}
+
 // Verify Postmark webhook signature
 // Postmark doesn't provide webhook secrets for inbound emails
 // Instead, we use Basic Auth in the webhook URL

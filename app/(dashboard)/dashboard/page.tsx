@@ -250,6 +250,13 @@ export default function DashboardPage() {
       if (response.ok) {
         const data = await response.json()
         setAllowedEmails(data)
+      } else {
+        const errorData = await response.json()
+        console.error("Failed to fetch allowed emails:", response.status, errorData)
+        // If unauthorized, it might be a session issue
+        if (response.status === 401) {
+          console.error("Session issue - user might need to log in again")
+        }
       }
     } catch (error) {
       console.error("Error fetching allowed emails:", error)
@@ -1052,6 +1059,27 @@ export default function DashboardPage() {
                             </p>
                           </div>
                         )}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={async () => {
+                              const res = await fetch('/api/debug/allowed-emails')
+                              const data = await res.json()
+                              console.log('Debug info:', data)
+                              alert('Check browser console for debug info')
+                            }}
+                            className="text-xs px-2 py-1 border rounded hover:bg-muted"
+                          >
+                            Debug Session
+                          </button>
+                          <button
+                            onClick={() => {
+                              fetchAllowedEmails()
+                            }}
+                            className="text-xs px-2 py-1 border rounded hover:bg-muted"
+                          >
+                            Retry Loading
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <div className="space-y-2">
