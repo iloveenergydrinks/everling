@@ -156,12 +156,7 @@ export default function DashboardPage() {
             
             toast({
               title: "📧 New task from email",
-              description: (
-                <div className="space-y-1">
-                  <p className="font-medium">{task.title}</p>
-                  <p className="text-xs text-muted-foreground">From: {sender}</p>
-                </div>
-              ),
+              description: `${task.title} - From: ${sender}`,
               variant: "success",
               duration: 7000,
             })
