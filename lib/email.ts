@@ -7,6 +7,10 @@ import {
   getSenderHistory,
   updateSenderIntelligence 
 } from '@/lib/smart-agent'
+import { 
+  analyzeDeadlineIntelligence, 
+  applySmartDeadlines 
+} from '@/lib/smart-deadlines'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -609,6 +613,19 @@ export async function processInboundEmail(emailData: EmailData) {
       where: { id: organization.id },
       data: { tasksCreated: { increment: 1 } }
     })
+
+    // Apply smart deadline analysis to the created task
+    await applySmartDeadlines(
+      task.id,
+      {
+        from: emailData.From,
+        subject: emailData.Subject,
+        body: bodyText,
+        timestamp: new Date(emailData.Date)
+      },
+      threadContext,
+      senderHistory
+    )
 
     // Update sender intelligence with task creation
     await updateSenderIntelligence(senderEmail, organization.id, {
