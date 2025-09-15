@@ -1,17 +1,10 @@
-import { redirect } from "next/navigation"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
 import Link from "next/link"
 import { Mail, MessageSquare, Search, Zap } from "lucide-react"
+import { RedirectIfAuthenticated } from "@/components/redirect-if-authenticated"
 
-export default async function HomePage() {
-  const session = await getServerSession(authOptions)
-
-  if (session) {
-    redirect("/dashboard")
-  }
-
+export default function HomePage() {
   return (
+    <RedirectIfAuthenticated>
     <div className="min-h-screen py-12">
       <div className="mx-auto max-w-3xl px-6">
         {/* Minimal Header with Login */}
@@ -149,5 +142,6 @@ export default async function HomePage() {
         </div>
       </div>
     </div>
+    </RedirectIfAuthenticated>
   )
 }
