@@ -691,11 +691,11 @@ export default function AdminDashboard() {
                     </div>
                     <div className="flex items-center gap-2">
                       {log.processed && log.taskId ? (
-                        <CheckCircle className="h-4 w-4 text-green-600" title="Task created" />
+                        <CheckCircle className="h-4 w-4 text-green-600" />
                       ) : log.error ? (
-                        <XCircle className="h-4 w-4 text-red-600" title="Error" />
+                        <XCircle className="h-4 w-4 text-red-600" />
                       ) : (
-                        <div className="h-4 w-4 rounded-full bg-yellow-500" title="Pending" />
+                        <div className="h-4 w-4 rounded-full bg-yellow-500" />
                       )}
                     </div>
                   </div>
