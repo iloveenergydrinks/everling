@@ -154,6 +154,11 @@ export async function processInboundEmail(emailData: EmailData) {
     senderEmail
   })
   const threadId = getThreadId(emailData)
+  // Prefer strict reply detection via In-Reply-To only
+  const inReplyToHeader = emailData.Headers?.find(h => h.Name.toLowerCase() === 'in-reply-to')
+  const inReplyTo = inReplyToHeader?.Value || null
+  const subjectLower = (emailData.Subject || '').trim().toLowerCase()
+  const isForward = subjectLower.startsWith('fwd:') || subjectLower.startsWith('fw:')
   
   let emailLog: any
   
@@ -196,6 +201,10 @@ export async function processInboundEmail(emailData: EmailData) {
       allowedEmailsCount: organization.allowedEmails.length,
       allowedEmails: organization.allowedEmails.map(ae => ae.email)
     })
+    
+    console.log('📧 Proceeding with email processing - sender is authorized')
+    
+    console.log('📧 Step 1: Checking for existing thread...')
     
     // Check if this is part of an existing thread
     let isThreadReply = false
@@ -250,27 +259,35 @@ export async function processInboundEmail(emailData: EmailData) {
         senderEmail
       }
     }
+    
+    console.log('📧 Step 2: Authorization passed, proceeding to task processing...')
+
+    console.log('📧 Step 3: Looking for existing tasks in thread...')
 
     // Check if this is a reply to an existing thread with a task
     let existingTask = null
-    if (threadId) {
-      // Find if any email in this thread already created a task
-      const existingEmailWithTask = await prisma.emailLog.findFirst({
-        where: {
-          organizationId: organization.id,
-          OR: [
-            { messageId: threadId },
-            { threadId: threadId }
-          ],
-          taskId: { not: null }
-        },
-        include: {
-          task: true
+    try {
+      console.log('📧 Step 3a: Reply detection check:', { inReplyTo, hasInReplyTo: !!inReplyTo, isForward })
+
+      // Treat as reply ONLY if In-Reply-To is present and the subject does not indicate a forward
+      if (inReplyTo && !isForward) {
+        console.log('📧 Step 3b: Searching for existing task by In-Reply-To...')
+
+        // Find if any email in this thread already created a task
+        const existingEmailWithTask = await prisma.emailLog.findFirst({
+          where: {
+            organizationId: organization.id,
+            messageId: inReplyTo,
+            taskId: { not: null }
+          },
+          include: {
+            task: true
+          }
+        })
+
+        if (existingEmailWithTask?.task) {
+          existingTask = existingEmailWithTask.task
         }
-      })
-      
-      if (existingEmailWithTask?.task) {
-        existingTask = existingEmailWithTask.task
       }
     }
 
@@ -410,15 +427,25 @@ export async function processInboundEmail(emailData: EmailData) {
         updates: activityMessages
       }
     }
+    } catch (threadError) {
+      console.error('📧 Error in thread checking:', threadError)
+    }
 
-    // Get sender history for smart analysis
-    const senderHistory = await getSenderHistory(senderEmail, organization.id)
+    console.log('📧 Step 4: Getting sender history for smart analysis...')
+    
+    try {
+      // Get sender history for smart analysis
+      const senderHistory = await getSenderHistory(senderEmail, organization.id)
+    
+    console.log('📧 Step 5: Analyzing thread context...')
     
     // Analyze thread context if this is part of a thread
     let threadContext = null
     if (threadId) {
       threadContext = await analyzeEmailThread(threadId, organization.id)
     }
+
+    console.log('📧 Step 6: Calculating smart priority using AI...')
 
     // Calculate smart priority using AI
     const priorityAnalysis = await calculateSmartPriority(
@@ -471,6 +498,30 @@ export async function processInboundEmail(emailData: EmailData) {
     // Determine if this should create a task based on AI analysis
     const shouldCreateTask = priorityAnalysis.score > 20 && // Minimum threshold
       (smartTask.businessImpact !== 'low' || smartTask.estimatedEffort !== 'quick')
+      
+    console.log('📧 Step 7: Should create task?', shouldCreateTask, 'Priority score:', priorityAnalysis.score)
+    
+    } catch (aiError) {
+      console.error('📧 Error in AI processing:', aiError)
+      
+      // Fallback: create a simple task without AI
+      console.log('📧 Falling back to simple task creation...')
+      
+      const fallbackTask = {
+        title: emailData.Subject,
+        description: `Email from ${senderEmail}\n\n${emailData.TextBody || emailData.HtmlBody || ''}`,
+        priority: 'medium' as const,
+        dueDate: null,
+        reminderDate: null,
+        estimatedEffort: 'medium',
+        businessImpact: 'medium',
+        stakeholders: [senderEmail],
+        projectTag: null,
+        dependencies: []
+      }
+      
+      return await createTaskFromEmail(fallbackTask, emailData, organization, emailLog)
+    }
 
     // Store classification and command in email log
     await prisma.emailLog.update({
