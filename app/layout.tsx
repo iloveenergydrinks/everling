@@ -1,11 +1,15 @@
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Space_Grotesk } from "next/font/google"
 import "./globals.css"
 import AuthProvider from "@/components/auth-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { GlobalModal } from "@/components/global-modal"
 
-const inter = Inter({ subsets: ["latin"] })
+const spaceGrotesk = Space_Grotesk({ 
+  subsets: ["latin"],
+  variable: "--font-space-grotesk",
+  display: "swap",
+})
 
 export const metadata: Metadata = {
   title: "Everling.io - Know before it matters",
@@ -31,8 +35,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" className={spaceGrotesk.variable}>
+      <body className={spaceGrotesk.className}>
         <AuthProvider>
           {children}
         </AuthProvider>

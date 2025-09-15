@@ -681,9 +681,8 @@ export default function DashboardPage() {
                     >
                       <span className="text-muted-foreground">{session?.user?.organizationSlug}@</span>
                       <span className="text-lg mx-0.5 bg-gradient-to-r from-emerald-500 to-teal-600 dark:from-emerald-400 dark:to-cyan-500 bg-clip-text text-transparent">
-                        {(process.env.NEXT_PUBLIC_EMAIL_DOMAIN || "everling.io").split('.')[0]}
+                        everling.io
                       </span>
-                      <span className="text-muted-foreground">.{(process.env.NEXT_PUBLIC_EMAIL_DOMAIN || "everling.io").split('.').slice(1).join('.')}</span>
                     </div>
                     <button
                       onClick={copyEmail}
@@ -693,31 +692,6 @@ export default function DashboardPage() {
                       <Copy className="h-4 w-4" />
                     </button>
                   </div>
-                  
-                  {/* Notification permission button */}
-                  {'Notification' in window && Notification.permission === 'default' && (
-                    <button
-                      onClick={async () => {
-                        const permission = await Notification.requestPermission()
-                        if (permission === 'granted') {
-                          toast({
-                            title: "Notifications enabled!",
-                            description: "You'll be notified when new emails create tasks",
-                            variant: "success",
-                          })
-                        }
-                      }}
-                      className="mt-2 text-xs px-3 py-1 border rounded-sm hover:bg-muted w-full"
-                    >
-                      🔔 Enable desktop notifications
-                    </button>
-                  )}
-                  
-                  {'Notification' in window && Notification.permission === 'granted' && (
-                    <p className="mt-2 text-xs text-muted-foreground text-center">
-                      ✅ Desktop notifications enabled
-                    </p>
-                  )}
                 </div>
               </div>
             </div>
@@ -1065,7 +1039,42 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  {/* Quick Notification Link */}
+                  {/* Desktop Notifications */}
+                  <div className="border rounded p-4">
+                    <h3 className="text-sm font-medium mb-3">Desktop Notifications</h3>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Get instant alerts when new emails create tasks
+                    </p>
+                    {'Notification' in window && Notification.permission === 'default' && (
+                      <button
+                        onClick={async () => {
+                          const permission = await Notification.requestPermission()
+                          if (permission === 'granted') {
+                            toast({
+                              title: "Notifications enabled!",
+                              description: "You'll be notified when new emails create tasks",
+                              variant: "success",
+                            })
+                          }
+                        }}
+                        className="w-full text-center text-sm px-3 py-1.5 bg-primary text-primary-foreground rounded-sm hover:bg-primary/90"
+                      >
+                        🔔 Enable Desktop Notifications
+                      </button>
+                    )}
+                    {'Notification' in window && Notification.permission === 'granted' && (
+                      <p className="text-xs text-green-600 dark:text-green-400 text-center">
+                        ✅ Desktop notifications enabled
+                      </p>
+                    )}
+                    {'Notification' in window && Notification.permission === 'denied' && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        ❌ Notifications blocked - check browser settings
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Daily Digest */}
                   <div className="border rounded p-4">
                     <h3 className="text-sm font-medium mb-3">Daily Digest</h3>
                     <p className="text-xs text-muted-foreground mb-3">
