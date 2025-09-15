@@ -64,13 +64,14 @@ export async function POST(request: NextRequest) {
     // Handle different return types from processInboundEmail
     if (result && typeof result === 'object') {
       // Check if email was rejected (not an error, just not processed)
-      if ('status' in result && result.status === 'rejected') {
-        console.log(`Email rejected: ${result.reason} - ${result.message}`)
+      if ('status' in result && (result as any).status === 'rejected') {
+        const rejectedResult = result as any
+        console.log(`Email rejected: ${rejectedResult.reason} - ${rejectedResult.message}`)
         return NextResponse.json({
           success: false,
           status: 'rejected',
-          reason: result.reason,
-          message: result.message
+          reason: rejectedResult.reason,
+          message: rejectedResult.message
         }, { status: 200 }) // Return 200 OK even for rejected emails (not an error)
       }
       
