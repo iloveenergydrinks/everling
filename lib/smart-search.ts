@@ -107,10 +107,12 @@ PRIORITY/URGENCY UNDERSTANDING:
 - "when you can", "quando puoi" → urgency: "low"
 
 SEMANTIC UNDERSTANDING:
+- Single names ALONE should trigger people search: "Giovanni" → people: ["giovanni"]
 - "invoices", "fatture" → topics: ["invoice", "fattura", "billing"]
 - "from John", "da Giovanni" → people: ["john", "giovanni"], fromEmail: ["*john*"]
 - "meetings", "riunioni" → topics: ["meeting", "riunione", "call", "sync"]
 - "stuff to read" → topics: ["newsletter", "article", "blog", "read"]
+IMPORTANT: A single name like "Giovanni" or "Maria" should ALWAYS be treated as a people search
 
 STATUS UNDERSTANDING:
 - "completed", "fatto", "terminé" → status: ["done"]
@@ -153,6 +155,8 @@ RULES:
 5. If searching for a specific date/day, use dueOn with the calculated ISO date.
 
 EXAMPLES:
+- Query: "Giovanni" → {"filters": {"people": ["giovanni"]}, "confidence": 1.0}
+- Query: "from Leonardo" → {"filters": {"people": ["leonardo"], "assignedBy": ["leonardo*"]}, "confidence": 1.0}
 - Query: "giovedì" → {"filters": {"dueOn": "2025-09-18", "whenContains": ["thu", "gioved", "18", "sep"]}, "confidence": 1.0}
 - Query: "next thursday" → {"filters": {"dueOn": "2025-09-18", "whenContains": ["thu", "thursday", "18"]}, "confidence": 1.0}
 - Query: "tasks for thursday" → {"filters": {"dueOn": "2025-09-18", "whenContains": ["thu", "thursday"]}, "confidence": 1.0}`,

@@ -182,7 +182,14 @@ export async function interpretSearchIntelligently(
         task.createdBy?.email,
         task.assignedTo?.name,
         task.assignedTo?.email,
-        task.emailMetadata?.from
+        task.emailMetadata?.from,
+        // Include relationship fields
+        task.assignedToEmail,
+        task.assignedByEmail,
+        // Include stakeholder names/emails
+        ...(Array.isArray(task.stakeholders) ? 
+          task.stakeholders.map((s: any) => [s.name, s.email]).flat() : 
+          [])
       ].filter(Boolean).map(p => String(p).toLowerCase())
 
       return filters.people!.some(person => 
@@ -276,7 +283,16 @@ export async function interpretSearchIntelligently(
         task.emailMetadata?.smartAnalysis?.tags?.where,
         task.emailMetadata?.smartAnalysis?.tags?.who,
         task.emailMetadata?.smartAnalysis?.tags?.what,
-        ...(task.emailMetadata?.smartAnalysis?.tags?.extras || [])
+        ...(task.emailMetadata?.smartAnalysis?.tags?.extras || []),
+        // Include relationship fields in fallback search
+        task.assignedToEmail,
+        task.assignedByEmail,
+        task.taskType,
+        task.userRole,
+        // Include stakeholder data
+        ...(Array.isArray(task.stakeholders) ? 
+          task.stakeholders.map((s: any) => [s.name, s.email]).flat() : 
+          [])
       ].filter(Boolean).map(s => String(s).toLowerCase()).join(' ')
       
       return haystack.includes(searchLower)
