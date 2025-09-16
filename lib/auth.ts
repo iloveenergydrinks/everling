@@ -59,25 +59,22 @@ export const authOptions: NextAuthOptions = {
             Subject: 'Sign in to Everling.io',
             HtmlBody: `
               <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h1 style="color: #333; margin-bottom: 20px;">Sign in to Everling.io</h1>
+                <h1 style="color: #333; margin-bottom: 20px;">Welcome back to Everling.io</h1>
                 <p style="color: #666; line-height: 1.6; margin-bottom: 30px;">
-                  Click the button below to sign in to your account. This link will expire in 24 hours.
+                  We received a request to sign in to your account. Click the button below to continue.
                 </p>
                 <div style="text-align: center; margin: 30px 0;">
                   <a href="${url}" 
-                     style="display: inline-block; padding: 14px 28px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
-                    ✨ Sign in to Everling.io
+                     style="display: inline-block; padding: 12px 24px; background: #000; color: white; text-decoration: none; border-radius: 6px; font-weight: 500;">
+                    Sign in to Everling.io
                   </a>
                 </div>
-                <p style="color: #999; font-size: 14px; margin-top: 30px; padding: 15px; background: #f5f5f5; border-radius: 6px;">
-                  <strong>Security tip:</strong> This is a legitimate sign-in link from Everling.io. If Chrome shows a warning, it's a false positive - you can safely proceed by clicking "Visit this site".
-                </p>
-                <p style="color: #999; font-size: 12px; margin-top: 20px;">
-                  If you didn't request this email, you can safely ignore it.
+                <p style="color: #999; font-size: 12px; margin-top: 30px;">
+                  This link will expire in 24 hours. If you didn't request this email, you can safely ignore it.
                 </p>
               </div>
             `,
-            TextBody: `Sign in to Everling.io\n\nClick this link to sign in: ${url}\n\nThis link will expire in 24 hours.\n\nNote: If your browser shows a security warning, it's a false positive. You can safely proceed by choosing to visit the site anyway.\n\nIf you didn't request this email, you can safely ignore it.`,
+            TextBody: `Sign in to Everling.io\n\nClick this link to sign in: ${url}\n\nThis link will expire in 24 hours.\n\nIf you didn't request this email, you can safely ignore it.`,
             MessageStream: 'outbound'
           })
         } catch (error) {
