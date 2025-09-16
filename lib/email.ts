@@ -107,6 +107,7 @@ function extractCommandFromEmail(body: string): { command: string | null, forwar
     if (index !== -1 && index < forwardIndex) {
       forwardIndex = index
       markerFound = true
+      console.log('📧 Found forward marker:', marker, 'at index:', index)
     }
   }
   
@@ -114,6 +115,12 @@ function extractCommandFromEmail(body: string): { command: string | null, forwar
     // Extract command (text before the forward)
     const command = body.substring(0, forwardIndex).trim()
     const forwardedContent = body.substring(forwardIndex)
+    
+    console.log('📧 Extracted command from forward:', {
+      command: command?.substring(0, 100),
+      commandLength: command?.length,
+      hasForwardedContent: forwardedContent.length > 0
+    })
     
     // Only consider it a command if there's actual text before the forward
     if (command && command.length > 0 && command.length < 500) {
@@ -548,10 +555,19 @@ export async function processInboundEmail(emailData: EmailData) {
     const bodyText = emailData.TextBody || emailData.HtmlBody || ''
     const { command, forwardedContent } = extractCommandFromEmail(bodyText)
     
+    console.log('📧 Command extraction result:', {
+      hasCommand: !!command,
+      command: command?.substring(0, 100),
+      bodyLength: bodyText.length,
+      forwardedContentLength: forwardedContent?.length || 0
+    })
+    
     // Parse command if found
     let emailCommand: EmailCommand | null = null
     if (command) {
+      console.log('📧 Parsing command with AI:', command)
       emailCommand = await parseEmailCommand(command, forwardedContent || emailData.Subject)
+      console.log('📧 AI command parsing result:', emailCommand)
     }
 
     // Use smart task extraction instead of basic classification
@@ -645,8 +661,16 @@ export async function processInboundEmail(emailData: EmailData) {
     }
 
     // Apply command parameters if available
+    console.log('📧 Applying command parameters to task:', {
+      hasCommand: emailCommand?.hasCommand,
+      commandType: emailCommand?.commandType,
+      parameters: emailCommand?.parameters,
+      originalCommand: emailCommand?.originalCommand
+    })
+    
     if (emailCommand?.hasCommand && emailCommand.parameters) {
       if (emailCommand.parameters.priority) {
+        console.log('📧 Setting priority from command:', emailCommand.parameters.priority)
         extractedTask.priority = emailCommand.parameters.priority === 'urgent' ? 'high' : emailCommand.parameters.priority
       }
       if (emailCommand.parameters.dueDate) {
@@ -654,8 +678,11 @@ export async function processInboundEmail(emailData: EmailData) {
           const dueDate = typeof emailCommand.parameters.dueDate === 'string'
             ? new Date(emailCommand.parameters.dueDate)
             : emailCommand.parameters.dueDate
+          console.log('📧 Setting due date from command:', dueDate)
           extractedTask.dueDate = dueDate
-        } catch {}
+        } catch (e) {
+          console.log('📧 Failed to parse due date:', emailCommand.parameters.dueDate, e)
+        }
       }
     }
 
@@ -915,18 +942,24 @@ async function parseEmailCommand(command: string, context?: string): Promise<Ema
       system: `You are a command parser for an email task management system.
       Parse natural language commands and extract actionable parameters.
       
+      IMPORTANT: Handle multiple languages including Italian:
+      - "Ricordami" / "remind me" = reminder command
+      - "domani" / "tomorrow" = next day
+      - "per domani" / "for tomorrow" = due/reminder tomorrow
+      - "entro" / "by" = deadline
+      
       Command types:
-      - remind: Set reminders (e.g., "remind me in 3 days", "reminder for tomorrow")
-      - schedule: Set due dates (e.g., "due Friday", "needs to be done by next week")
-      - priority: Set priority (e.g., "urgent", "low priority", "can wait")
+      - remind: Set reminders (e.g., "remind me in 3 days", "reminder for tomorrow", "ricordami domani")
+      - schedule: Set due dates (e.g., "due Friday", "needs to be done by next week", "entro venerdì")
+      - priority: Set priority (e.g., "urgent", "low priority", "can wait", "urgente")
       - assign: Assign to someone (e.g., "assign to John", "for the dev team")
       - status: Change status (e.g., "mark as done", "on hold", "in progress")
       - custom: Other task modifications
       
-      Parse dates/times:
-      - Relative: "tomorrow", "in 3 days", "next Monday", "in 2 hours"
-      - Specific: "Friday", "March 15", "3pm", "EOD"
-      - Recurring: "every Monday", "weekly", "daily"
+      Parse dates/times (including Italian):
+      - Relative: "tomorrow", "domani", "in 3 days", "next Monday", "lunedì prossimo"
+      - Specific: "Friday", "venerdì", "March 15", "15 marzo", "3pm", "ore 15"
+      - Recurring: "every Monday", "ogni lunedì", "weekly", "settimanale"
       
       Current date and time:
       - ISO: ${now.toISOString()}
@@ -950,10 +983,12 @@ async function parseEmailCommand(command: string, context?: string): Promise<Ema
 
     const content = message.content[0]
     if (content.type === 'text') {
+      console.log('📧 AI command parser raw response:', content.text)
       const jsonMatch = content.text.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]) as EmailCommand
         parsed.originalCommand = command
+        console.log('📧 Parsed command JSON:', parsed)
         return parsed
       }
     }
