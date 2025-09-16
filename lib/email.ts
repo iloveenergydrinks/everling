@@ -146,10 +146,27 @@ export async function processInboundEmail(emailData: EmailData) {
   })
   
   // Extract the original recipient (not the Postmark forwarding address)
-  // With Cloudflare Email Routing → Postmark, the To field contains the real recipient
-  // and OriginalRecipient contains Postmark's internal address
-  const originalRecipient = emailData.To.includes('@everling.io') ? emailData.To : 
-                           emailData.OriginalRecipient || emailData.To
+  // Postmark webhook structure:
+  // - To: contains the webhook address (xxx@inbound.postmarkapp.com)
+  // - OriginalRecipient: contains the actual recipient address (user@everling.io)
+  let originalRecipient = emailData.OriginalRecipient || emailData.To
+  
+  // If To contains the actual everling.io address, use it
+  if (emailData.To && emailData.To.includes('@everling.io')) {
+    originalRecipient = emailData.To
+  }
+  
+  // If we still have the Postmark address, try to find the everling address in headers
+  if (originalRecipient.includes('@inbound.postmarkapp.com')) {
+    // Look for the actual recipient in headers
+    const toHeader = emailData.Headers?.find(h => h.Name.toLowerCase() === 'to')
+    if (toHeader?.Value?.includes('@everling.io')) {
+      originalRecipient = toHeader.Value
+    } else {
+      console.error('Could not find actual recipient, got webhook address:', originalRecipient)
+    }
+  }
+  
   // Extract clean email address (handles formats like "name@domain" <name@domain>)
   const toEmail = extractEmailAddress(originalRecipient).toLowerCase()
   const emailPrefix = toEmail.split('@')[0]

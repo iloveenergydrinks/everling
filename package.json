@@ -13,7 +13,7 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate",
-    "railway:build": "npx prisma generate && npx prisma db push --force-reset --skip-generate && npm run build"
+    "railway:build": "npx prisma generate && npx prisma db push --accept-data-loss && npm run build"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.3",
