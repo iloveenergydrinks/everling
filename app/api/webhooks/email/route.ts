@@ -82,6 +82,18 @@ export async function POST(request: NextRequest) {
     // Parse verified webhook data
     const emailData = JSON.parse(body)
     console.log('Parsed email data keys:', Object.keys(emailData))
+    
+    // Debug: Log all recipient-related fields
+    console.log('📧 Webhook recipient fields:', {
+      To: emailData.To,
+      ToFull: emailData.ToFull,
+      OriginalRecipient: emailData.OriginalRecipient,
+      Cc: emailData.Cc,
+      Bcc: emailData.Bcc,
+      Headers: emailData.Headers?.filter((h: any) => 
+        ['to', 'x-original-to', 'delivered-to', 'envelope-to'].includes(h.Name.toLowerCase())
+      )
+    })
 
     // Validate required fields
     if (!emailData.From || !emailData.To || !emailData.Subject) {

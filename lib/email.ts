@@ -145,25 +145,60 @@ export async function processInboundEmail(emailData: EmailData) {
     Subject: emailData.Subject
   })
   
-  // Extract the original recipient (not the Postmark forwarding address)
-  // Postmark webhook structure:
-  // - To: contains the webhook address (xxx@inbound.postmarkapp.com)
-  // - OriginalRecipient: contains the actual recipient address (user@everling.io)
-  let originalRecipient = emailData.OriginalRecipient || emailData.To
+  // Extract the original recipient from Postmark webhook data
+  // When Cloudflare forwards to Postmark:
+  // - To/OriginalRecipient: contains the Postmark inbound address (xxx@inbound.postmarkapp.com)
+  // - The actual recipient (proton@everling.io) should be in:
+  //   1. ToFull array (if provided)
+  //   2. Headers (X-Original-To, Delivered-To, or To header)
   
-  // If To contains the actual everling.io address, use it
-  if (emailData.To && emailData.To.includes('@everling.io')) {
-    originalRecipient = emailData.To
+  let originalRecipient = ''
+  
+  // First check ToFull array if it exists
+  if (emailData.ToFull && Array.isArray(emailData.ToFull) && emailData.ToFull.length > 0) {
+    const everlingRecipient = emailData.ToFull.find((r: any) => 
+      r.Email && r.Email.includes('@everling.io')
+    )
+    if (everlingRecipient) {
+      originalRecipient = everlingRecipient.Email
+      console.log('Found recipient in ToFull:', originalRecipient)
+    }
   }
   
-  // If we still have the Postmark address, try to find the everling address in headers
-  if (originalRecipient.includes('@inbound.postmarkapp.com')) {
-    // Look for the actual recipient in headers
-    const toHeader = emailData.Headers?.find(h => h.Name.toLowerCase() === 'to')
-    if (toHeader?.Value?.includes('@everling.io')) {
-      originalRecipient = toHeader.Value
+  // If not found, check headers for original recipient
+  if (!originalRecipient || !originalRecipient.includes('@everling.io')) {
+    const headers = emailData.Headers || []
+    // Check various headers that might contain the original address
+    const headerNames = ['x-original-to', 'delivered-to', 'x-forwarded-to', 'envelope-to', 'to']
+    
+    for (const headerName of headerNames) {
+      const header = headers.find((h: any) => h.Name.toLowerCase() === headerName)
+      if (header?.Value?.includes('@everling.io')) {
+        originalRecipient = header.Value
+        console.log(`Found recipient in ${headerName} header:`, originalRecipient)
+        break
+      }
+    }
+  }
+  
+  // Fallback to OriginalRecipient or To if they contain everling.io
+  if (!originalRecipient || !originalRecipient.includes('@everling.io')) {
+    if (emailData.OriginalRecipient && emailData.OriginalRecipient.includes('@everling.io')) {
+      originalRecipient = emailData.OriginalRecipient
+      console.log('Found recipient in OriginalRecipient:', originalRecipient)
+    } else if (emailData.To && emailData.To.includes('@everling.io')) {
+      originalRecipient = emailData.To
+      console.log('Found recipient in To:', originalRecipient)
     } else {
-      console.error('Could not find actual recipient, got webhook address:', originalRecipient)
+      // Last resort - use what we have
+      originalRecipient = emailData.To || emailData.OriginalRecipient || ''
+      console.error('🔴 Could not find everling.io recipient! Using:', originalRecipient)
+      console.error('Available data:', {
+        To: emailData.To,
+        OriginalRecipient: emailData.OriginalRecipient,
+        ToFull: emailData.ToFull,
+        Headers: emailData.Headers?.map((h: any) => ({ Name: h.Name, Value: h.Value.substring(0, 50) }))
+      })
     }
   }
   
