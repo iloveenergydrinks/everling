@@ -147,10 +147,9 @@ export async function processInboundEmail(emailData: EmailData) {
   
   // Extract the original recipient from Postmark webhook data
   // When Cloudflare forwards to Postmark:
-  // - To/OriginalRecipient: contains the Postmark inbound address (xxx@inbound.postmarkapp.com)
-  // - The actual recipient (proton@everling.io) should be in:
-  //   1. ToFull array (if provided)
-  //   2. Headers (X-Original-To, Delivered-To, or To header)
+  // - To: contains the Postmark inbound address (xxx@inbound.postmarkapp.com)
+  // - OriginalRecipient: ALSO contains the Postmark address (Cloudflare's forwarding target)
+  // - The actual recipient must be extracted from email headers that Cloudflare preserves
   
   let originalRecipient = ''
   
@@ -181,24 +180,54 @@ export async function processInboundEmail(emailData: EmailData) {
     }
   }
   
-  // Fallback to OriginalRecipient or To if they contain everling.io
+  // CRITICAL: If still no everling.io address found, we MUST extract from Cloudflare headers
   if (!originalRecipient || !originalRecipient.includes('@everling.io')) {
-    if (emailData.OriginalRecipient && emailData.OriginalRecipient.includes('@everling.io')) {
-      originalRecipient = emailData.OriginalRecipient
-      console.log('Found recipient in OriginalRecipient:', originalRecipient)
-    } else if (emailData.To && emailData.To.includes('@everling.io')) {
-      originalRecipient = emailData.To
-      console.log('Found recipient in To:', originalRecipient)
-    } else {
-      // Last resort - use what we have
-      originalRecipient = emailData.To || emailData.OriginalRecipient || ''
-      console.error('🔴 Could not find everling.io recipient! Using:', originalRecipient)
-      console.error('Available data:', {
+    // Cloudflare adds X-Forwarded-For headers but for email it's usually in these:
+    const cfHeaders = ['x-cf-to', 'x-forwarded-for', 'x-real-to', 'cf-connecting-email']
+    for (const headerName of cfHeaders) {
+      const header = (emailData.Headers || []).find((h: any) => h.Name.toLowerCase() === headerName)
+      if (header?.Value?.includes('@everling.io')) {
+        originalRecipient = header.Value
+        console.log(`Found recipient in Cloudflare ${headerName} header:`, originalRecipient)
+        break
+      }
+    }
+    
+    // LAST RESORT: Parse from the email content itself
+    if (!originalRecipient || !originalRecipient.includes('@everling.io')) {
+      // Try to extract from the To header even if it doesn't have everling.io
+      // (sometimes the To header shows the original before forwarding)
+      const toHeader = (emailData.Headers || []).find((h: any) => h.Name.toLowerCase() === 'to')
+      if (toHeader?.Value) {
+        // Look for any everling.io address in the To header value
+        const everlingMatch = toHeader.Value.match(/([a-zA-Z0-9._-]+@everling\.io)/)
+        if (everlingMatch) {
+          originalRecipient = everlingMatch[1]
+          console.log('Extracted everling.io address from To header:', originalRecipient)
+        }
+      }
+    }
+    
+    if (!originalRecipient || !originalRecipient.includes('@everling.io')) {
+      // This is a critical error - we can't process without knowing the recipient
+      console.error('🔴 CRITICAL: No everling.io recipient found!')
+      console.error('Webhook data:', {
         To: emailData.To,
         OriginalRecipient: emailData.OriginalRecipient,
         ToFull: emailData.ToFull,
-        Headers: emailData.Headers?.map((h: any) => ({ Name: h.Name, Value: h.Value.substring(0, 50) }))
+        AllHeaders: emailData.Headers?.map((h: any) => `${h.Name}: ${h.Value.substring(0, 100)}`)
       })
+      
+      // Return error response
+      return {
+        status: 'rejected',
+        reason: 'no_recipient',
+        message: 'Could not determine everling.io recipient address',
+        debugInfo: {
+          to: emailData.To,
+          originalRecipient: emailData.OriginalRecipient
+        }
+      }
     }
   }
   
