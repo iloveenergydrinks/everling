@@ -87,7 +87,7 @@ model Task {
   assignedToId   String?  @map("assigned_to_id")
   createdById    String?  @map("created_by_id")
   
-  // Enhanced relationship fields for hybrid task management
+  // Enhanced relationship fields for hybrid task management (v2)
   assignedToEmail String?  @map("assigned_to_email") // Email of person who should do this (when not a system user)
   assignedByEmail String?  @map("assigned_by_email") // Email of person who requested this
   taskType       String?   @map("task_type") // assigned/self/delegation/tracking/fyi
