@@ -595,10 +595,11 @@ export async function processInboundEmail(emailData: EmailData) {
 
     // Determine if this should create a task based on AI analysis
     const score = safeScore
-    const shouldCreateTask = score > 20 && // Minimum threshold
-      (smartTask.businessImpact !== 'low' || smartTask.estimatedEffort !== 'quick')
+    // ALWAYS create task if there's a command, otherwise check business impact
+    const shouldCreateTask = (emailCommand?.hasCommand) || // Always create if command exists
+      (score > 20 && (smartTask.businessImpact !== 'low' || smartTask.estimatedEffort !== 'quick'))
       
-    console.log('📧 Step 7: Should create task?', shouldCreateTask, 'Priority score:', score)
+    console.log('📧 Step 7: Should create task?', shouldCreateTask, 'Priority score:', score, 'Has command:', !!emailCommand?.hasCommand)
     
     // Store classification and command in email log while variables are in scope
     await prisma.emailLog.update({
