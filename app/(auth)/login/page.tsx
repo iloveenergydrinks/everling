@@ -144,7 +144,7 @@ function LoginForm() {
               )}
               
               {/* Mode Toggle */}
-              <div className="flex gap-2 p-1 bg-muted rounded-lg">
+              <div className="flex gap-2 p-1 bg-muted rounded-md">
                 <button
                   type="button"
                   onClick={() => setMagicLinkMode(false)}
@@ -200,7 +200,7 @@ function LoginForm() {
               )}
 
               {magicLinkMode && (
-                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="p-3 bg-blue-50 rounded-md border border-blue-200">
                   <p className="text-sm text-blue-800">
                     We'll send you a secure link to sign in without a password
                   </p>

@@ -58,7 +58,7 @@ export default async function HomePage() {
                 <path d="m21 21-4.35-4.35"></path>
               </svg>
             </div>
-            <div className="w-full pl-10 pr-4 py-3 border rounded-lg bg-background/50 text-center text-muted-foreground">
+            <div className="w-full pl-10 pr-4 py-3 border rounded-md bg-background/50 text-center text-muted-foreground">
               urgent tasks from john...
             </div>
           </div>
@@ -72,7 +72,7 @@ export default async function HomePage() {
           <h3 className="text-lg font-medium mb-6">Three principles. Zero compromise.</h3>
           <div className="grid gap-8 md:grid-cols-3">
             <div>
-              <div className="w-12 h-12 mx-auto mb-4 border rounded-lg flex items-center justify-center">
+              <div className="w-12 h-12 mx-auto mb-4 border rounded-md flex items-center justify-center">
                 <svg className="h-6 w-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <circle cx="11" cy="11" r="8"></circle>
                   <path d="m21 21-4.35-4.35"></path>
@@ -85,7 +85,7 @@ export default async function HomePage() {
             </div>
             
             <div>
-              <div className="w-12 h-12 mx-auto mb-4 border rounded-lg flex items-center justify-center">
+              <div className="w-12 h-12 mx-auto mb-4 border rounded-md flex items-center justify-center">
                 <svg className="h-6 w-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <polygon points="13,2 3,14 12,14 11,22 21,10 12,10"></polygon>
                 </svg>
@@ -97,7 +97,7 @@ export default async function HomePage() {
             </div>
             
             <div>
-              <div className="w-12 h-12 mx-auto mb-4 border rounded-lg flex items-center justify-center">
+              <div className="w-12 h-12 mx-auto mb-4 border rounded-md flex items-center justify-center">
                 <svg className="h-6 w-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                   <polyline points="22,6 12,13 2,6"></polyline>
@@ -112,7 +112,7 @@ export default async function HomePage() {
         </div>
 
         {/* The Promise */}
-        <div className="mb-16 p-8 border rounded-lg bg-gradient-to-br from-blue-50/50 via-purple-50/30 to-pink-50/50">
+        <div className="mb-16 p-8 border rounded-md bg-gradient-to-br from-blue-50/50 via-purple-50/30 to-pink-50/50">
           <div className="text-center">
             <h3 className="text-xl font-medium mb-4">Know before it matters</h3>
             <p className="text-muted-foreground mb-6 max-w-md mx-auto">
@@ -126,7 +126,7 @@ export default async function HomePage() {
         </div>
 
         {/* Anti-Features (What we DON'T have) */}
-        <div className="mb-16 p-6 border rounded-lg">
+        <div className="mb-16 p-6 border rounded-md">
           <h3 className="font-medium mb-4 text-center">What we removed</h3>
           <div className="grid gap-4 md:grid-cols-2 text-sm text-muted-foreground">
             <div className="text-center">

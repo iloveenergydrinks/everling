@@ -264,7 +264,7 @@ export default function RegisterPage() {
               )}
               
               {orgCheck && !orgCheck.available && (
-                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                   <p className="text-sm text-yellow-800 mb-3">
                     ⚠️ <strong>{formData.organizationName}@everling.io</strong> is already taken
                   </p>

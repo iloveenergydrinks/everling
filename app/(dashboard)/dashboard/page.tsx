@@ -721,7 +721,7 @@ export default function DashboardPage() {
           )}
           
           {/* Header with Agent Email - with gradient background */}
-          <div className="mb-12 p-8 border rounded-lg relative overflow-hidden">
+          <div className="mb-12 p-8 border rounded-md relative overflow-hidden">
             {/* Gradient background */}
             <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-purple-50/30 to-pink-50/50 dark:from-blue-950/20 dark:via-purple-950/10 dark:to-pink-950/20" />
             
@@ -1706,7 +1706,7 @@ Body: {
             }}
           />
           
-          <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-background border rounded-lg shadow-xl z-[80] p-6">
+          <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-background border rounded-md shadow-xl z-[80] p-6">
             <div className="mb-4">
               <h2 className="text-lg font-semibold">API Key Created!</h2>
               <p className="text-sm text-muted-foreground mt-1">

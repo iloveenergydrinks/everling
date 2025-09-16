@@ -115,7 +115,7 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
   // Show loading while preferences are being fetched
   if (loadingPreferences) {
     return (
-      <div className={`border rounded-lg p-6 bg-white shadow-sm ${isOnboarding ? 'border-blue-200 bg-blue-50/50' : ''}`}>
+      <div className={`border rounded-md p-6 bg-white shadow-sm ${isOnboarding ? 'border-blue-200 bg-blue-50/50' : ''}`}>
         <div className="text-center py-8">
           <p className="text-sm text-muted-foreground">Loading preferences...</p>
         </div>
@@ -124,7 +124,7 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
   }
 
   return (
-    <div className={`border rounded-lg p-6 bg-white shadow-sm ${isOnboarding ? 'border-blue-200 bg-blue-50/50' : ''}`}>
+    <div className={`border rounded-md p-6 bg-white shadow-sm ${isOnboarding ? 'border-blue-200 bg-blue-50/50' : ''}`}>
       {isOnboarding && (
         <div className="flex items-start justify-between mb-4">
           <div>
@@ -148,7 +148,7 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => setNotificationType('email')}
-              className={`p-3 border rounded-lg text-left transition-all ${
+              className={`p-3 border rounded-md text-left transition-all ${
                 notificationType === 'email' 
                   ? 'border-blue-500 bg-blue-50 text-blue-700' 
                   : 'border-gray-200 hover:border-gray-300'
@@ -163,7 +163,7 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
             
             <button
               onClick={() => setNotificationType('sms')}
-              className={`p-3 border rounded-lg text-left transition-all ${
+              className={`p-3 border rounded-md text-left transition-all ${
                 notificationType === 'sms' 
                   ? 'border-blue-500 bg-blue-50 text-blue-700' 
                   : 'border-gray-200 hover:border-gray-300'
@@ -178,7 +178,7 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
             
             <button
               onClick={() => setNotificationType('both')}
-              className={`p-3 border rounded-lg text-left transition-all ${
+              className={`p-3 border rounded-md text-left transition-all ${
                 notificationType === 'both' 
                   ? 'border-blue-500 bg-blue-50 text-blue-700' 
                   : 'border-gray-200 hover:border-gray-300'
@@ -194,7 +194,7 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
             
             <button
               onClick={() => setNotificationType('none')}
-              className={`p-3 border rounded-lg text-left transition-all ${
+              className={`p-3 border rounded-md text-left transition-all ${
                 notificationType === 'none' 
                   ? 'border-gray-400 bg-gray-50 text-gray-700' 
                   : 'border-gray-200 hover:border-gray-300'
@@ -219,7 +219,7 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
               <select 
                 value={digestTime}
                 onChange={(e) => setDigestTime(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 {getTimeOptions().map(time => (
                   <option key={time.value} value={time.value}>
@@ -236,7 +236,7 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
               <select 
                 value={timezone}
                 onChange={(e) => setTimezone(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 {timezones.map(group => (
                   <optgroup key={group.label} label={group.label}>
@@ -263,7 +263,7 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
               <div className="relative">
                 <button
                   onClick={() => setShowCountryDropdown(!showCountryDropdown)}
-                  className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
                 >
                   <span className="text-sm font-medium">
                     {countries.find(c => c.code === selectedCountry)?.code}
@@ -280,7 +280,7 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
                       className="fixed inset-0 z-40" 
                       onClick={() => setShowCountryDropdown(false)}
                     />
-                    <div className="absolute top-full mt-1 left-0 w-64 max-h-64 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                    <div className="absolute top-full mt-1 left-0 w-64 max-h-64 overflow-y-auto bg-white border border-gray-200 rounded-md shadow-lg z-50">
                       {countries.map((country) => (
                         <button
                           key={country.code}
@@ -306,7 +306,7 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
                 placeholder="234567890"
                 value={whatsappPhone}
                 onChange={(e) => setWhatsappPhone(e.target.value.replace(/\D/g, ''))}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
           </div>
@@ -314,7 +314,7 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
 
         {/* Preview */}
         {notificationType !== 'none' && (
-          <div className="bg-gray-50 rounded-lg p-3">
+          <div className="bg-gray-50 rounded-md p-3">
             <div className="text-sm text-gray-600 flex items-center gap-2">
               {notificationType === 'email' && <Mail className="h-4 w-4" />}
               {notificationType === 'sms' && <MessageSquare className="h-4 w-4" />}
@@ -347,7 +347,7 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
           <button
             onClick={handleSave}
             disabled={loading || (requiresPhone && !whatsappPhone)}
-            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           >
             {loading ? 'Saving...' : isOnboarding ? 'Get Started' : 'Save Preferences'}
           </button>
@@ -387,7 +387,7 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
                 }
               }}
               disabled={notificationType === 'none'}
-              className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Zap className="h-4 w-4" />
               {notificationType === 'none' ? 'Configure notifications first' : 'Send Today\'s Digest Now'}
