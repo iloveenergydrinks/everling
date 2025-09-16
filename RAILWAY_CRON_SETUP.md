@@ -1,4 +1,4 @@
-# 🚂 Railway Cron Setup for Daily Digests
+# 🚂 Railway Cron Setup for Maintenance Tasks
 
 ## Option 1: Railway Cron Service (Recommended)
 
@@ -39,13 +39,16 @@ node cron.js
 
 ```
 Every hour → Railway triggers cron service → 
-Calls your main app → Checks user timezones → 
-Sends digests to users whose time matches
+Runs maintenance tasks:
+1. Sends daily digests to users in matching timezones
+2. Cleans up expired short links
 ```
 
 ## Option 2: GitHub Actions (Already Set Up)
 
-Your `.github/workflows/daily-digest.yml` is already configured!
+Your `.github/workflows/daily-digest.yml` is already configured and now handles:
+- Daily digest emails/SMS
+- Expired short link cleanup
 
 ### Setup GitHub Secrets:
 1. **Go to your repo** → Settings → Secrets and variables → Actions

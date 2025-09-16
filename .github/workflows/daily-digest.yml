@@ -1,16 +1,17 @@
-name: Hourly Digest Check
+name: Hourly Maintenance Tasks
 
 on:
   schedule:
-    # Run every hour to check all timezones
-    # This ensures users get their digest at their preferred time
+    # Run every hour to:
+    # 1. Check all timezones for daily digests
+    # 2. Cleanup expired short links
     - cron: '0 * * * *'
   
   # Allow manual trigger from GitHub Actions UI
   workflow_dispatch:
 
 jobs:
-  send-daily-digest:
+  hourly-maintenance:
     runs-on: ubuntu-latest
     
     steps:
@@ -28,10 +29,26 @@ jobs:
             exit 1
           fi
           
+      - name: Cleanup Expired Short Links
+        run: |
+          echo "🧹 Cleaning up expired short links..."
+          response=$(curl -s -w "\n%{http_code}" -X GET "${{ secrets.APP_URL }}/api/cron/cleanup-links?secret=${{ secrets.CRON_SECRET }}")
+          status_code=$(echo "$response" | tail -n 1)
+          body=$(echo "$response" | head -n -1)
+          
+          echo "Response: $body"
+          echo "Status Code: $status_code"
+          
+          if [ "$status_code" = "200" ]; then
+            echo "✅ Expired links cleaned successfully"
+          else
+            echo "⚠️ Failed to cleanup expired links (non-critical)"
+          fi
+      
       - name: Log Success
         if: success()
-        run: echo "✅ Daily digest sent successfully at $(date)"
+        run: echo "✅ Hourly maintenance completed successfully at $(date)"
         
       - name: Log Failure
         if: failure()
-        run: echo "❌ Failed to send daily digest at $(date)"
+        run: echo "❌ Hourly maintenance failed at $(date)"
