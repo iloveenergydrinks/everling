@@ -788,12 +788,18 @@ export default function DashboardPage() {
                     className="p-4 border rounded hover:bg-muted/30 transition-colors"
                   >
                     <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="text-sm font-medium mb-1">{task.title}</h3>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-medium mb-1 truncate" title={task.title}>{task.title}</h3>
                         {task.description && (
-                          <p className="text-xs text-muted-foreground mb-2">
+                          <div className="text-xs text-muted-foreground mb-2 overflow-hidden" style={{ 
+                            wordBreak: 'break-word', 
+                            overflowWrap: 'anywhere',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 3,
+                            WebkitBoxOrient: 'vertical' 
+                          }}>
                             {task.description}
-                          </p>
+                          </div>
                         )}
                         {/* Meta line (reason/priority) */}
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -1458,9 +1464,9 @@ Body: {
                         }`}
                       >
                         <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <h4 className="text-sm font-medium">{log.subject}</h4>
-                            <p className="text-xs text-muted-foreground mt-1">
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-medium truncate" title={log.subject}>{log.subject}</h4>
+                            <p className="text-xs text-muted-foreground mt-1 truncate" title={log.fromEmail}>
                               From: {log.fromEmail}
                             </p>
                           </div>
