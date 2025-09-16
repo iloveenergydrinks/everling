@@ -899,7 +899,7 @@ export async function processInboundEmail(emailData: EmailData) {
         from: emailData.From,
         to: toEmail, // The everling.io recipient
         subject: emailData.Subject,
-        body: textBody,
+        body: emailData.TextBody || emailData.HtmlBody || '',
         timestamp: new Date(emailData.Date)
       },
       toEmail

@@ -336,7 +336,7 @@ export async function extractTaskRelationships(
 }> {
   try {
     const message = await anthropic.messages.create({
-      model: 'claude-3-haiku-3-20240307',
+      model: 'claude-3-5-haiku-20241022',
       max_tokens: 500,
       temperature: 0.1,
       system: `You are an expert at understanding task relationships in emails across ALL languages.

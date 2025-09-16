@@ -853,58 +853,35 @@ export default function DashboardPage() {
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
-                        {/* Task Relationship Indicators */}
-                        <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                          {/* Who assigned this task */}
+                        {/* Task Relationship Indicators - Minimal UI */}
+                        <div className="flex flex-wrap items-center gap-1 mb-1.5">
+                          {/* Who assigned this task - smaller, cleaner */}
                           {task.assignedByEmail && task.assignedByEmail !== session?.user?.email && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded bg-muted text-muted-foreground">
                               <UserCheck className="h-3 w-3" />
-                              From: {task.assignedByEmail.split('@')[0]}
+                              {task.assignedByEmail.split('@')[0]}
                             </span>
                           )}
                           
-                          {/* Task type indicator */}
-                          {task.taskType && task.taskType !== 'self' && (
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full ${
-                              task.taskType === 'assigned' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' :
-                              task.taskType === 'delegation' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' :
-                              task.taskType === 'tracking' ? 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300' :
-                              task.taskType === 'fyi' ? 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' :
-                              'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
-                            }`}>
-                              {task.taskType === 'assigned' && <ArrowDownToLine className="h-3 w-3" />}
-                              {task.taskType === 'delegation' && <Share2 className="h-3 w-3" />}
-                              {task.taskType === 'tracking' && <Eye className="h-3 w-3" />}
-                              {task.taskType === 'fyi' && <Info className="h-3 w-3" />}
-                              {task.taskType === 'assigned' && 'Assigned'}
-                              {task.taskType === 'delegation' && 'To Delegate'}
-                              {task.taskType === 'tracking' && 'Tracking'}
-                              {task.taskType === 'fyi' && 'FYI'}
+                          {/* Simplified task type - icon only for tracking/delegation */}
+                          {task.taskType === 'tracking' && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded bg-muted text-muted-foreground">
+                              <Eye className="h-3 w-3" />
+                              tracking
                             </span>
                           )}
                           
-                          {/* User role indicator */}
-                          {task.userRole && task.userRole !== 'executor' && (
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full ${
-                              task.userRole === 'delegator' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300' :
-                              task.userRole === 'observer' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' :
-                              task.userRole === 'coordinator' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300' :
-                              'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
-                            }`}>
-                              {task.userRole === 'delegator' && <Users className="h-3 w-3" />}
-                              {task.userRole === 'observer' && <Eye className="h-3 w-3" />}
-                              {task.userRole === 'coordinator' && <GitBranch className="h-3 w-3" />}
-                              {task.userRole === 'delegator' && 'Delegator'}
-                              {task.userRole === 'observer' && 'Observer'}
-                              {task.userRole === 'coordinator' && 'Coordinator'}
+                          {task.taskType === 'delegation' && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded bg-orange-100/50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400">
+                              <Share2 className="h-3 w-3" />
+                              delegate
                             </span>
                           )}
                           
-                          {/* Assigned to someone else */}
+                          {/* Only show if assigned to someone else */}
                           {task.assignedToEmail && task.assignedToEmail !== session?.user?.email && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
-                              <UserX className="h-3 w-3" />
-                              For: {task.assignedToEmail.split('@')[0]}
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded bg-amber-100/50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400">
+                              → {task.assignedToEmail.split('@')[0]}
                             </span>
                           )}
                         </div>
