@@ -326,7 +326,12 @@ export async function extractTaskRelationships(
     body: string
     timestamp: Date
   },
-  organizationEmail: string // e.g., "fisataskmanager@everling.io"
+  organizationEmail: string, // e.g., "fisataskmanager@everling.io"
+  forwardedContext?: {
+    originalFrom?: string | null
+    originalTo?: string | null
+    originalSubject?: string | null
+  }
 ): Promise<{
   assignedToEmail: string | null
   assignedByEmail: string | null
@@ -341,27 +346,35 @@ export async function extractTaskRelationships(
       temperature: 0.1,
       system: `You are an expert at understanding task relationships in emails across ALL languages.
 
+CRITICAL CONTEXT UNDERSTANDING:
+When analyzing forwarded emails, pay special attention to:
+- If the user forwards their OWN SENT email (where they originally asked someone for something), they're likely TRACKING that request
+- If the user forwards someone ELSE'S request to them, they may be delegating or just tracking
+- Look for phrases like "I asked", "I requested", "I sent this to", "waiting for", "sollecitare", "in attesa di" to understand the relationship
+
 ANALYZE WHO SHOULD DO WHAT:
 1. Identify the TASK OWNER (assignedToEmail):
    - Who should actually perform this task?
+   - If this is a forwarded request the user SENT to someone → assignedTo = that someone (found in forwarded To: or body)
    - If sender is requesting something from recipient → assignedTo = recipient
    - If sender is informing about their own task → assignedTo = sender
-   - If sender mentions someone else should do it → assignedTo = that person
+   - If user is waiting for someone's response → assignedTo = that person
 
 2. Identify the REQUESTER (assignedByEmail):
-   - Who is asking for this to be done?
-   - Often the email sender, but check context
+   - Who originally asked for this to be done?
+   - In forwarded emails, look at the ORIGINAL sender
+   - For tracking tasks, the requester is often the user themselves
 
 3. Classify TASK TYPE:
    - assigned: Someone gave this task to recipient
-   - self: Recipient created for themselves
+   - self: Recipient created for themselves (reminders, personal notes)
    - delegation: Recipient needs to delegate to someone else
-   - tracking: Recipient is monitoring someone else's work
+   - tracking: Recipient is monitoring/waiting for someone else's work (COMMON for forwarded sent emails)
    - fyi: Information only, no action needed
 
 4. Identify USER'S ROLE (perspective of the email recipient):
-   - executor: They need to do the task
-   - delegator: They need to assign it to someone
+   - executor: They need to do the task themselves
+   - delegator: They assigned it and are waiting for completion
    - observer: They're just tracking/watching
    - coordinator: They're managing multiple parties
 
@@ -369,7 +382,17 @@ ANALYZE WHO SHOULD DO WHAT:
    - List all people mentioned who have a role
    - Include their relationship to the task
 
-IMPORTANT: Analyze from the perspective of the RECIPIENT (${organizationEmail})
+FORWARDED EMAIL PATTERNS:
+- "Fwd: [subject]" where body shows "From: ${organizationEmail}" → User forwarded their own sent email → likely TRACKING
+- Body contains "I sent this to Kevin" or "I asked Maria" → taskType: tracking, assignedTo: Kevin/Maria
+- Italian: "Ho inviato a", "Ho chiesto a", "In attesa di risposta da" → tracking pattern
+- If forwarded content shows user asking someone for something → userRole: delegator, taskType: tracking
+
+IMPORTANT:
+- Analyze from the perspective of the RECIPIENT (${organizationEmail})
+- Understand the INTENT: Why did the user forward this email to themselves?
+- If they're reminding themselves to follow up on a request they made → tracking
+- If they're reminding themselves to read something → self
 
 Return JSON only:
 {
@@ -387,6 +410,17 @@ FROM: ${emailData.from}
 TO: ${emailData.to}
 SUBJECT: ${emailData.subject}
 BODY: ${emailData.body.substring(0, 2000)}
+
+FORWARDED CONTEXT (if present):
+originalFrom: ${forwardedContext?.originalFrom || 'N/A'}
+originalTo: ${forwardedContext?.originalTo || 'N/A'}
+originalSubject: ${forwardedContext?.originalSubject || 'N/A'}
+
+ANALYSIS HINTS:
+- If subject starts with "Fwd:" or "Fw:", this is a forwarded email
+- If the body contains forwarded headers (From:, To:, Subject:), analyze the original exchange
+- If the user (${emailData.to}) is forwarding their own sent email, they're likely tracking/waiting for a response
+- Look for names mentioned in the body (e.g., "Kevin", "Maria") as potential assignees
 
 Who should do this task? What's the recipient's role?`
       }]
@@ -408,6 +442,23 @@ Who should do this task? What's the recipient's role?`
     }
     
     // Fallback if AI fails
+    // Heuristic fallback for forwarded requests: if originalFrom equals current sender,
+    // treat this as tracking/delegation aimed at originalTo.
+    if (forwardedContext?.originalFrom && forwardedContext?.originalTo) {
+      const normalizedOriginalFrom = (forwardedContext.originalFrom || '').toLowerCase()
+      const normalizedSender = (emailData.from || '').toLowerCase()
+      const normalizedOriginalTo = (forwardedContext.originalTo || '').toLowerCase()
+      if (normalizedOriginalFrom && normalizedSender && normalizedOriginalFrom === normalizedSender) {
+        return {
+          assignedToEmail: normalizedOriginalTo || null,
+          assignedByEmail: normalizedSender,
+          taskType: 'tracking',
+          userRole: 'delegator',
+          stakeholders: []
+        }
+      }
+    }
+
     return {
       assignedToEmail: emailData.to,
       assignedByEmail: emailData.from,

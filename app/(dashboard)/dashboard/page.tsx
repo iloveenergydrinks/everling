@@ -68,6 +68,15 @@ interface ApiKey {
   createdAt: string
 }
 
+// Filter types
+type TimeFilter = 'today' | 'tomorrow' | 'week' | 'no-date'
+type OwnershipFilter = 'my-tasks' | 'waiting-on' | 'observing'
+
+interface FilterState {
+  time: TimeFilter[]
+  ownership: OwnershipFilter[]
+}
+
 export default function DashboardPage() {
   const { data: session } = useSession()
   const router = useRouter()
@@ -78,6 +87,12 @@ export default function DashboardPage() {
   const [showAllTasks, setShowAllTasks] = useState(false)
   const [searchResults, setSearchResults] = useState<Task[]>([]) 
   const [isSearching, setIsSearching] = useState(false)
+  
+  // New filter state
+  const [filters, setFilters] = useState<FilterState>({
+    time: [],
+    ownership: []
+  })
   const [copied, setCopied] = useState(false)
   const [copiedText, setCopiedText] = useState("")
   const [newTasksCount, setNewTasksCount] = useState(0)
@@ -88,6 +103,7 @@ export default function DashboardPage() {
   const [showSettings, setShowSettings] = useState(false)
   const [showApi, setShowApi] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
+  const [showCompleted, setShowCompleted] = useState(false)
   const [selectedRawData, setSelectedRawData] = useState<any>(null)
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null)
   const [showApiKeyModal, setShowApiKeyModal] = useState(false)
@@ -124,6 +140,9 @@ export default function DashboardPage() {
     fetchTasks()
     fetchOrganization()
     fetchReminders()
+    
+    // Capture and save user's timezone on first load
+    captureUserTimezone()
     
     // Request notification permission on mount
     if ('Notification' in window && Notification.permission === 'default') {
@@ -306,11 +325,33 @@ export default function DashboardPage() {
     return list.slice(0, 12)
   }, [tasks])
 
-  const toggleFilter = (key: string, value: string) => {
-    const token = `${key}:${value.toLowerCase()}`
-    setActiveFilters(prev => prev.includes(token) ? prev.filter(f => f !== token) : [...prev, token])
+  const captureUserTimezone = async () => {
+    try {
+      // Get browser's timezone
+      const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+      
+      // Check if we already have this timezone saved
+      const response = await fetch("/api/user/timezone")
+      if (response.ok) {
+        const data = await response.json()
+        
+        // If timezone is different or not set, update it
+        if (data.timezone !== browserTimezone) {
+          const updateResponse = await fetch("/api/user/timezone", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ timezone: browserTimezone })
+          })
+          
+          if (updateResponse.ok) {
+            console.log("User timezone updated to:", browserTimezone)
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error capturing timezone:", error)
+    }
   }
-
 
   const fetchOrganization = async () => {
     try {
@@ -478,11 +519,24 @@ export default function DashboardPage() {
     }
   }
 
-  const openSettings = () => {
+  const openSettings = async () => {
     setShowSettings(true)
     setLoadingSettings(false)
     fetchAllowedEmails()
     fetchWhatsAppSettings()
+    
+    // Fetch user's current timezone
+    try {
+      const response = await fetch("/api/user/timezone")
+      if (response.ok) {
+        const data = await response.json()
+        if (data.timezone) {
+          setTimezone(data.timezone)
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching timezone:", error)
+    }
   }
   
   const fetchWhatsAppSettings = async () => {
@@ -648,7 +702,105 @@ export default function DashboardPage() {
     }
   }
 
-  // Get smart task list based on search or default ordering
+  // Filter toggle function
+  const toggleFilter = (type: keyof FilterState, value: any) => {
+    setFilters(prev => {
+      const newFilters = { ...prev }
+      
+      // For time and ownership, allow multiple selections
+      const currentValues = prev[type] as any[]
+      if (currentValues.includes(value)) {
+        newFilters[type] = currentValues.filter((v: any) => v !== value) as any
+      } else {
+        newFilters[type] = [...currentValues, value] as any
+      }
+      
+      // Save to localStorage
+      localStorage.setItem('taskFilters', JSON.stringify(newFilters))
+      return newFilters
+    })
+  }
+
+  // Load filters from localStorage on mount
+  useEffect(() => {
+    const savedFilters = localStorage.getItem('taskFilters')
+    if (savedFilters) {
+      try {
+        setFilters(JSON.parse(savedFilters))
+      } catch (e) {
+        console.error('Failed to load saved filters')
+      }
+    }
+  }, [])
+
+  // Apply filters to tasks
+  const filteredTasks = useMemo(() => {
+    let result = [...tasks]
+    const now = new Date()
+    // Set today to start of day in local timezone
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const weekFromNow = new Date(today)
+    weekFromNow.setDate(weekFromNow.getDate() + 7)
+
+    // Time filters
+    if (filters.time.length > 0) {
+      result = result.filter(task => {
+        if (!task.dueDate) return filters.time.includes('no-date')
+        
+        // Parse the task due date and get local date string
+        const dueDate = new Date(task.dueDate)
+        const taskDateStr = dueDate.toLocaleDateString('en-CA') // Returns YYYY-MM-DD format in local time
+        
+        // Get today and tomorrow as local date strings
+        const todayStr = today.toLocaleDateString('en-CA')
+        const tomorrowStr = tomorrow.toLocaleDateString('en-CA')
+        const weekFromNowStr = weekFromNow.toLocaleDateString('en-CA')
+        
+        return filters.time.some(filter => {
+          switch (filter) {
+            case 'today':
+              return taskDateStr === todayStr
+            case 'tomorrow':
+              return taskDateStr === tomorrowStr
+            case 'week':
+              // Show tasks due within the next 7 days (including today)
+              return taskDateStr >= todayStr && taskDateStr <= weekFromNowStr
+            case 'no-date':
+              return false // Already handled above
+            default:
+              return true
+          }
+        })
+      })
+    }
+
+    // Ownership filters
+    if (filters.ownership.length > 0) {
+      result = result.filter(task => {
+        return filters.ownership.some(filter => {
+          switch (filter) {
+            case 'my-tasks':
+              return task.userRole === 'executor'
+            case 'waiting-on':
+              return task.userRole === 'delegator'
+            case 'observing':
+              return task.userRole === 'observer' || task.taskType === 'fyi'
+            default:
+              return true
+          }
+        })
+      })
+    }
+
+    // Always filter out completed tasks (they'll be shown in the Completed drawer)
+    result = result.filter(task => task.status !== 'done')
+
+    // Apply smart ordering to filtered results
+    return getSmartTaskList(result, showAllTasks ? 100 : 50) as Task[]
+  }, [tasks, filters, showAllTasks])
+
   const getVisibleTasks = (): Task[] => {
     // If we have AI search results, use them
     if (searchQuery.trim() && searchResults.length >= 0) {
@@ -659,19 +811,8 @@ export default function DashboardPage() {
       }))
     }
     
-    // If we have active filters but no search query, use basic filtering
-    if (activeFilters.length > 0) {
-      const filteredResults = interpretCommand("", tasks, activeFilters)
-      return filteredResults.map((task, index) => ({
-        ...task,
-        relevanceScore: 1000 - index,
-        relevanceReason: undefined
-      }))
-    }
-    
-    // Otherwise, use smart relevance ordering
-    const smartList = getSmartTaskList(tasks, showAllTasks ? 100 : 5)
-    return smartList as Task[]
+    // Otherwise use filtered tasks
+    return filteredTasks
   }
   
   const visibleTasks = getVisibleTasks()
@@ -707,7 +848,7 @@ export default function DashboardPage() {
     )
   }
 
-  const isDrawerOpen = showEmailLogs || showSettings || showApi || showNotifications
+  const isDrawerOpen = showEmailLogs || showSettings || showApi || showNotifications || showCompleted
   const isWideDrawer = showEmailLogs && selectedRawData
 
   return (
@@ -808,7 +949,104 @@ export default function DashboardPage() {
                 </button>
               )}
             </div>
+          </div>
 
+          {/* Filter Pills */}
+          <div className="mb-6 space-y-2">
+            {/* Time filters */}
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => toggleFilter('time', 'today')}
+                className={`inline-flex items-center px-2 py-0.5 text-xs rounded transition-colors ${
+                  filters.time.includes('today')
+                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                    : 'bg-muted/50 hover:bg-muted text-muted-foreground'
+                }`}
+              >
+                Today
+              </button>
+              <button
+                onClick={() => toggleFilter('time', 'tomorrow')}
+                className={`inline-flex items-center px-2 py-0.5 text-xs rounded transition-colors ${
+                  filters.time.includes('tomorrow')
+                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                    : 'bg-muted/50 hover:bg-muted text-muted-foreground'
+                }`}
+              >
+                Tomorrow
+              </button>
+              <button
+                onClick={() => toggleFilter('time', 'week')}
+                className={`inline-flex items-center px-2 py-0.5 text-xs rounded transition-colors ${
+                  filters.time.includes('week')
+                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                    : 'bg-muted/50 hover:bg-muted text-muted-foreground'
+                }`}
+              >
+                This Week
+              </button>
+              <button
+                onClick={() => toggleFilter('time', 'no-date')}
+                className={`inline-flex items-center px-2 py-0.5 text-xs rounded transition-colors ${
+                  filters.time.includes('no-date')
+                    ? 'bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400'
+                    : 'bg-muted/50 hover:bg-muted text-muted-foreground'
+                }`}
+              >
+                No Date
+              </button>
+              
+              <div className="w-px h-6 bg-border mx-1" /> {/* Separator */}
+              
+              {/* Ownership filters */}
+              <button
+                onClick={() => toggleFilter('ownership', 'my-tasks')}
+                className={`inline-flex items-center px-2 py-0.5 text-xs rounded transition-colors ${
+                  filters.ownership.includes('my-tasks')
+                    ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
+                    : 'bg-muted/50 hover:bg-muted text-muted-foreground'
+                }`}
+              >
+                My Tasks
+              </button>
+              <button
+                onClick={() => toggleFilter('ownership', 'waiting-on')}
+                className={`inline-flex items-center px-2 py-0.5 text-xs rounded transition-colors ${
+                  filters.ownership.includes('waiting-on')
+                    ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400'
+                    : 'bg-muted/50 hover:bg-muted text-muted-foreground'
+                }`}
+              >
+                Waiting On
+              </button>
+              <button
+                onClick={() => toggleFilter('ownership', 'observing')}
+                className={`inline-flex items-center px-2 py-0.5 text-xs rounded transition-colors ${
+                  filters.ownership.includes('observing')
+                    ? 'bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400'
+                    : 'bg-muted/50 hover:bg-muted text-muted-foreground'
+                }`}
+              >
+                Observing
+              </button>
+            </div>
+            
+            {/* Active filter summary and clear button */}
+            {(filters.time.length > 0 || filters.ownership.length > 0) && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>
+                  Showing {visibleTasks.length} {visibleTasks.length === 1 ? 'task' : 'tasks'}
+                  {filters.time.length > 0 && ` • ${filters.time.join(', ')}`}
+                  {filters.ownership.length > 0 && ` • ${filters.ownership.join(', ')}`}
+                </span>
+                <button
+                  onClick={() => setFilters({ time: [], ownership: [] })}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Clear filters
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Notification Onboarding - Show for new users or if not configured */}
@@ -948,29 +1186,30 @@ export default function DashboardPage() {
                         {/* Tags line */}
                         {task.emailMetadata?.smartAnalysis?.tags && (
                           <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                            {task.emailMetadata.smartAnalysis.tags.when && (
-                              <span className="px-2 py-0.5 border rounded-sm bg-transparent">
-                                {task.emailMetadata.smartAnalysis.tags.when}
+                            {/* Show actual due date instead of static tags.when */}
+                            {task.dueDate && (
+                              <span className="px-2 py-0.5 border rounded bg-transparent">
+                                {formatDate(task.dueDate)}
                               </span>
                             )}
                             {task.emailMetadata.smartAnalysis.tags.where && (
-                              <span className="px-2 py-0.5 border rounded-sm">
+                              <span className="px-2 py-0.5 border rounded">
                                 {task.emailMetadata.smartAnalysis.tags.where}
                               </span>
                             )}
                             {task.emailMetadata.smartAnalysis.tags.who && (
-                              <span className="px-2 py-0.5 border rounded-sm">
+                              <span className="px-2 py-0.5 border rounded">
                                 {task.emailMetadata.smartAnalysis.tags.who}
                               </span>
                             )}
                             {task.emailMetadata.smartAnalysis.tags.what && (
-                              <span className="px-2 py-0.5 border rounded-sm">
+                              <span className="px-2 py-0.5 border rounded">
                                 {task.emailMetadata.smartAnalysis.tags.what}
                               </span>
                             )}
                             {Array.isArray(task.emailMetadata.smartAnalysis.tags.extras) &&
                               task.emailMetadata.smartAnalysis.tags.extras.slice(0, 2).map((ex: string, idx: number) => (
-                                <span key={idx} className="px-2 py-0.5 border rounded-sm max-w-[200px] truncate">
+                                <span key={idx} className="px-2 py-0.5 border rounded max-w-[200px] truncate">
                                   {ex}
                                 </span>
                               ))}
@@ -1019,6 +1258,12 @@ export default function DashboardPage() {
           <div className="mt-12 pt-8 border-t text-center">
             <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
             <button
+                onClick={() => setShowCompleted(true)}
+                className="hover:text-foreground"
+              >
+                Completed
+              </button>
+              <button
                 onClick={() => {
                   setShowNotifications(true)
                   fetchWhatsAppSettings()
@@ -1039,7 +1284,6 @@ export default function DashboardPage() {
               >
                 Email logs
               </button>
-
               <button
                 onClick={openApi}
                 className="hover:text-foreground"
@@ -1068,6 +1312,7 @@ export default function DashboardPage() {
             setShowSettings(false)
             setShowApi(false)
             setShowNotifications(false)
+            setShowCompleted(false)
             setSelectedRawData(null)
             setSelectedEmailId(null)
           }}
@@ -1087,7 +1332,7 @@ export default function DashboardPage() {
                 </div>
                 <button
                   onClick={() => setShowSettings(false)}
-                  className="text-sm px-3 py-1 rounded-sm border hover:bg-muted"
+                  className="text-sm px-3 py-1 rounded border hover:bg-muted"
                 >
                   Close
                 </button>
@@ -1148,7 +1393,7 @@ export default function DashboardPage() {
                             type="text"
                             value={agentEmail}
                             readOnly
-                            className="w-full text-sm border rounded-sm px-2 py-1 pr-8 bg-muted/30"
+                            className="w-full text-sm border rounded px-2 py-1 pr-8 bg-muted/30"
                             onClick={(e) => e.currentTarget.select()}
                           />
                           <button
@@ -1184,7 +1429,7 @@ export default function DashboardPage() {
                             })
                           }
                         }}
-                        className="w-full text-center text-sm px-3 py-1.5 bg-primary text-primary-foreground rounded-sm hover:bg-primary/90"
+                        className="w-full text-center text-sm px-3 py-1.5 bg-primary text-primary-foreground rounded hover:bg-primary/90"
                       >
                         🔔 Enable Desktop Notifications
                       </button>
@@ -1202,6 +1447,65 @@ export default function DashboardPage() {
                     )}
                   </div>
 
+                  {/* Timezone Settings */}
+                  <div className="border rounded p-4">
+                    <h3 className="text-sm font-medium mb-3">Timezone</h3>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Set your local timezone for accurate task scheduling
+                    </p>
+                    <div className="space-y-3">
+                      <select
+                        value={timezone}
+                        onChange={async (e) => {
+                          const newTimezone = e.target.value
+                          setTimezone(newTimezone)
+                          
+                          // Save to database
+                          try {
+                            const response = await fetch("/api/user/timezone", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ timezone: newTimezone })
+                            })
+                            
+                            if (response.ok) {
+                              toast({
+                                title: "Timezone updated",
+                                description: `Timezone updated successfully`,
+                                variant: "success"
+                              })
+                            }
+                          } catch (error) {
+                            toast({
+                              title: "Error",
+                              description: "Failed to update timezone",
+                              variant: "error"
+                            })
+                          }
+                        }}
+                        className="w-full text-sm border rounded px-2 py-1.5 bg-background"
+                      >
+                        {timezones.map(group => (
+                          <optgroup key={group.label} label={group.label}>
+                            {group.options.map(tz => (
+                              <option key={tz.value} value={tz.value}>
+                                {tz.label} ({tz.offset})
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                      <div className="text-xs text-muted-foreground space-y-1">
+                        <p>Current time: {new Date().toLocaleString('en-US', { 
+                          timeZone: timezone,
+                          dateStyle: 'medium',
+                          timeStyle: 'short'
+                        })}</p>
+                        <p>This affects when tasks are due and when you receive notifications</p>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Daily Digest */}
                   <div className="border rounded p-4">
                     <h3 className="text-sm font-medium mb-3">Daily Digest</h3>
@@ -1213,7 +1517,7 @@ export default function DashboardPage() {
                         setShowNotifications(true)
                         fetchWhatsAppSettings()
                       }}
-                      className="w-full text-center text-sm px-3 py-1.5 bg-blue-600 text-white rounded-sm hover:bg-blue-700"
+                      className="w-full text-center text-sm px-3 py-1.5 bg-primary text-primary-foreground rounded hover:bg-primary/90"
                     >
                       Configure Digest
                     </button>
@@ -1225,20 +1529,20 @@ export default function DashboardPage() {
                       <h3 className="text-sm font-medium">Allowed Senders</h3>
                       <button
                         onClick={() => setShowAddEmailForm(!showAddEmailForm)}
-                        className="text-xs px-2 py-1 rounded-sm border hover:bg-muted"
+                        className="text-xs px-2 py-1 rounded border hover:bg-muted"
                       >
                         {showAddEmailForm ? 'Cancel' : '+ Add Email'}
                       </button>
                     </div>
                     
                     {showAddEmailForm && (
-                      <div className="mb-4 p-3 border rounded-sm space-y-2 bg-muted/50">
+                      <div className="mb-4 p-3 border rounded space-y-2 bg-muted/50">
                         <input
                           type="email"
                           placeholder="Email address"
                           value={newEmailAddress}
                           onChange={(e) => setNewEmailAddress(e.target.value)}
-                          className="w-full px-2 py-1 text-sm border rounded-sm bg-background"
+                          className="w-full px-2 py-1 text-sm border rounded bg-background"
                           autoFocus
                         />
                         <input
@@ -1246,12 +1550,12 @@ export default function DashboardPage() {
                           placeholder="Note (optional)"
                           value={newEmailNote}
                           onChange={(e) => setNewEmailNote(e.target.value)}
-                          className="w-full px-2 py-1 text-sm border rounded-sm bg-background"
+                          className="w-full px-2 py-1 text-sm border rounded bg-background"
                         />
                         <div className="flex gap-2">
                           <button
                             onClick={() => addAllowedEmail(newEmailAddress, newEmailNote)}
-                            className="flex-1 px-2 py-1 text-sm bg-black text-white rounded-sm hover:bg-gray-800"
+                            className="flex-1 px-2 py-1 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90"
                           >
                             Add Email
                           </button>
@@ -1261,7 +1565,7 @@ export default function DashboardPage() {
                               setNewEmailAddress("")
                               setNewEmailNote("")
                             }}
-                            className="px-2 py-1 text-sm border rounded-sm hover:bg-muted"
+                            className="px-2 py-1 text-sm border rounded hover:bg-muted"
                           >
                             Cancel
                           </button>
@@ -1277,7 +1581,7 @@ export default function DashboardPage() {
                       <div className="space-y-2">
                         <p className="text-xs text-muted-foreground">Loading allowed emails...</p>
                         {session?.user?.email && (
-                          <div className="p-2 border border-dashed rounded-sm">
+                          <div className="p-2 border border-dashed rounded">
                             <p className="text-xs text-muted-foreground">
                               Your registration email ({session.user.email}) will appear here once loaded
                             </p>
@@ -1313,7 +1617,7 @@ export default function DashboardPage() {
                                             allowedEmail.note?.includes('Registration email')
                           
                           return (
-                            <div key={allowedEmail.id} className={`flex items-center justify-between p-2 border rounded-sm ${
+                            <div key={allowedEmail.id} className={`flex items-center justify-between p-2 border rounded ${
                               isRegistrationEmail ? 'bg-muted/30 border-primary/30' : ''
                             }`}>
                               <div className="flex-1">
@@ -1341,7 +1645,7 @@ export default function DashboardPage() {
                               {!isRegistrationEmail && (
                                 <button
                                   onClick={() => deleteAllowedEmail(allowedEmail.id)}
-                                  className="text-xs text-red-600 hover:text-red-700"
+                                  className="text-xs text-destructive hover:text-destructive/80"
                                 >
                                   Remove
                                 </button>
@@ -1354,12 +1658,12 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Danger Zone */}
-                  <div className="border border-red-500/50 rounded p-4">
-                    <h3 className="text-sm font-medium mb-3 text-red-600">Danger Zone</h3>
+                  <div className="border border-destructive/50 rounded p-4">
+                    <h3 className="text-sm font-medium mb-3 text-destructive">Danger Zone</h3>
                     <p className="text-xs text-muted-foreground mb-3">
                       These actions are irreversible. Please be certain.
                     </p>
-                    <button className="text-xs px-3 py-1 rounded-sm border border-red-500 text-red-600 hover:bg-red-50">
+                    <button className="text-xs px-3 py-1 rounded border border-destructive text-destructive hover:bg-destructive/10">
                       Delete All Tasks
                     </button>
                   </div>
@@ -1382,7 +1686,7 @@ export default function DashboardPage() {
                 </div>
                 <button
                   onClick={() => setShowApi(false)}
-                  className="text-sm px-3 py-1 rounded-sm border hover:bg-muted"
+                  className="text-sm px-3 py-1 rounded border hover:bg-muted"
                 >
                   Close
                 </button>
@@ -1398,7 +1702,7 @@ export default function DashboardPage() {
                         type="text"
                         value={`${process.env.NEXT_PUBLIC_APP_URL || 'https://app.yourdomain.com'}/api`}
                         readOnly
-                        className="w-full text-sm font-mono border rounded-sm px-2 py-1 pr-8 bg-muted/30"
+                        className="w-full text-sm font-mono border rounded px-2 py-1 pr-8 bg-muted/30"
                         onClick={(e) => e.currentTarget.select()}
                       />
                       <button
@@ -1427,7 +1731,7 @@ export default function DashboardPage() {
                           )
                           if (name) createApiKey(name)
                         }}
-                        className="text-xs px-2 py-1 rounded-sm border hover:bg-muted"
+                        className="text-xs px-2 py-1 rounded border hover:bg-muted"
                       >
                         + New Key
                       </button>
@@ -1440,7 +1744,7 @@ export default function DashboardPage() {
                     ) : (
                       <div className="space-y-2">
                         {apiKeys.map((key) => (
-                          <div key={key.id} className="flex items-center justify-between p-2 border rounded-sm">
+                          <div key={key.id} className="flex items-center justify-between p-2 border rounded">
                             <div>
                               <p className="text-sm font-medium">{key.name}</p>
                               <p className="text-xs text-muted-foreground">
@@ -1471,7 +1775,7 @@ export default function DashboardPage() {
                     <div className="space-y-3">
                       <div>
                         <p className="text-xs font-medium mb-1">Authentication</p>
-                        <pre className="text-xs bg-muted p-2 rounded-sm overflow-x-auto font-mono">
+                        <pre className="text-xs bg-muted p-2 rounded overflow-x-auto font-mono">
 {`curl -H "X-API-Key: YOUR_API_KEY" \\
   ${process.env.NEXT_PUBLIC_APP_URL || 'https://app.yourdomain.com'}/api/tasks`}
                         </pre>
@@ -1479,7 +1783,7 @@ export default function DashboardPage() {
                       
                       <div>
                         <p className="text-xs font-medium mb-1">List Tasks</p>
-                        <pre className="text-xs bg-muted p-2 rounded-sm overflow-x-auto font-mono">
+                        <pre className="text-xs bg-muted p-2 rounded overflow-x-auto font-mono">
 {`GET /api/tasks
 Response: [{ id, title, status, priority, dueDate, ... }]`}
                         </pre>
@@ -1487,7 +1791,7 @@ Response: [{ id, title, status, priority, dueDate, ... }]`}
                       
                       <div>
                         <p className="text-xs font-medium mb-1">Create Task</p>
-                        <pre className="text-xs bg-muted p-2 rounded-sm overflow-x-auto font-mono">
+                        <pre className="text-xs bg-muted p-2 rounded overflow-x-auto font-mono">
 {`POST /api/tasks
 Body: { 
   "title": "Task title",
@@ -1499,7 +1803,7 @@ Body: {
                       
                       <div>
                         <p className="text-xs font-medium mb-1">Update Task</p>
-                        <pre className="text-xs bg-muted p-2 rounded-sm overflow-x-auto font-mono">
+                        <pre className="text-xs bg-muted p-2 rounded overflow-x-auto font-mono">
 {`PATCH /api/tasks/{id}
 Body: { 
   "status": "todo|in_progress|done",
@@ -1510,7 +1814,7 @@ Body: {
                       
                       <div>
                         <p className="text-xs font-medium mb-1">Delete Task</p>
-                        <pre className="text-xs bg-muted p-2 rounded-sm overflow-x-auto font-mono">
+                        <pre className="text-xs bg-muted p-2 rounded overflow-x-auto font-mono">
 {`DELETE /api/tasks/{id}`}
                         </pre>
                       </div>
@@ -1555,7 +1859,7 @@ Body: {
                       setSelectedRawData(null)
                       setSelectedEmailId(null)
                     }}
-                    className="text-sm px-3 py-1 rounded-sm border hover:bg-muted"
+                    className="text-sm px-3 py-1 rounded border hover:bg-muted"
                   >
                     Close
                   </button>
@@ -1591,10 +1895,10 @@ Body: {
                               From: {log.fromEmail}
                             </p>
                           </div>
-                          <span className={`text-xs px-2 py-1 rounded-sm border ${
-                            log.error ? 'border-red-500 text-red-600 bg-red-50' :
-                            log.processed ? 'border-green-500 text-green-600 bg-green-50' :
-                            'border-yellow-500 text-yellow-600 bg-yellow-50'
+                          <span className={`text-xs px-2 py-1 rounded border ${
+                            log.error ? 'border-destructive text-destructive bg-destructive/10' :
+                            log.processed ? 'border-green-600 text-green-600 bg-green-600/10 dark:border-green-400 dark:text-green-400 dark:bg-green-400/10' :
+                            'border-yellow-600 text-yellow-600 bg-yellow-600/10 dark:border-yellow-400 dark:text-yellow-400 dark:bg-yellow-400/10'
                           }`}>
                             {log.error ? 'Failed' : log.processed ? 'Processed' : 'Pending'}
                           </span>
@@ -1723,7 +2027,7 @@ Body: {
                         setSelectedRawData(null)
                         setSelectedEmailId(null)
                       }}
-                      className="text-sm px-3 py-1 rounded-sm border hover:bg-muted"
+                      className="text-sm px-3 py-1 rounded border hover:bg-muted"
                     >
                       Hide
                     </button>
@@ -1746,7 +2050,7 @@ Body: {
                             variant: "success",
                           })
                         }}
-                        className="text-sm px-3 py-1 rounded-sm border hover:bg-muted flex items-center gap-2"
+                        className="text-sm px-3 py-1 rounded border hover:bg-muted flex items-center gap-2"
                       >
                         <Copy className="h-3 w-3" />
                         Copy JSON
@@ -1851,6 +2155,95 @@ Body: {
           </div>
         </div>
       )}
+
+      {/* Completed Tasks Drawer */}
+      {showCompleted && (
+        <div className="fixed right-0 top-0 h-full w-[640px] bg-background border-l shadow-xl z-50 transition-all duration-300 ease-out">
+          <div className="flex flex-col h-full">
+            <div className="flex items-center justify-between p-6 border-b">
+              <div>
+                <h2 className="text-lg font-semibold">Completed Tasks</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  View and manage completed tasks
+                </p>
+              </div>
+              <button
+                onClick={() => setShowCompleted(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Scrollable content area */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-3">
+              {tasks.filter(t => t.status === 'done').length === 0 ? (
+                <div className="text-center py-12 border rounded">
+                  <CheckCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
+                  <p className="text-sm text-muted-foreground">
+                    No completed tasks yet
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Tasks marked as done will appear here
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="text-sm text-muted-foreground mb-4">
+                    {tasks.filter(t => t.status === 'done').length} completed {tasks.filter(t => t.status === 'done').length === 1 ? 'task' : 'tasks'}
+                  </div>
+                  {tasks
+                    .filter(t => t.status === 'done')
+                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                    .map((task) => (
+                      <div 
+                        key={task.id}
+                        className="group border rounded p-3 hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-start gap-3">
+                          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1">
+                                <p className="text-sm line-through text-muted-foreground">
+                                  {task.title}
+                                </p>
+                                {task.description && (
+                                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                    {task.description}
+                                  </p>
+                                )}
+                                <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                                  <span>Completed {formatDate(task.createdAt)}</span>
+                                  {task.dueDate && (
+                                    <>
+                                      <span>•</span>
+                                      <span>Was due {formatDate(task.dueDate)}</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => deleteTask(task.id)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                                title="Delete task"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </>
+              )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </>
   )
 }

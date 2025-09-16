@@ -70,6 +70,44 @@ function extractEmailAddress(fromString: string): string {
   return (match ? match[1] : fromString).toLowerCase().trim()
 }
 
+// Convert a date to midnight in user's timezone, then to UTC for storage
+function setToMidnightInTimezone(date: Date, timezone: string): Date {
+  try {
+    // Format the date in the user's timezone
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    })
+    const parts = formatter.formatToParts(date)
+    const year = parseInt(parts.find(p => p.type === 'year')?.value || '0')
+    const month = parseInt(parts.find(p => p.type === 'month')?.value || '0')
+    const day = parseInt(parts.find(p => p.type === 'day')?.value || '0')
+    
+    // Create a date string at midnight in the target timezone
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00`
+    
+    // Parse this as a local time in the target timezone
+    const localDate = new Date(dateStr)
+    
+    // Get the timezone offset for this date
+    const targetFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      timeZoneName: 'short'
+    })
+    const targetParts = targetFormatter.formatToParts(localDate)
+    const tzName = targetParts.find(p => p.type === 'timeZoneName')?.value || 'EST'
+    
+    // Return the date adjusted for storage
+    return new Date(dateStr + ' ' + tzName)
+  } catch (e) {
+    console.error('Error setting date to midnight in timezone:', e)
+    // Fallback: just set to start of day in local time
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  }
+}
+
 // Get thread ID from headers
 function getThreadId(emailData: EmailData): string | null {
   if (!emailData.Headers) return null
@@ -881,6 +919,22 @@ export async function processInboundEmail(emailData: EmailData) {
 
     // Get the first admin or member to assign as creator
     const creator = organization.members.find((m: any) => m.role === 'admin') || organization.members[0]
+    
+    // Get the user's timezone for proper date handling
+    let userTimezone = 'America/New_York' // Default fallback
+    if (creator?.userId) {
+      try {
+        const user = await prisma.user.findUnique({
+          where: { id: creator.userId },
+          select: { timezone: true }
+        })
+        if (user?.timezone) {
+          userTimezone = user.timezone
+        }
+      } catch (e) {
+        console.log('Could not fetch user timezone, using default')
+      }
+    }
 
     // Prepare reminder date if specified
     let reminderDate: Date | null = null
