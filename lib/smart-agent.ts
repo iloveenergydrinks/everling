@@ -196,7 +196,7 @@ export async function analyzeThreadContext(
     timestamp: Date
     messageId: string
   }>
-): Promise<ThreadContext> {
+): Promise<ThreadContext | null> {
   try {
     // Sort emails chronologically
     const sortedEmails = emails.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
@@ -256,7 +256,7 @@ ANALYSIS GUIDELINES:
 - Track the evolution of requirements
 - Detect completion signals IN ANY LANGUAGE
 
-Return detailed JSON analysis with reasoning IN THE PRIMARY LANGUAGE of the thread.`,
+Return ONLY a valid JSON object with no additional text, markdown, or explanations. Start with { and end with }.`,
       messages: [{
         role: 'user',
         content: `Analyze this email thread:
@@ -282,11 +282,19 @@ Provide comprehensive thread analysis with conversation flow, decisions, action 
     if (content.type === 'text') {
       const jsonMatch = content.text.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]) as ThreadContext
+        try {
+          return JSON.parse(jsonMatch[0]) as ThreadContext
+        } catch (parseError) {
+          console.warn('Thread analysis: Failed to parse AI JSON response, using fallback')
+        }
+      } else {
+        console.warn('Thread analysis: No JSON found in AI response, using fallback')
       }
     }
-
-    throw new Error('Invalid AI response format')
+    
+    // If we get here, AI response was not valid - return null
+    console.warn('Thread analysis: Invalid AI response, returning null')
+    return null
   } catch (error) {
     console.error('Thread analysis failed:', error)
     
