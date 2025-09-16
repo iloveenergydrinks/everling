@@ -355,12 +355,18 @@ export async function extractSmartTask(
       system: `You are an expert MULTILINGUAL task extraction specialist. Extract comprehensive task information from emails in ANY language, with special expertise in Italian and English.
 
 EXTRACTION PRINCIPLES:
-1. Create actionable, specific task titles IN THE ORIGINAL LANGUAGE
-2. Include all relevant context in descriptions
-3. Identify stakeholders and dependencies
-4. Estimate effort and business impact
-5. Extract dates and deadlines intelligently
-6. Tag with project/initiative if applicable
+1. ALWAYS create a task title - even for FYI emails with commands, newsletters with reminders, etc.
+2. Task title must be actionable and specific IN THE ORIGINAL LANGUAGE
+3. Include all relevant context in descriptions
+4. Identify stakeholders and dependencies  
+5. Estimate effort and business impact
+6. Extract dates and deadlines intelligently
+7. Tag with project/initiative if applicable
+
+SPECIAL CASE: Forwarded newsletters/articles with reminder commands
+- If email body contains "Ricordami"/"Remind me" + forwarded content
+- Create title like: "📌 Read: [Original Subject]" or "📌 Review: [Article Title]"
+- Description should mention the reminder request and key content
 
 TAGS (for minimal display):
 - when: human-readable date/time if present (e.g., "Thu, Sep 18, 2025 10:00")
@@ -384,10 +390,15 @@ MULTILINGUAL SUPPORT (ITALIAN PRIORITY):
 - English patterns as fallback
 - Handle mixed language emails gracefully
 
-REQUIREMENTS:
-- Always return a top-level "tags" with best-effort values from the email content.
-- If a precise ISO due date/time can be inferred, set dueDate and also set tags.when to a readable version.
-- Do not invent data; leave fields null only when truly not present.
+CRITICAL REQUIREMENTS:
+- **ALWAYS return a title** - NEVER return undefined or null for title
+- If the email seems like FYI/newsletter but has a command (like "Ricordami"), create a reminder title
+- For forwarded content with commands (e.g., "Ricordami domani di leggerlo"), use: "📌 Reminder: [subject]" as title
+- Even if content is a newsletter/article, if there's a reminder command, treat it as a task needing action
+- **ALWAYS return a description** - extract key content or use the command text
+- Always return a top-level "tags" with best-effort values from the email content
+- If a precise ISO due date/time can be inferred, set dueDate and also set tags.when to a readable version
+- The response MUST include valid title and description fields, even for low-priority emails
 
 PRIORITY MAPPING (based on AI priority score):
 - 0-30: low
@@ -404,7 +415,28 @@ BUSINESS IMPACT:
 - medium: Team affecting, process improvement
 - high: Revenue affecting, customer facing, critical operations
 
-Return comprehensive JSON with all extracted information. Include a top-level "tags" object as described.`,
+REQUIRED JSON STRUCTURE (all fields must be present):
+{
+  "title": "string - REQUIRED, NEVER null/undefined",
+  "description": "string - REQUIRED, NEVER null/undefined", 
+  "priority": "low|medium|high",
+  "dueDate": "ISO date or null",
+  "reminderDate": "ISO date or null",
+  "estimatedEffort": "quick|medium|complex",
+  "businessImpact": "low|medium|high",
+  "stakeholders": [],
+  "projectTag": "string or null",
+  "dependencies": [],
+  "tags": {
+    "when": "string or null",
+    "where": "string or null", 
+    "who": "string or null",
+    "what": "string or null",
+    "extras": []
+  }
+}
+
+NEVER return partial objects. ALWAYS include title and description even for newsletters/FYI emails.`,
       messages: [{
         role: 'user',
         content: `Extract task from this email:
@@ -414,6 +446,11 @@ From: ${emailData.from}
 Subject: ${emailData.subject}
 Body: ${emailData.body.substring(0, 6000)}
 Timestamp: ${emailData.timestamp.toISOString()}
+
+CONTEXT:
+Priority Score: ${Number(priorityScore?.score) || 50}/100
+${emailData.body.toLowerCase().includes('ricordami') || emailData.body.toLowerCase().includes('remind') ? 
+'⚠️ COMMAND DETECTED: This email contains a reminder/command request. MUST create a task with proper title!' : ''}
 
 PRIORITY ANALYSIS:
 Score: ${Number(priorityScore?.score) || 50}/100
