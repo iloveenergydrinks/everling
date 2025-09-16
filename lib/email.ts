@@ -28,6 +28,7 @@ interface EmailData {
   Cc?: string
   ReplyTo?: string
   OriginalRecipient?: string  // Added for Cloudflare Email Routing forwarding
+  ToFull?: Array<{ Email: string; Name?: string }>  // Postmark's detailed recipient info
 }
 
 interface ExtractedTask {
