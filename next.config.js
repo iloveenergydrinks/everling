@@ -6,6 +6,11 @@ const nextConfig = {
       bodySizeLimit: '2mb',
     },
   },
+  logging: {
+    fetches: {
+      fullUrl: true,
+    },
+  },
   images: {
     domains: ['localhost'],
     unoptimized: true,
@@ -16,9 +21,11 @@ const nextConfig = {
     pagesBufferLength: 2,
   },
   compiler: {
-    removeConsole: process.env.NODE_ENV === 'production' ? {
-      exclude: ['error']
-    } : false,
+    // Temporarily disabled to debug production
+    // removeConsole: process.env.NODE_ENV === 'production' ? {
+    //   exclude: ['error']
+    // } : false,
+    removeConsole: false,
   },
 }
 
