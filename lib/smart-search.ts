@@ -32,6 +32,12 @@ export interface SearchInterpretation {
     source?: ('email' | 'manual')[]
     fromEmail?: string[]   // specific senders
     
+    // Task relationship filters (NEW)
+    assignedBy?: string[]  // who gave me this task
+    assignedTo?: string[]  // who should do this (me, others)
+    taskType?: ('assigned' | 'self' | 'delegation' | 'tracking' | 'fyi')[]
+    userRole?: ('executor' | 'delegator' | 'observer' | 'coordinator')[]
+    
     // Smart filters
     urgency?: 'immediate' | 'soon' | 'normal' | 'low'
     importance?: 'critical' | 'high' | 'normal' | 'low'
@@ -68,12 +74,13 @@ export async function interpretSearchQuery(
       model: 'claude-3-haiku-20240307',
       max_tokens: 500,
       temperature: 0.2,
-      system: `You are an expert search query interpreter for a task management system.
+      system: `You are an expert search query interpreter for a hybrid task management system.
 Convert natural language queries IN ANY LANGUAGE into structured search filters.
 
 CONTEXT:
 - Current date/time: ${currentDate} (${timezone})
 - Tasks have: title, description, dueDate, priority, status, tags (who/what/where/when)
+- Tasks have relationships: assignedBy (who gave it), assignedTo (who should do it), taskType, userRole
 - Tasks can be created from emails or manually
 - User may search in ANY language - detect and understand it
 
@@ -110,11 +117,24 @@ STATUS UNDERSTANDING:
 - "pending", "da fare" → status: ["pending", "todo"]
 - "in progress", "in corso" → status: ["in-progress"]
 
+RELATIONSHIP UNDERSTANDING (NEW):
+- "tasks from Leonardo" → assignedBy: ["leonardo*"], people: ["leonardo"]
+- "task da Giovanni" → assignedBy: ["giovanni*"]
+- "things I gave to Maria" → assignedTo: ["maria*"]
+- "tasks I need to do" → userRole: ["executor"]
+- "task che devo fare" → userRole: ["executor"]
+- "cose che ho delegato" → userRole: ["delegator"], taskType: ["delegation"]
+- "tracking for project X" → taskType: ["tracking"], topics: ["project x"]
+- "FYI emails" → taskType: ["fyi"]
+- "assigned to me" → userRole: ["executor"], taskType: ["assigned"]
+
 SMART INTERPRETATION:
 - Understand intent, not just keywords
-- "what did Sarah ask" → people: ["sarah"], fromEmail: ["*sarah*"]
+- "what did Sarah ask" → assignedBy: ["sarah*"], people: ["sarah"]
 - "important things from last week" → importance: "high", createdAfter: last week
 - "tasks I'm ignoring" → status: ["pending"], createdBefore: 3+ days ago
+- "tutti i miei task" → userRole: ["executor"] (my tasks to do)
+- "task che sto monitorando" → taskType: ["tracking"] (monitoring tasks)
 
 ALWAYS return a valid JSON object with this EXACT structure:
 {

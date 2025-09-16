@@ -56,7 +56,13 @@ export async function GET(request: NextRequest) {
       dueDate: task.dueDate?.toISOString() || null,
       reminderDate: task.reminderDate?.toISOString() || null,
       createdAt: task.createdAt.toISOString(),
-      updatedAt: task.updatedAt.toISOString()
+      updatedAt: task.updatedAt.toISOString(),
+      // Include relationship fields
+      assignedToEmail: task.assignedToEmail,
+      assignedByEmail: task.assignedByEmail,
+      taskType: task.taskType,
+      userRole: task.userRole,
+      stakeholders: task.stakeholders
     }))
 
     // Apply smart filtering/ordering if requested

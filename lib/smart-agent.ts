@@ -316,6 +316,120 @@ Provide comprehensive thread analysis with conversation flow, decisions, action 
 }
 
 /**
+ * Extract task relationships from email context
+ */
+export async function extractTaskRelationships(
+  emailData: {
+    from: string
+    to: string  // The everling.io account email
+    subject: string
+    body: string
+    timestamp: Date
+  },
+  organizationEmail: string // e.g., "fisataskmanager@everling.io"
+): Promise<{
+  assignedToEmail: string | null
+  assignedByEmail: string | null
+  taskType: 'assigned' | 'self' | 'delegation' | 'tracking' | 'fyi'
+  userRole: 'executor' | 'delegator' | 'observer' | 'coordinator'
+  stakeholders: Array<{ name?: string; email: string; role: string }>
+}> {
+  try {
+    const message = await anthropic.messages.create({
+      model: 'claude-3-haiku-3-20240307',
+      max_tokens: 500,
+      temperature: 0.1,
+      system: `You are an expert at understanding task relationships in emails across ALL languages.
+
+ANALYZE WHO SHOULD DO WHAT:
+1. Identify the TASK OWNER (assignedToEmail):
+   - Who should actually perform this task?
+   - If sender is requesting something from recipient → assignedTo = recipient
+   - If sender is informing about their own task → assignedTo = sender
+   - If sender mentions someone else should do it → assignedTo = that person
+
+2. Identify the REQUESTER (assignedByEmail):
+   - Who is asking for this to be done?
+   - Often the email sender, but check context
+
+3. Classify TASK TYPE:
+   - assigned: Someone gave this task to recipient
+   - self: Recipient created for themselves
+   - delegation: Recipient needs to delegate to someone else
+   - tracking: Recipient is monitoring someone else's work
+   - fyi: Information only, no action needed
+
+4. Identify USER'S ROLE (perspective of the email recipient):
+   - executor: They need to do the task
+   - delegator: They need to assign it to someone
+   - observer: They're just tracking/watching
+   - coordinator: They're managing multiple parties
+
+5. Extract STAKEHOLDERS:
+   - List all people mentioned who have a role
+   - Include their relationship to the task
+
+IMPORTANT: Analyze from the perspective of the RECIPIENT (${organizationEmail})
+
+Return JSON only:
+{
+  "assignedToEmail": "email or null",
+  "assignedByEmail": "email or null", 
+  "taskType": "assigned|self|delegation|tracking|fyi",
+  "userRole": "executor|delegator|observer|coordinator",
+  "stakeholders": [{"name": "string", "email": "string", "role": "string"}]
+}`,
+      messages: [{
+        role: 'user',
+        content: `Analyze task relationships in this email:
+
+FROM: ${emailData.from}
+TO: ${emailData.to}
+SUBJECT: ${emailData.subject}
+BODY: ${emailData.body.substring(0, 2000)}
+
+Who should do this task? What's the recipient's role?`
+      }]
+    })
+
+    const content = message.content[0]
+    if (content.type === 'text') {
+      const jsonMatch = content.text.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        const relationships = JSON.parse(jsonMatch[0])
+        
+        // Ensure stakeholders is an array
+        relationships.stakeholders = Array.isArray(relationships.stakeholders) 
+          ? relationships.stakeholders 
+          : []
+        
+        return relationships
+      }
+    }
+    
+    // Fallback if AI fails
+    return {
+      assignedToEmail: emailData.to,
+      assignedByEmail: emailData.from,
+      taskType: 'assigned',
+      userRole: 'executor',
+      stakeholders: []
+    }
+    
+  } catch (error) {
+    console.error('Failed to extract task relationships:', error)
+    // Default assumption: sender assigns to recipient
+    return {
+      assignedToEmail: emailData.to,
+      assignedByEmail: emailData.from,
+      taskType: 'assigned',
+      userRole: 'executor',
+      stakeholders: []
+    }
+  }
+}
+
+/**
  * Smart task extraction with thread context
  */
 export async function extractSmartTask(

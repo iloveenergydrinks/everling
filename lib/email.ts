@@ -3,7 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { 
   calculateSmartPriority, 
   analyzeEmailThread, 
-  extractSmartTask, 
+  extractSmartTask,
+  extractTaskRelationships,
   getSenderHistory,
   updateSenderIntelligence 
 } from '@/lib/smart-agent'
@@ -891,6 +892,20 @@ export async function processInboundEmail(emailData: EmailData) {
       } catch {}
     }
 
+    // Extract task relationships using AI
+    console.log('🤖 Extracting task relationships...')
+    const relationships = await extractTaskRelationships(
+      {
+        from: emailData.From,
+        to: toEmail, // The everling.io recipient
+        subject: emailData.Subject,
+        body: textBody,
+        timestamp: new Date(emailData.Date)
+      },
+      toEmail
+    )
+    console.log('🤖 Task relationships:', relationships)
+
     const task = await prisma.task.create({
       data: {
         organizationId: organization.id,
@@ -902,6 +917,12 @@ export async function processInboundEmail(emailData: EmailData) {
         createdById: creator?.userId || null,
         createdVia: 'email',
         emailThreadId: emailData.MessageID || threadId, // Store thread ID for future replies
+        // Task relationship fields
+        assignedToEmail: relationships.assignedToEmail,
+        assignedByEmail: relationships.assignedByEmail,
+        taskType: relationships.taskType,
+        userRole: relationships.userRole,
+        stakeholders: relationships.stakeholders,
         emailMetadata: JSON.parse(JSON.stringify({
           from: emailData.From,
           subject: emailData.Subject,

@@ -19,6 +19,12 @@ interface Task {
     name: string | null
     email: string
   } | null
+  // Relationship fields
+  assignedToEmail?: string | null
+  assignedByEmail?: string | null
+  taskType?: string | null
+  userRole?: string | null
+  stakeholders?: any
 }
 
 /**
@@ -221,6 +227,39 @@ export async function interpretSearchIntelligently(
       return filters.locations!.some(location => 
         where.includes(location.toLowerCase())
       )
+    })
+  }
+
+  // Task Relationship filters (NEW)
+  if (filters.assignedBy && filters.assignedBy.length > 0) {
+    filteredTasks = filteredTasks.filter(task => {
+      const assignedBy = task.assignedByEmail?.toLowerCase() || ''
+      return filters.assignedBy!.some(pattern => {
+        const searchPattern = pattern.toLowerCase().replace(/\*/g, '')
+        return assignedBy.includes(searchPattern)
+      })
+    })
+  }
+
+  if (filters.assignedTo && filters.assignedTo.length > 0) {
+    filteredTasks = filteredTasks.filter(task => {
+      const assignedTo = task.assignedToEmail?.toLowerCase() || ''
+      return filters.assignedTo!.some(pattern => {
+        const searchPattern = pattern.toLowerCase().replace(/\*/g, '')
+        return assignedTo.includes(searchPattern)
+      })
+    })
+  }
+
+  if (filters.taskType && filters.taskType.length > 0) {
+    filteredTasks = filteredTasks.filter(task => {
+      return filters.taskType!.includes(task.taskType as any) 
+    })
+  }
+
+  if (filters.userRole && filters.userRole.length > 0) {
+    filteredTasks = filteredTasks.filter(task => {
+      return filters.userRole!.includes(task.userRole as any)
     })
   }
 
