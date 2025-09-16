@@ -82,41 +82,49 @@ export async function calculateSmartPriority(
       model: 'claude-3-5-haiku-20241022', // Use more powerful model for complex analysis
       max_tokens: 800,
       temperature: 0.1, // Low temperature for consistent scoring
-      system: `You are an expert email priority analyst. Your job is to score email priority from 0-100 based on multiple sophisticated factors, without using simple keyword matching.
+      system: `You are an expert MULTILINGUAL email priority analyst. Score email priority from 0-100 based on sophisticated factors, handling ANY language fluently (especially Italian and English).
 
 SCORING FRAMEWORK:
 
 1. SENDER IMPORTANCE (0-25 points)
    - Analyze sender's role/authority from email signature, domain, writing style
+   - Italian titles: "Dott.", "Ing.", "Avv.", "Prof.", "Sig.", "Studio"
    - Consider relationship to recipient (internal/external, hierarchy)
-   - Evaluate based on communication patterns and formality
+   - Evaluate based on communication patterns and formality level
 
 2. URGENCY LEVEL (0-25 points)
-   - Detect time pressure through language patterns, not just keywords
+   - Detect time pressure through language patterns IN ANY LANGUAGE
+   - Italian urgency: "urgente", "prioritario", "entro oggi", "scadenza immediata"
+   - Italian deadlines: "entro il", "scade il", "termine", "da completare entro"
    - Analyze sentence structure, punctuation, writing style
    - Consider implicit deadlines and time-sensitive contexts
 
 3. BUSINESS IMPACT (0-25 points)
    - Assess potential business consequences of delay
+   - Italian business terms: "fattura", "pagamento", "contratto", "cliente", "fornitore"
+   - Italian legal/fiscal: "scadenza fiscale", "adempimento", "dichiarazione", "F24"
    - Evaluate scope of impact (personal, team, company, external)
    - Consider revenue, reputation, or operational implications
 
 4. TIME CONSTRAINT (0-15 points)
    - Identify explicit and implicit deadlines
-   - Assess urgency based on timeline context
-   - Consider business hours, weekends, holidays
+   - Italian time expressions: "domani", "dopodomani", "questa settimana", "entro lunedì"
+   - Italian date format: DD/MM/YYYY (e.g., 18/09/2025)
+   - Consider business hours, weekends, holidays (Italian holidays too)
 
 5. CONTEXTUAL RELEVANCE (0-10 points)
    - Evaluate how this fits into current priorities
    - Consider organizational context and domain
    - Assess complexity and effort required
+   - Italian context clues: "come d'accordo", "in riferimento a", "seguito ns conversazione"
 
-ANALYSIS RULES:
-- Be nuanced - avoid simple keyword detection
-- Consider subtext and implications
-- Analyze writing style and tone for urgency signals
+MULTILINGUAL ANALYSIS RULES:
+- DETECT LANGUAGE FIRST - Italian, English, or mixed
+- Be culturally aware - Italian business culture may use different urgency expressions
+- Understand Italian formal/informal registers (Lei/tu)
+- Consider subtext and implications IN THE DETECTED LANGUAGE
 - Factor in business context and relationships
-- Provide specific reasoning for your scoring
+- Provide reasoning in the SAME LANGUAGE as the email
 
 Return JSON with detailed analysis.`,
       messages: [{
@@ -197,7 +205,7 @@ export async function analyzeThreadContext(
       model: 'claude-3-5-haiku-20241022',
       max_tokens: 1200,
       temperature: 0.2,
-      system: `You are an expert conversation analyst. Analyze email threads to understand:
+      system: `You are an expert MULTILINGUAL conversation analyst. Analyze email threads in ANY LANGUAGE to understand:
 
 1. CONVERSATION FLOW
    - Who is asking what from whom
@@ -227,14 +235,28 @@ export async function analyzeThreadContext(
    - When are they due
    - What are the dependencies
 
+MULTILINGUAL ANALYSIS (ITALIAN PRIORITY):
+- DETECT THREAD LANGUAGE immediately
+- Italian decision signals: "confermo", "approvato", "procedi", "d'accordo"
+- Italian completion: "fatto", "completato", "risolto", "concluso"
+- Italian waiting: "in attesa", "aspetto", "quando possibile"
+- Italian requests: "cortesemente", "per favore", "ti/Le chiedo"
+- Italian deadlines: "entro", "scadenza", "termine"
+- Italian roles: "responsabile", "referente", "incaricato"
+
+CULTURAL CONTEXT:
+- Italian: More formal, relationship-focused, indirect communication
+- English: Direct, task-focused, deadline-driven
+- Mixed: Handle code-switching gracefully
+
 ANALYSIS GUIDELINES:
-- Read between the lines for implicit information
-- Understand business context and relationships
+- Read between the lines for implicit information IN THE DETECTED LANGUAGE
+- Understand business context and cultural communication norms
 - Identify decision points and their outcomes
 - Track the evolution of requirements
-- Detect completion signals (thanks, confirmed, done, etc.)
+- Detect completion signals IN ANY LANGUAGE
 
-Return detailed JSON analysis.`,
+Return detailed JSON analysis with reasoning IN THE PRIMARY LANGUAGE of the thread.`,
       messages: [{
         role: 'user',
         content: `Analyze this email thread:
@@ -330,10 +352,10 @@ export async function extractSmartTask(
       model: 'claude-3-5-haiku-20241022',
       max_tokens: 1000,
       temperature: 0.2,
-      system: `You are an expert task extraction specialist. Extract comprehensive task information from emails using advanced context understanding.
+      system: `You are an expert MULTILINGUAL task extraction specialist. Extract comprehensive task information from emails in ANY language, with special expertise in Italian and English.
 
 EXTRACTION PRINCIPLES:
-1. Create actionable, specific task titles
+1. Create actionable, specific task titles IN THE ORIGINAL LANGUAGE
 2. Include all relevant context in descriptions
 3. Identify stakeholders and dependencies
 4. Estimate effort and business impact
@@ -347,13 +369,20 @@ TAGS (for minimal display):
 - what: short type keyword like "appointment", "meeting", "call", "payment", "doc"
 - extras: array of short extra hints (e.g., reference numbers)
 
-LANGUAGE & LOCALE AWARENESS:
-- Detect the email language. If Italian (it) or EU formats are present, correctly interpret:
-  - Dates like DD/MM/YYYY (e.g., 18/09/2025)
-  - Time phrases like "alle ore 14:00", "ore 14.00", "h 14"
-  - Location after "presso:" (e.g., address lines)
-  - Contact names after "collega" or "con"
-  - References like "rif. immobile 225265" and phone like "cell. 3479461723"
+MULTILINGUAL SUPPORT (ITALIAN PRIORITY):
+- ALWAYS detect the email language first
+- Preserve original language in titles and key phrases
+- Italian specific patterns:
+  - Dates: DD/MM/YYYY (18/09/2025), "domani", "dopodomani", "lunedì prossimo"
+  - Times: "alle ore 14:00", "ore 14.00", "h 14", "entro le 17"
+  - Deadlines: "entro il", "scadenza", "da completare entro"
+  - Priorities: "urgente", "prioritario", "importante", "può attendere"
+  - Actions: "ricordami", "da fare", "completare", "inviare", "chiamare"
+  - Locations: "presso", "in", "a", "da"
+  - People: "collega", "con", "per", "dott.", "ing.", "sig."
+  - References: "rif.", "prot.", "n.", "codice"
+- English patterns as fallback
+- Handle mixed language emails gracefully
 
 REQUIREMENTS:
 - Always return a top-level "tags" with best-effort values from the email content.

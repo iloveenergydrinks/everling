@@ -1017,7 +1017,7 @@ async function classifyEmail({ subject, body, from }: {
     const message = await anthropic.messages.create({
       model: 'claude-3-5-haiku-20241022',
       max_tokens: 300,
-      system: `You are an email classifier. Analyze emails and determine if they require action.
+      system: `You are a MULTILINGUAL email classifier. Analyze emails IN ANY LANGUAGE and determine if they require action.
       
       Classify emails into these types:
       - task: Requires action (requests, assignments, todos)
@@ -1028,17 +1028,18 @@ async function classifyEmail({ subject, body, from }: {
       
       Be strict: Only mark as "task" if there's a clear action item.
       
-      Examples of NON-actionable (FYI):
-      - "Your order has been shipped"
-      - "Thanks for your email"
-      - "Meeting notes attached"
-      - "FYI - server maintenance tonight"
+      NON-actionable (FYI) - MULTILINGUAL:
+      English: "Your order has been shipped", "Thanks", "Meeting notes attached", "FYI"
+      Italian: "Il tuo ordine è stato spedito", "Grazie", "Allego verbale", "Per conoscenza", "Vi informo"
       - Newsletter content
       - Automated notifications
+      - Confirmations ("confermo ricezione")
       
-      Examples of ACTIONABLE (task):
-      - "Can you review this document?"
-      - "Please fix the login bug"
+      ACTIONABLE (task) - MULTILINGUAL:
+      English: "Can you review?", "Please fix", "Need your help"
+      Italian: "Puoi controllare?", "Per favore sistema", "Ho bisogno", "Ti chiedo di", "Cortesemente"
+      - Requests with "entro" (by/deadline)
+      - Assignments with "da fare", "completare"
       - "Need this by Friday"
       - "Action required: approve budget"
       
