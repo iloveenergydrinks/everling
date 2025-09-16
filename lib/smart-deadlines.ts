@@ -101,6 +101,10 @@ GUIDELINES:
 - Account for dependencies and handoffs
 - Provide specific reasoning for all decisions
 
+IMPORTANT: Return ONLY valid JSON. No explanations, comments, or text outside the JSON.
+The JSON must be parseable by JSON.parse() without any preprocessing.
+Do NOT include comments (// or /* */) inside the JSON.
+
 Return comprehensive JSON analysis with specific dates and reasoning.`,
       messages: [{
         role: 'user',
@@ -134,9 +138,51 @@ Provide detailed deadline analysis with specific due date recommendations and re
 
     const content = message.content[0]
     if (content.type === 'text') {
-      const jsonMatch = content.text.match(/\{[\s\S]*\}/)
-      if (jsonMatch) {
-        const analysis = JSON.parse(jsonMatch[0]) as SmartDeadlineAnalysis
+      // Try to extract JSON more robustly
+      let analysis: SmartDeadlineAnalysis | null = null
+      
+      try {
+        // First try direct parse
+        analysis = JSON.parse(content.text) as SmartDeadlineAnalysis
+      } catch (e1) {
+        // If that fails, try to extract JSON from the text
+        try {
+          // Remove any potential comments
+          const cleanedText = content.text
+            .replace(/\/\/[^\n]*/g, '') // Remove single-line comments
+            .replace(/\/\*[\s\S]*?\*\//g, '') // Remove multi-line comments
+          
+          const jsonMatch = cleanedText.match(/\{[\s\S]*\}/)
+          if (jsonMatch) {
+            analysis = JSON.parse(jsonMatch[0]) as SmartDeadlineAnalysis
+          }
+        } catch (e2) {
+          console.error('Failed to parse deadline analysis JSON:', e2)
+          console.error('AI response was:', content.text.substring(0, 500))
+          // Return a safe default instead of throwing
+          return {
+            suggestedDueDate: null,
+            confidence: 0.1,
+            reasoning: 'AI analysis failed - using default settings',
+            urgencyLevel: 'medium' as const,
+            timeSignals: [],
+            businessContext: {
+              isDeadlineCritical: false,
+              hasExternalDependencies: false,
+              affectsOthers: false,
+              businessHours: true
+            },
+            reminderStrategy: {
+              optimalReminderTime: null,
+              reminderFrequency: 'once' as const,
+              escalationNeeded: false,
+              reasoning: 'AI analysis failed - using defaults'
+            }
+          }
+        }
+      }
+      
+      if (analysis) {
         
         // Validate and adjust dates
         if (analysis.suggestedDueDate) {
@@ -152,6 +198,7 @@ Provide detailed deadline analysis with specific due date recommendations and re
       }
     }
 
+    // If we get here, AI didn't return valid content
     throw new Error('Invalid AI response format')
   } catch (error) {
     console.error('Smart deadline analysis failed:', error)
