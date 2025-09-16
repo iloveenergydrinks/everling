@@ -365,7 +365,7 @@ EXTRACTION PRINCIPLES:
 
 SPECIAL CASE: Forwarded newsletters/articles with reminder commands
 - If email body contains "Ricordami"/"Remind me" + forwarded content
-- Create title like: "📌 Read: [Original Subject]" or "📌 Review: [Article Title]"
+- Create title like: "Read: [Original Subject]" or "Review: [Article Title]"
 - Description should mention the reminder request and key content
 
 TAGS (for minimal display):
@@ -393,7 +393,7 @@ MULTILINGUAL SUPPORT (ITALIAN PRIORITY):
 CRITICAL REQUIREMENTS:
 - **ALWAYS return a title** - NEVER return undefined or null for title
 - If the email seems like FYI/newsletter but has a command (like "Ricordami"), create a reminder title
-- For forwarded content with commands (e.g., "Ricordami domani di leggerlo"), use: "📌 Reminder: [subject]" as title
+- For forwarded content with commands (e.g., "Ricordami domani di leggerlo"), use: "Reminder: [subject]" as title
 - Even if content is a newsletter/article, if there's a reminder command, treat it as a task needing action
 - **ALWAYS return a description** - extract key content or use the command text
 - Always return a top-level "tags" with best-effort values from the email content

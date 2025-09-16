@@ -667,15 +667,8 @@ export async function processInboundEmail(emailData: EmailData) {
     }
 
     // Build task payload from AI result
-    // Add emoji prefix based on item type for visual distinction
-    const titlePrefix = itemType === 'read-later' ? '📚 ' :
-                       itemType === 'reminder' ? '⏰ ' :
-                       itemType === 'note' ? '📝 ' :
-                       itemType === 'reference' ? '📎 ' :
-                       '' // Regular task, no prefix needed
-    
     let extractedTask = {
-      title: smartTask.title.startsWith('📌') ? smartTask.title : titlePrefix + smartTask.title,
+      title: smartTask.title,
       description: smartTask.description,
       // Adjust priority based on item type (temporary until we have proper categorization)
       priority: itemType === 'read-later' ? 'low' : 
@@ -788,6 +781,7 @@ export async function processInboundEmail(emailData: EmailData) {
           subject: emailData.Subject,
           messageId: emailData.MessageID,
           receivedAt: emailData.Date,
+          itemType: itemType, // Store the item type for UI to display appropriate icon
           smartAnalysis: {
             priorityScore: priorityAnalysis.score,
             priorityReasoning: priorityAnalysis.reasoning,
