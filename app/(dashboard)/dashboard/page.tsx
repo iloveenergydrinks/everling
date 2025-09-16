@@ -854,37 +854,61 @@ export default function DashboardPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
                         {/* Task Relationship Indicators - Minimal UI */}
-                        <div className="flex flex-wrap items-center gap-1 mb-1.5">
-                          {/* Who assigned this task - smaller, cleaner */}
-                          {task.assignedByEmail && task.assignedByEmail !== session?.user?.email && (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded bg-muted text-muted-foreground">
-                              <UserCheck className="h-3 w-3" />
-                              {task.assignedByEmail.split('@')[0]}
-                            </span>
-                          )}
-                          
-                          {/* Simplified task type - icon only for tracking/delegation */}
-                          {task.taskType === 'tracking' && (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded bg-muted text-muted-foreground">
-                              <Eye className="h-3 w-3" />
-                              tracking
-                            </span>
-                          )}
-                          
-                          {task.taskType === 'delegation' && (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded bg-orange-100/50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400">
-                              <Share2 className="h-3 w-3" />
-                              delegate
-                            </span>
-                          )}
-                          
-                          {/* Only show if assigned to someone else */}
-                          {task.assignedToEmail && task.assignedToEmail !== session?.user?.email && (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded bg-amber-100/50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400">
-                              → {task.assignedToEmail.split('@')[0]}
-                            </span>
-                          )}
-                        </div>
+                        {(task.assignedByEmail || task.taskType === 'tracking' || task.taskType === 'delegation' || 
+                          task.taskType === 'assigned') && (
+                          <div className="flex flex-wrap items-center gap-1 mb-1.5">
+                            {/* Show who requested/assigned this task if it's not from yourself */}
+                            {task.assignedByEmail && 
+                             task.assignedByEmail !== session?.user?.email && 
+                             !task.assignedByEmail.includes('@') && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded bg-blue-100/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+                                from {task.assignedByEmail}
+                              </span>
+                            )}
+                            
+                            {/* Show actual email sender if they're different from requester */}
+                            {task.assignedByEmail && 
+                             task.assignedByEmail.includes('@') && 
+                             task.assignedByEmail !== session?.user?.email && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded bg-blue-100/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+                                from {task.assignedByEmail.split('@')[0]}
+                              </span>
+                            )}
+                            
+                            {/* Show if this was assigned TO you (not self-created) */}
+                            {task.taskType === 'assigned' && task.userRole === 'executor' && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded bg-purple-100/50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400">
+                                <ArrowDownToLine className="h-3 w-3" />
+                                assigned to me
+                              </span>
+                            )}
+                            
+                            {/* Show if this is something you need to delegate to someone */}
+                            {task.taskType === 'delegation' && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded bg-orange-100/50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400">
+                                <Share2 className="h-3 w-3" />
+                                to delegate
+                              </span>
+                            )}
+                            
+                            {/* Show if you're just tracking/monitoring this */}
+                            {task.taskType === 'tracking' && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded bg-muted text-muted-foreground">
+                                <Eye className="h-3 w-3" />
+                                monitoring
+                              </span>
+                            )}
+                            
+                            {/* Only show assignment target if it's someone ELSE (not you) */}
+                            {task.assignedToEmail && 
+                             task.assignedToEmail !== session?.user?.email && 
+                             (session?.user?.organizationSlug && !task.assignedToEmail.includes(session.user.organizationSlug)) && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded bg-amber-100/50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400">
+                                for {task.assignedToEmail.split('@')[0]}
+                              </span>
+                            )}
+                          </div>
+                        )}
                         
                         <h3 className="text-sm font-medium mb-1 truncate" title={task.title}>{task.title}</h3>
                         {task.description && (
