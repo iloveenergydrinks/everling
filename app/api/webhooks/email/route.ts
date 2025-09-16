@@ -44,10 +44,15 @@ function verifyPostmarkAuth(request: NextRequest): boolean {
     // Basic auth format: "Basic base64(username:password)"
     const expectedAuth = `Basic ${Buffer.from(process.env.POSTMARK_WEBHOOK_AUTH).toString('base64')}`
     
-    return crypto.timingSafeEqual(
-      Buffer.from(authHeader),
-      Buffer.from(expectedAuth)
-    )
+    // First check if lengths match (required for timingSafeEqual)
+    const authBuffer = Buffer.from(authHeader)
+    const expectedBuffer = Buffer.from(expectedAuth)
+    
+    if (authBuffer.length !== expectedBuffer.length) {
+      return false
+    }
+    
+    return crypto.timingSafeEqual(authBuffer, expectedBuffer)
   }
   
   // No auth configured - accept in development but warn
