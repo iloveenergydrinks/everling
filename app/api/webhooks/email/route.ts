@@ -61,10 +61,10 @@ export async function POST(request: NextRequest) {
   console.log('Email webhook received')
   
   try {
-    // Skip auth check for now in production to debug
-    const skipAuth = process.env.NODE_ENV === 'production' && !process.env.POSTMARK_WEBHOOK_AUTH
+    // Skip auth check only in development for easier testing
+    const skipAuth = process.env.NODE_ENV !== 'production'
     
-    // Verify authentication
+    // Verify authentication (always required in production)
     if (!skipAuth && !verifyPostmarkAuth(request)) {
       console.error('Webhook authentication failed')
       return NextResponse.json(
