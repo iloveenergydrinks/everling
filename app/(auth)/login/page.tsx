@@ -37,6 +37,10 @@ function LoginForm() {
       setError('Email verification failed. Please try again.')
     } else if (errorParam === 'OAuthAccountNotLinked') {
       setError('An account with this email already exists. Please sign in with your password or use the magic link.')
+    } else if (errorParam === 'LinkExpired') {
+      setError('This sign-in link has expired. Please request a new one.')
+    } else if (errorParam === 'InvalidLink') {
+      setError('Invalid sign-in link. Please request a new one.')
     }
   }, [searchParams])
 

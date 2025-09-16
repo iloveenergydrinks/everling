@@ -287,3 +287,15 @@ model SenderIntelligence {
   @@index([senderEmail])
   @@map("sender_intelligence")
 }
+
+model ShortLink {
+  id          String   @id @default(cuid())
+  shortCode   String   @unique
+  originalUrl String   @db.Text
+  clicks      Int      @default(0)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  
+  @@index([expiresAt])
+  @@map("short_links")
+}
