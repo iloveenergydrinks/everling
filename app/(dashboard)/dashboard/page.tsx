@@ -705,7 +705,7 @@ export default function DashboardPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search or type a command..."
+                placeholder="Try: today, tomorrow, urgent, overdue, or any text..."
                 className="w-full pl-10 pr-4 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') {
@@ -723,7 +723,7 @@ export default function DashboardPage() {
               )}
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Try filters: what:meeting, who:john, where:office, project:alpha, tag:invoice
+              Natural: "today", "urgent", "overdue" | Smart: "what:meeting", "who:john" | Italian: "domani", "urgente"
             </p>
 
             {/* Dynamic tag chips */}
