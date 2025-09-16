@@ -52,6 +52,15 @@ export const authOptions: NextAuthOptions = {
 
         const postmark = new ServerClient(process.env.POSTMARK_SERVER_TOKEN)
         
+        // Create a simpler URL that doesn't trigger phishing detection
+        // Extract just the token from the original URL
+        const urlObj = new URL(url)
+        const token = urlObj.searchParams.get('token')
+        
+        // Use our custom magic link handler that doesn't expose email
+        const baseUrl = url.split('/api/auth/')[0]
+        const simpleUrl = `${baseUrl}/api/auth/magic?t=${token}`
+        
         try {
           await postmark.sendEmail({
             From: provider.from as string,
@@ -64,7 +73,7 @@ export const authOptions: NextAuthOptions = {
                   We received a request to sign in to your account. Click the button below to continue.
                 </p>
                 <div style="text-align: center; margin: 30px 0;">
-                  <a href="${url}" 
+                  <a href="${simpleUrl}" 
                      style="display: inline-block; padding: 12px 24px; background: #000; color: white; text-decoration: none; border-radius: 6px; font-weight: 500;">
                     Sign in to Everling.io
                   </a>
@@ -74,7 +83,7 @@ export const authOptions: NextAuthOptions = {
                 </p>
               </div>
             `,
-            TextBody: `Sign in to Everling.io\n\nClick this link to sign in: ${url}\n\nThis link will expire in 24 hours.\n\nIf you didn't request this email, you can safely ignore it.`,
+            TextBody: `Sign in to Everling.io\n\nClick this link to sign in: ${simpleUrl}\n\nThis link will expire in 24 hours.\n\nIf you didn't request this email, you can safely ignore it.`,
             MessageStream: 'outbound'
           })
         } catch (error) {
