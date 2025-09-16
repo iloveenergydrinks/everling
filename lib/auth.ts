@@ -28,7 +28,9 @@ export const authOptions: NextAuthOptions = {
           access_type: "offline",
           response_type: "code"
         }
-      }
+      },
+      // Allow linking Google account to existing email users
+      allowDangerousEmailAccountLinking: true,
     }),
     EmailProvider({
       server: {
