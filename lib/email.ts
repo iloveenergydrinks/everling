@@ -143,7 +143,8 @@ export async function processInboundEmail(emailData: EmailData) {
   // and OriginalRecipient contains Postmark's internal address
   const originalRecipient = emailData.To.includes('@everling.io') ? emailData.To : 
                            emailData.OriginalRecipient || emailData.To
-  const toEmail = originalRecipient.toLowerCase()
+  // Extract clean email address (handles formats like "name@domain" <name@domain>)
+  const toEmail = extractEmailAddress(originalRecipient).toLowerCase()
   const emailPrefix = toEmail.split('@')[0]
   const senderEmail = extractEmailAddress(emailData.From)
   
