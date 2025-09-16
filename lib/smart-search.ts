@@ -107,12 +107,12 @@ PRIORITY/URGENCY UNDERSTANDING:
 - "when you can", "quando puoi" → urgency: "low"
 
 SEMANTIC UNDERSTANDING:
-- Single names ALONE should trigger people search: "Giovanni" → people: ["giovanni"]
+- Single names ALONE should trigger people search: "Giovanni" → people: ["giovanni"] (NO fromEmail)
 - "invoices", "fatture" → topics: ["invoice", "fattura", "billing"]
-- "from John", "da Giovanni" → people: ["john", "giovanni"], fromEmail: ["*john*"]
+- "from John", "da Giovanni" → people: ["john", "giovanni"], fromEmail: ["*john*", "*giovanni*"]
 - "meetings", "riunioni" → topics: ["meeting", "riunione", "call", "sync"]
 - "stuff to read" → topics: ["newsletter", "article", "blog", "read"]
-IMPORTANT: A single name like "Giovanni" or "Maria" should ALWAYS be treated as a people search
+IMPORTANT: A single name WITHOUT "from" should use people filter ONLY, not fromEmail
 
 STATUS UNDERSTANDING:
 - "completed", "fatto", "terminé" → status: ["done"]
@@ -138,7 +138,8 @@ SMART INTERPRETATION:
 - "tutti i miei task" → userRole: ["executor"] (my tasks to do)
 - "task che sto monitorando" → taskType: ["tracking"] (monitoring tasks)
 
-ALWAYS return a valid JSON object with this EXACT structure:
+OUTPUT FORMAT:
+Return ONLY a valid JSON object. NO EXPLANATIONS OR ADDITIONAL TEXT.
 {
   "filters": {
     // Include relevant filters here, or empty object {} if none apply
@@ -147,16 +148,20 @@ ALWAYS return a valid JSON object with this EXACT structure:
   "confidence": 0.0 to 1.0
 }
 
-RULES:
-1. Set confidence based on how well you understood the intent.
-2. If query is too vague, use searchText for free text search.
-3. NEVER return undefined or null for filters - use {} if no filters apply.
-4. Day names (Monday, Lunedì, Giovedì, etc.) should ALWAYS become date filters, not searchText.
-5. If searching for a specific date/day, use dueOn with the calculated ISO date.
+CRITICAL RULES:
+1. Return ONLY the JSON object - no text before or after
+2. Set confidence based on how well you understood the intent
+3. If query is too vague, use searchText for free text search
+4. NEVER return undefined or null for filters - use {} if no filters apply
+5. Day names (Monday, Lunedì, Giovedì, etc.) should ALWAYS become date filters, not searchText
+6. If searching for a specific date/day, use dueOn with the calculated ISO date
+7. DO NOT add explanations like "The query is too vague" - just return JSON
 
 EXAMPLES:
 - Query: "Giovanni" → {"filters": {"people": ["giovanni"]}, "confidence": 1.0}
+- Query: "giovanni" → {"filters": {"people": ["giovanni"]}, "confidence": 1.0}
 - Query: "from Leonardo" → {"filters": {"people": ["leonardo"], "assignedBy": ["leonardo*"]}, "confidence": 1.0}
+- Query: "da Giovanni" → {"filters": {"people": ["giovanni"], "assignedBy": ["giovanni*"]}, "confidence": 1.0}
 - Query: "giovedì" → {"filters": {"dueOn": "2025-09-18", "whenContains": ["thu", "gioved", "18", "sep"]}, "confidence": 1.0}
 - Query: "next thursday" → {"filters": {"dueOn": "2025-09-18", "whenContains": ["thu", "thursday", "18"]}, "confidence": 1.0}
 - Query: "tasks for thursday" → {"filters": {"dueOn": "2025-09-18", "whenContains": ["thu", "thursday"]}, "confidence": 1.0}`,
@@ -171,13 +176,32 @@ EXAMPLES:
       throw new Error('Unexpected response type from AI')
     }
 
-    // Parse the AI response
+    // Parse the AI response - extract JSON from the text
     let parsed: any
     try {
-      parsed = JSON.parse(content.text)
+      // Sometimes Claude returns JSON with extra explanation text
+      // Try to extract just the JSON part
+      const jsonMatch = content.text.match(/\{[\s\S]*?\}(?=\s*$|\s*[A-Z]|\s*\n[A-Z])/);
+      if (jsonMatch) {
+        parsed = JSON.parse(jsonMatch[0])
+      } else {
+        parsed = JSON.parse(content.text)
+      }
     } catch (parseError) {
       console.error('Failed to parse AI response:', content.text)
-      throw parseError
+      // Try one more time by looking for the first complete JSON object
+      try {
+        const startIdx = content.text.indexOf('{')
+        const endIdx = content.text.lastIndexOf('}')
+        if (startIdx !== -1 && endIdx !== -1) {
+          const jsonStr = content.text.slice(startIdx, endIdx + 1)
+          parsed = JSON.parse(jsonStr)
+        } else {
+          throw parseError
+        }
+      } catch (secondError) {
+        throw parseError
+      }
     }
     
     // Ensure we have a valid structure
