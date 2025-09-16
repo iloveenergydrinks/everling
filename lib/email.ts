@@ -593,13 +593,26 @@ export async function processInboundEmail(emailData: EmailData) {
     
     console.log('📧 AI task extraction result:', smartTask ? 'SUCCESS' : 'FAILED')
 
-    // Determine if this should create a task based on AI analysis
-    const score = safeScore
-    // ALWAYS create task if there's a command, otherwise check business impact
-    const shouldCreateTask = (emailCommand?.hasCommand) || // Always create if command exists
-      (score > 20 && (smartTask.businessImpact !== 'low' || smartTask.estimatedEffort !== 'quick'))
-      
-    console.log('📧 Step 7: Should create task?', shouldCreateTask, 'Priority score:', score, 'Has command:', !!emailCommand?.hasCommand)
+    // EVERY forwarded email creates something - the user forwarded it for a reason
+    // The AI's job is to organize, not gatekeep
+    const shouldCreateTask = true // Always create something when email is forwarded
+    
+    // Determine what TYPE of item to create (for future implementation)
+    let itemType = 'task' // Default for now, later: 'task' | 'reminder' | 'read-later' | 'reference' | 'note'
+    if (emailCommand?.hasCommand && emailCommand.type === 'remind') {
+      itemType = 'reminder'
+    } else if (smartTask.tags?.what === 'newsletter' || smartTask.tags?.what === 'article') {
+      itemType = 'read-later'
+    } else if (smartTask.businessImpact === 'low' && smartTask.estimatedEffort === 'quick') {
+      itemType = 'note'
+    }
+    
+    console.log('📧 Creating item:', { 
+      type: itemType, 
+      priority: score, 
+      hasCommand: !!emailCommand?.hasCommand,
+      reason: 'User forwarded this email intentionally'
+    })
     
     // Store classification and command in email log while variables are in scope
     await prisma.emailLog.update({
@@ -654,10 +667,21 @@ export async function processInboundEmail(emailData: EmailData) {
     }
 
     // Build task payload from AI result
+    // Add emoji prefix based on item type for visual distinction
+    const titlePrefix = itemType === 'read-later' ? '📚 ' :
+                       itemType === 'reminder' ? '⏰ ' :
+                       itemType === 'note' ? '📝 ' :
+                       itemType === 'reference' ? '📎 ' :
+                       '' // Regular task, no prefix needed
+    
     let extractedTask = {
-      title: smartTask.title,
+      title: smartTask.title.startsWith('📌') ? smartTask.title : titlePrefix + smartTask.title,
       description: smartTask.description,
-      priority: smartTask.priority,
+      // Adjust priority based on item type (temporary until we have proper categorization)
+      priority: itemType === 'read-later' ? 'low' : 
+                itemType === 'note' ? 'low' :
+                itemType === 'reminder' && emailCommand?.hasCommand ? 'medium' :
+                smartTask.priority,
       dueDate: smartTask.dueDate ? new Date(smartTask.dueDate) : null
     }
 
