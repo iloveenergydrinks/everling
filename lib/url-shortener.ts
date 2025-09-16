@@ -6,6 +6,15 @@ const generateShortCode = customAlphabet('23456789abcdefghjkmnpqrstuvwxyz', 8)
 
 export async function createShortLink(originalUrl: string, expiresInHours: number = 24): Promise<string> {
   try {
+    // Quick check if table exists (will fail gracefully if not)
+    try {
+      await prisma.shortLink.count()
+    } catch (error: any) {
+      if (error.code === 'P2021') {
+        console.warn('Short links table does not exist, returning original URL')
+        return originalUrl
+      }
+    }
     // Generate a unique short code
     let shortCode: string
     let attempts = 0
