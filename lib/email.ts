@@ -599,7 +599,7 @@ export async function processInboundEmail(emailData: EmailData) {
     
     // Determine what TYPE of item to create (for future implementation)
     let itemType = 'task' // Default for now, later: 'task' | 'reminder' | 'read-later' | 'reference' | 'note'
-    if (emailCommand?.hasCommand && emailCommand.type === 'remind') {
+    if (emailCommand?.hasCommand && emailCommand.commandType === 'remind') {
       itemType = 'reminder'
     } else if (smartTask.tags?.what === 'newsletter' || smartTask.tags?.what === 'article') {
       itemType = 'read-later'
@@ -609,7 +609,7 @@ export async function processInboundEmail(emailData: EmailData) {
     
     console.log('📧 Creating item:', { 
       type: itemType, 
-      priority: score, 
+      priority: safeScore, 
       hasCommand: !!emailCommand?.hasCommand,
       reason: 'User forwarded this email intentionally'
     })
@@ -621,7 +621,7 @@ export async function processInboundEmail(emailData: EmailData) {
         rawData: {
           ...(emailData as any),
           smartAnalysis: {
-            priorityScore: score,
+            priorityScore: safeScore,
             reasoning: priorityAnalysis?.reasoning || 'N/A',
             threadContext: threadContext
           },
@@ -640,7 +640,7 @@ export async function processInboundEmail(emailData: EmailData) {
           rawData: {
             ...(emailData as any),
             smartAnalysis: {
-              priorityScore: score,
+              priorityScore: safeScore,
               reasoning: priorityAnalysis?.reasoning || 'N/A',
               shouldCreateTask: false,
               threadContext: threadContext
@@ -661,8 +661,8 @@ export async function processInboundEmail(emailData: EmailData) {
         success: true,
         taskId: null,
         isActionable: false,
-        classification: { isActionable: false, type: 'fyi', confidence: score / 100 },
-        message: `Email logged but no task created (Priority: ${score}/100 - ${priorityAnalysis?.reasoning || 'N/A'})`
+        classification: { isActionable: false, type: 'fyi', confidence: safeScore / 100 },
+        message: `Email logged but no task created (Priority: ${safeScore}/100 - ${priorityAnalysis?.reasoning || 'N/A'})`
       }
     }
 
@@ -676,6 +676,50 @@ export async function processInboundEmail(emailData: EmailData) {
                 itemType === 'reminder' && emailCommand?.hasCommand ? 'medium' :
                 smartTask.priority,
       dueDate: smartTask.dueDate ? new Date(smartTask.dueDate) : null
+    }
+    
+    // If no dueDate but we have a when tag, try to parse it
+    if (!extractedTask.dueDate && smartTask.tags?.when) {
+      try {
+        const whenText = String(smartTask.tags.when)
+        // Try direct parsing
+        const parsedDate = new Date(whenText)
+        if (!isNaN(parsedDate.getTime()) && parsedDate.getFullYear() > 2020) {
+          extractedTask.dueDate = parsedDate
+          console.log('📧 Extracted dueDate from when tag:', { 
+            whenTag: whenText, 
+            dueDate: parsedDate.toISOString() 
+          })
+        } else {
+          // Try to extract date patterns like "18/09/2025" or "Sep 18, 2025"
+          const datePatterns = [
+            // DD/MM/YYYY
+            /(\d{1,2})\/(\d{1,2})\/(\d{4})/,
+            // Month DD, YYYY
+            /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w* (\d{1,2}),? (\d{4})/i,
+            // Thu, Sep 18, 2025
+            /\w+, (\w+) (\d{1,2}), (\d{4})/
+          ]
+          
+          for (const pattern of datePatterns) {
+            const match = whenText.match(pattern)
+            if (match) {
+              const attemptedDate = new Date(match[0])
+              if (!isNaN(attemptedDate.getTime()) && attemptedDate.getFullYear() > 2020) {
+                extractedTask.dueDate = attemptedDate
+                console.log('📧 Extracted dueDate from when tag pattern:', { 
+                  whenTag: whenText,
+                  pattern: pattern.source, 
+                  dueDate: attemptedDate.toISOString() 
+                })
+                break
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.log('📧 Could not parse when tag as date:', smartTask.tags?.when, e)
+      }
     }
 
     // Apply command parameters if available

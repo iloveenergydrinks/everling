@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { useSession, signOut } from "next-auth/react"
 import { formatDate, formatDateTime, generateApiKey } from "@/lib/utils"
 import { getSmartTaskList, interpretCommand, recordInteraction } from "@/lib/tasks"
+import { interpretSearchIntelligently } from "@/lib/tasks-ai"
 import { countries, getDefaultCountry, formatPhoneNumber } from "@/lib/countries"
 import { timezones, getTimeOptions, getUserTimezone } from "@/lib/timezones"
 import { NotificationSetup } from "@/components/notification-setup"
@@ -68,6 +69,8 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeFilters, setActiveFilters] = useState<string[]>([])
   const [showAllTasks, setShowAllTasks] = useState(false)
+  const [searchResults, setSearchResults] = useState<Task[]>([]) 
+  const [isSearching, setIsSearching] = useState(false)
   const [copied, setCopied] = useState(false)
   const [copiedText, setCopiedText] = useState("")
   const [newTasksCount, setNewTasksCount] = useState(0)
@@ -132,6 +135,61 @@ export default function DashboardPage() {
     
     return () => clearInterval(interval)
   }, [showEmailLogs])
+
+  // AI-powered search with debouncing - only when query changes
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([])
+      setIsSearching(false)
+      return
+    }
+
+    const searchTimeout = setTimeout(async () => {
+      setIsSearching(true)
+      try {
+        // Call the API endpoint that will use AI to interpret the search
+        const response = await fetch('/api/search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: searchQuery,
+            tasks: tasks,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+          })
+        })
+        
+        if (response.ok) {
+          const results = await response.json()
+          setSearchResults(results)
+        } else {
+          // Fallback to basic search if AI fails
+          const basicResults = interpretCommand(searchQuery, tasks, activeFilters)
+          setSearchResults(basicResults)
+        }
+      } catch (error) {
+        console.error('Search error:', error)
+        // Fallback to basic search
+        const basicResults = interpretCommand(searchQuery, tasks, activeFilters)
+        setSearchResults(basicResults)
+      } finally {
+        setIsSearching(false)
+      }
+    }, 500) // 500ms debounce for better UX
+
+    return () => clearTimeout(searchTimeout)
+  }, [searchQuery]) // Only re-run when searchQuery changes, not on every task update
+  
+  // Update search results when tasks change (without re-running AI)
+  useEffect(() => {
+    if (searchQuery.trim() && searchResults.length > 0 && !isSearching) {
+      // Update the existing search results with fresh task data
+      const resultIds = searchResults.map(r => r.id)
+      const updatedResults = tasks.filter(t => resultIds.includes(t.id))
+      setSearchResults(updatedResults)
+    }
+  }, [tasks])
 
   const fetchTasks = async () => {
     try {
@@ -585,13 +643,21 @@ export default function DashboardPage() {
 
   // Get smart task list based on search or default ordering
   const getVisibleTasks = (): Task[] => {
-    if (searchQuery.trim() || activeFilters.length > 0) {
-      // If searching, use the command interpreter
-      const searchResults = interpretCommand(searchQuery, tasks, activeFilters)
-      // Add relevance info to search results
+    // If we have AI search results, use them
+    if (searchQuery.trim() && searchResults.length >= 0) {
       return searchResults.map((task, index) => ({
         ...task,
         relevanceScore: 1000 - index, // Higher score for earlier results
+        relevanceReason: undefined
+      }))
+    }
+    
+    // If we have active filters but no search query, use basic filtering
+    if (activeFilters.length > 0) {
+      const filteredResults = interpretCommand("", tasks, activeFilters)
+      return filteredResults.map((task, index) => ({
+        ...task,
+        relevanceScore: 1000 - index,
         relevanceReason: undefined
       }))
     }
@@ -697,62 +763,45 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Ultra-minimal search bar */}
+          {/* Minimal AI search */}
           <div className="mb-8">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              {searchQuery && !isSearching ? (
+                <CheckCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+              ) : (
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              )}
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search in any language..."
-                className="w-full pl-10 pr-4 py-2 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                placeholder="Ask me anything..."
+                className="h-9 w-full rounded border border-input bg-background pl-9 pr-9 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') {
                     setSearchQuery('')
                   }
                 }}
               />
-              {searchQuery && (
+              {isSearching && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <RefreshCw className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400 animate-spin" />
+                </div>
+              )}
+              {searchQuery && !isSearching && (
                 <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    setSearchQuery('')
+                    setSearchResults([])
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  title="Clear search"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
               )}
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Filter by tags: what:invoice who:john when:tomorrow • Or just type to search
-            </p>
 
-            {/* Dynamic tag chips */}
-            {chips.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {chips.map(chip => {
-                  const token = `${chip.key}:${chip.value}`
-                  const active = activeFilters.includes(token)
-                  return (
-                    <button
-                      key={token}
-                      onClick={() => toggleFilter(chip.key, chip.value)}
-                      className={`text-xs px-2 py-0.5 border rounded-sm ${active ? 'bg-foreground text-background' : ''}`}
-                      title={`${chip.key}: ${chip.label}`}
-                    >
-                      {chip.label}
-                    </button>
-                  )
-                })}
-                {activeFilters.length > 0 && (
-                  <button
-                    onClick={() => setActiveFilters([])}
-                    className="text-xs px-2 py-0.5 border rounded-sm text-muted-foreground hover:text-foreground"
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Notification Onboarding - Show for new users or if not configured */}
@@ -774,10 +823,18 @@ export default function DashboardPage() {
             {visibleTasks.length === 0 ? (
               <div className="text-center py-12 border rounded">
                 <p className="text-sm text-muted-foreground">
-                  {searchQuery ? "No matching tasks" : "No tasks to show"}
+                  {searchQuery ? (
+                    isSearching ? "Searching..." : `No tasks found for "${searchQuery}"`
+                  ) : (
+                    "No tasks to show"
+                  )}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Forward an email to {agentEmail} to create your first task
+                  {searchQuery ? (
+                    "Try a different search or clear the search to see all tasks"
+                  ) : (
+                    `Forward an email to ${agentEmail} to create your first task`
+                  )}
                 </p>
               </div>
             ) : (
