@@ -14,7 +14,7 @@ import {
   Copy, Circle, Calendar, AlertCircle, Clock, 
   Inbox, ChevronUp, Mail, CheckCircle, RefreshCw,
   Plus, X, Search, ChevronDown, UserCheck, ArrowDownToLine,
-  Share2, Eye, Info, Users, UserX, GitBranch
+  Share2, Eye, Info, Users, UserX, GitBranch, User
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { showAlert, showConfirm, showPrompt } from "@/components/global-modal"
@@ -1118,6 +1118,14 @@ export default function DashboardPage() {
                               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded bg-purple-100/50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400">
                                 <ArrowDownToLine className="h-3 w-3" />
                                 assigned to me
+                              </span>
+                            )}
+                            
+                            {/* Show if this is a self-created task */}
+                            {task.taskType === 'self' && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs rounded bg-blue-100/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+                                <User className="h-3 w-3" />
+                                self
                               </span>
                             )}
                             

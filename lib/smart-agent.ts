@@ -483,6 +483,50 @@ Who should do this task? What's the recipient's role?`
 /**
  * Smart task extraction with thread context
  */
+// Helper function to process task data consistently
+function processTaskData(extracted: any, priorityScore: SmartPriorityScore) {
+  // Defensive defaults to avoid undefined.map errors
+  extracted.stakeholders = Array.isArray(extracted.stakeholders) ? extracted.stakeholders : []
+  extracted.dependencies = Array.isArray(extracted.dependencies) ? extracted.dependencies : []
+  // Ensure tags object exists with safe defaults
+  if (!extracted.tags || typeof extracted.tags !== 'object') {
+    extracted.tags = { when: null, where: null, who: null, what: null, extras: [] }
+  } else {
+    extracted.tags.when = extracted.tags.when ?? null
+    extracted.tags.where = extracted.tags.where ?? null
+    extracted.tags.who = extracted.tags.who ?? null
+    extracted.tags.what = extracted.tags.what ?? null
+    extracted.tags.extras = Array.isArray(extracted.tags.extras) ? extracted.tags.extras : []
+  }
+
+  // No fallback heuristics: rely on model to produce tags and metadata
+  console.log('🤖 Extracted tags:', extracted.tags)
+  console.log('🤖 Extracted task data:', {
+    title: extracted.title,
+    priority: extracted.priority,
+    hasDueDate: !!extracted.dueDate,
+    hasReminderDate: !!extracted.reminderDate
+  })
+  
+  // Map priority score to category
+  let priority: 'low' | 'medium' | 'high' = 'medium'
+  if (priorityScore.score <= 30) priority = 'low'
+  else if (priorityScore.score >= 71) priority = 'high'
+  
+  const finalTask = {
+    ...extracted,
+    priority,
+    stakeholders: extracted.stakeholders || [],
+    dependencies: extracted.dependencies || [],
+    projectTag: extracted.projectTag || null,
+    estimatedEffort: extracted.estimatedEffort || 'medium',
+    businessImpact: extracted.businessImpact || 'medium',
+    tags: extracted.tags
+  }
+  
+  return finalTask
+}
+
 export async function extractSmartTask(
   emailData: {
     from: string
@@ -493,6 +537,24 @@ export async function extractSmartTask(
   threadContext: ThreadContext | null,
   priorityScore: SmartPriorityScore
 ): Promise<{
+  title: string
+  description: string
+  priority: 'low' | 'medium' | 'high'
+  dueDate: Date | null
+  reminderDate: Date | null
+  estimatedEffort: string
+  businessImpact: string
+  stakeholders: string[]
+  projectTag: string | null
+  dependencies: string[]
+  tags?: {
+    when?: string | null
+    where?: string | null
+    who?: string | null
+    what?: string | null
+    extras?: string[]
+  }
+}[] | {
   title: string
   description: string
   priority: 'low' | 'medium' | 'high'
@@ -527,13 +589,23 @@ export async function extractSmartTask(
       temperature: 0.2,
       system: `You are an expert MULTILINGUAL task extraction specialist. Extract comprehensive task information from emails in ANY language, with special expertise in Italian and English.
 
+CRITICAL NEW CAPABILITY: MULTIPLE TASK EXTRACTION
+When an email contains MULTIPLE distinct tasks (each with different deadlines or actions):
+1. Return an ARRAY of tasks in JSON: {"tasks": [...]}
+2. Each task should have its own title, description, and due date
+3. Look for patterns like:
+   - Multiple lines with different dates ("X entro 18/09, Y entro 23/09")
+   - Numbered lists with different items
+   - Multiple "da fare" or "to do" items
+   - Different projects or topics in the same email
+
 EXTRACTION PRINCIPLES:
 1. ALWAYS create a task title - even for FYI emails with commands, newsletters with reminders, etc.
 2. Task title must be actionable and specific IN THE ORIGINAL LANGUAGE
 3. Include all relevant context in descriptions
 4. Identify stakeholders and dependencies  
 5. Estimate effort and business impact
-6. Extract dates and deadlines intelligently
+6. Extract dates and deadlines intelligently FROM THE EMAIL CONTENT (not invented)
 7. Tag with project/initiative if applicable
 
 SPECIAL CASE: Forwarded newsletters/articles with reminder commands
@@ -588,7 +660,9 @@ BUSINESS IMPACT:
 - medium: Team affecting, process improvement
 - high: Revenue affecting, customer facing, critical operations
 
-REQUIRED JSON STRUCTURE (all fields must be present):
+REQUIRED JSON STRUCTURE:
+
+FOR SINGLE TASK (when email has only one action item):
 {
   "title": "string - REQUIRED, NEVER null/undefined",
   "description": "string - REQUIRED, NEVER null/undefined", 
@@ -609,7 +683,31 @@ REQUIRED JSON STRUCTURE (all fields must be present):
   }
 }
 
-NEVER return partial objects. ALWAYS include title and description even for newsletters/FYI emails.`,
+FOR MULTIPLE TASKS (when email has multiple distinct items):
+{
+  "tasks": [
+    {
+      "title": "Recap PMS punti aperti",
+      "description": "...",
+      "priority": "medium",
+      "dueDate": "2025-09-18T00:00:00Z",
+      ... all other fields ...
+    },
+    {
+      "title": "Recap punti aperti Y180",
+      "description": "...",
+      "priority": "medium", 
+      "dueDate": "2025-09-23T00:00:00Z",
+      ... all other fields ...
+    }
+  ]
+}
+
+IMPORTANT: 
+- If you find multiple tasks with different deadlines, use the array format
+- Each task must have all required fields
+- Due dates must be extracted from the email, not invented
+- NEVER return partial objects. ALWAYS include title and description.`,
       messages: [{
         role: 'user',
         content: `Extract task from this email:
@@ -652,52 +750,33 @@ Extract comprehensive task information with smart analysis.`
       const jsonMatch = content.text.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
         console.log('🤖 Found JSON in response, parsing...')
-        let extracted = JSON.parse(jsonMatch[0])
-        // Handle nested `task` object responses
-        if (extracted && typeof extracted === 'object' && extracted.task && typeof extracted.task === 'object') {
-          extracted = extracted.task
-        }
-        // Defensive defaults to avoid undefined.map errors
-        extracted.stakeholders = Array.isArray(extracted.stakeholders) ? extracted.stakeholders : []
-        extracted.dependencies = Array.isArray(extracted.dependencies) ? extracted.dependencies : []
-        // Ensure tags object exists with safe defaults
-        if (!extracted.tags || typeof extracted.tags !== 'object') {
-          extracted.tags = { when: null, where: null, who: null, what: null, extras: [] }
+        let parsed = JSON.parse(jsonMatch[0])
+        
+        // Check if this is a multi-task response
+        if (parsed && parsed.tasks && Array.isArray(parsed.tasks)) {
+          console.log('🤖 Multiple tasks detected:', parsed.tasks.length)
+          
+          // Process each task in the array
+          const processedTasks = parsed.tasks.map((task: any) => {
+            // Apply same processing to each task
+            const processed = processTaskData(task, priorityScore)
+            return processed
+          })
+          
+          // Return array of tasks
+          return processedTasks
         } else {
-          extracted.tags.when = extracted.tags.when ?? null
-          extracted.tags.where = extracted.tags.where ?? null
-          extracted.tags.who = extracted.tags.who ?? null
-          extracted.tags.what = extracted.tags.what ?? null
-          extracted.tags.extras = Array.isArray(extracted.tags.extras) ? extracted.tags.extras : []
+          // Single task response - process normally
+          let extracted = parsed
+          // Handle nested `task` object responses
+          if (extracted && typeof extracted === 'object' && extracted.task && typeof extracted.task === 'object') {
+            extracted = extracted.task
+          }
+          
+          const processedTask = processTaskData(extracted, priorityScore)
+          console.log('🤖 Task extraction successful:', processedTask.title)
+          return processedTask
         }
-
-        // No fallback heuristics: rely on model to produce tags and metadata
-        console.log('🤖 Extracted tags:', extracted.tags)
-        console.log('🤖 Extracted task data:', {
-          title: extracted.title,
-          priority: extracted.priority,
-          hasDueDate: !!extracted.dueDate,
-          hasReminderDate: !!extracted.reminderDate
-        })
-        
-        // Map priority score to category
-        let priority: 'low' | 'medium' | 'high' = 'medium'
-        if (priorityScore.score <= 30) priority = 'low'
-        else if (priorityScore.score >= 71) priority = 'high'
-        
-        const finalTask = {
-          ...extracted,
-          priority,
-          stakeholders: extracted.stakeholders || [],
-          dependencies: extracted.dependencies || [],
-          projectTag: extracted.projectTag || null,
-          estimatedEffort: extracted.estimatedEffort || 'medium',
-          businessImpact: extracted.businessImpact || 'medium',
-          tags: extracted.tags
-        }
-        
-        console.log('🤖 Task extraction successful:', finalTask.title)
-        return finalTask
       } else {
         console.error('🤖 No JSON found in Claude response')
       }

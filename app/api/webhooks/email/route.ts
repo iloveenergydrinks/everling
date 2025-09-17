@@ -119,7 +119,11 @@ export async function POST(request: NextRequest) {
             console.log(`Async email processed: taskId=${(res as any).id}`)
           } else if (res && typeof res === 'object' && 'taskId' in res) {
             const r: any = res
-            console.log(`Async email processed: taskId=${r.taskId}`)
+            if (r.taskIds && Array.isArray(r.taskIds)) {
+              console.log(`Async email processed: ${r.taskIds.length} tasks created: ${r.taskIds.join(', ')}`)
+            } else {
+              console.log(`Async email processed: taskId=${r.taskId}`)
+            }
           } else {
             console.log('Async email processed (no task)')
           }

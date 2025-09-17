@@ -12,6 +12,7 @@ import {
   analyzeDeadlineIntelligence, 
   applySmartDeadlines 
 } from '@/lib/smart-deadlines'
+import { createMultipleTasksFromEmail } from '@/lib/email-multi-task'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -193,8 +194,14 @@ export async function processInboundEmail(emailData: EmailData) {
   
   let originalRecipient = ''
   
-  // First check ToFull array if it exists
-  if (emailData.ToFull && Array.isArray(emailData.ToFull) && emailData.ToFull.length > 0) {
+  // First, check if the To field directly contains an everling.io address (common in direct webhooks)
+  if (emailData.To && emailData.To.includes('@everling.io')) {
+    originalRecipient = emailData.To
+    console.log('Found recipient in To field:', originalRecipient)
+  }
+  
+  // If not found, check ToFull array if it exists
+  if (!originalRecipient && emailData.ToFull && Array.isArray(emailData.ToFull) && emailData.ToFull.length > 0) {
     const everlingRecipient = emailData.ToFull.find((r: any) => 
       r.Email && r.Email.includes('@everling.io')
     )
@@ -318,6 +325,22 @@ export async function processInboundEmail(emailData: EmailData) {
         senderEmail
       }
     }
+    
+    // Create email log immediately to show processing status
+    emailLog = await prisma.emailLog.create({
+      data: {
+        fromEmail: emailData.From,
+        toEmail: emailData.To,
+        subject: emailData.Subject,
+        rawData: emailData as any,
+        processed: false,
+        organizationId: organization.id,
+        messageId: emailData.MessageID || null,
+        threadId: threadId,
+        inReplyTo: threadId,
+        senderAllowed: false, // Will update after checking
+      }
+    })
 
     // Check if sender is in allowed list
     const isAllowed = organization.allowedEmails.some(
@@ -352,18 +375,10 @@ export async function processInboundEmail(emailData: EmailData) {
       isThreadReply = !!threadEmails
     }
 
-    // Now create the email log with the correct organizationId
-    emailLog = await prisma.emailLog.create({
+    // Update the email log with sender allowed status
+    emailLog = await prisma.emailLog.update({
+      where: { id: emailLog.id },
       data: {
-        fromEmail: emailData.From,
-        toEmail: emailData.To,
-        subject: emailData.Subject,
-        rawData: emailData as any,
-        processed: false,
-        organizationId: organization.id,
-        messageId: emailData.MessageID || null,
-        threadId: threadId,
-        inReplyTo: threadId,
         senderAllowed: isAllowed || isThreadReply,
       }
     })
@@ -718,18 +733,47 @@ export async function processInboundEmail(emailData: EmailData) {
     // The AI's job is to organize, not gatekeep
     const shouldCreateTask = true // Always create something when email is forwarded
     
-    // Determine what TYPE of item to create (for future implementation)
-    let itemType = 'task' // Default for now, later: 'task' | 'reminder' | 'read-later' | 'reference' | 'note'
-    if (emailCommand?.hasCommand && emailCommand.commandType === 'remind') {
-      itemType = 'reminder'
-    } else if (smartTask.tags?.what === 'newsletter' || smartTask.tags?.what === 'article') {
-      itemType = 'read-later'
-    } else if (smartTask.businessImpact === 'low' && smartTask.estimatedEffort === 'quick') {
-      itemType = 'note'
+    // Check if we have multiple tasks or a single task
+    const isMultipleTasks = Array.isArray(smartTask)
+    
+    // Handle multiple tasks case
+    if (isMultipleTasks) {
+      console.log('📧 Multiple tasks detected:', { 
+        count: smartTask.length,
+        titles: smartTask.map(t => t.title),
+        reason: 'Email contains multiple distinct action items'
+      })
+      
+      // Create multiple tasks using the dedicated handler
+      const createdTasks = await createMultipleTasksFromEmail(
+        smartTask,
+        emailData,
+        organization,
+        emailLog,
+        {
+          emailCommand,
+          threadId,
+          toEmail,
+          senderEmail,
+          priorityAnalysis,
+          senderHistory,
+          threadContext,
+          bodyText
+        }
+      )
+      
+      return {
+        success: true,
+        taskIds: createdTasks.map(t => t.id),
+        taskId: createdTasks[0]?.id || null, // For backwards compatibility
+        message: `Created ${createdTasks.length} tasks from email`,
+        tasks: createdTasks
+      }
     }
     
-    console.log('📧 Creating item:', { 
-      type: itemType, 
+    // Single task case - continue with existing logic
+    console.log('📧 Single task to process:', { 
+      title: smartTask.title,
       priority: safeScore, 
       hasCommand: !!emailCommand?.hasCommand,
       reason: 'User forwarded this email intentionally'
@@ -786,7 +830,17 @@ export async function processInboundEmail(emailData: EmailData) {
         message: `Email logged but no task created (Priority: ${safeScore}/100 - ${priorityAnalysis?.reasoning || 'N/A'})`
       }
     }
-
+    
+    // Determine item type for single task
+    let itemType = 'task' // Default for now
+    if (emailCommand?.hasCommand && emailCommand.commandType === 'remind') {
+      itemType = 'reminder'
+    } else if (smartTask.tags?.what === 'newsletter' || smartTask.tags?.what === 'article') {
+      itemType = 'read-later'
+    } else if (smartTask.businessImpact === 'low' && smartTask.estimatedEffort === 'quick') {
+      itemType = 'note'
+    }
+    
     // Build task payload from AI result
     let extractedTask = {
       title: smartTask.title,
@@ -798,6 +852,7 @@ export async function processInboundEmail(emailData: EmailData) {
                 smartTask.priority,
       dueDate: smartTask.dueDate ? new Date(smartTask.dueDate) : null
     }
+    
     
     // If no dueDate but we have a when tag, try to parse it
     if (!extractedTask.dueDate && smartTask.tags?.when) {
@@ -959,6 +1014,49 @@ export async function processInboundEmail(emailData: EmailData) {
       toEmail
     )
     console.log('🤖 Task relationships:', relationships)
+
+    // Check for duplicate task before creating (single task)
+    // Look for tasks created in the last hour with same title and due date
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+    const existingDuplicate = await prisma.task.findFirst({
+      where: {
+        organizationId: organization.id,
+        title: extractedTask.title,
+        dueDate: extractedTask.dueDate,
+        createdAt: {
+          gte: oneHourAgo
+        },
+        // Only check non-completed tasks
+        status: {
+          not: 'done'
+        }
+      }
+    })
+
+    if (existingDuplicate) {
+      console.log(`📧 Duplicate task detected: "${extractedTask.title}" - returning existing task`)
+      
+      // Update email log to reference the existing task
+      await prisma.emailLog.update({
+        where: { id: emailLog.id },
+        data: { 
+          processed: true,
+          taskId: existingDuplicate.id,
+          rawData: {
+            ...(emailData as any),
+            duplicateDetected: true,
+            originalTaskId: existingDuplicate.id
+          }
+        }
+      })
+
+      return {
+        success: true,
+        taskId: existingDuplicate.id,
+        message: `Duplicate task detected - returning existing task: ${existingDuplicate.title}`,
+        isDuplicate: true
+      }
+    }
 
     const task = await prisma.task.create({
       data: {

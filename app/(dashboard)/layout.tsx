@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { EmailProcessingIndicator } from "@/components/email-processing-indicator"
 
 export default async function DashboardLayout({
   children,
@@ -16,6 +17,7 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen bg-background">
       {children}
+      <EmailProcessingIndicator />
     </div>
   )
 }
