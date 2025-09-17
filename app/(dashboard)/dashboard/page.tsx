@@ -178,7 +178,7 @@ export default function DashboardPage() {
       const target = lowerQuery.substring(7)
       let targetTasks: Task[] = []
       
-      if (target === 'all') {
+      if (target === 'all' || target === 'everything') {
         targetTasks = currentTasks.filter(t => t.status !== 'done')
       } else if (target === 'completed' || target === 'done') {
         targetTasks = tasks.filter(t => t.status === 'done')
@@ -201,6 +201,7 @@ export default function DashboardPage() {
           targets: targetTasks,
           confirmation: `Delete ${targetTasks.length} task${targetTasks.length > 1 ? 's' : ''}? Type "yes" or press Enter to confirm.`
         })
+        setSearchQuery('') // Clear the input for user to type "yes"
         return true
       }
     }
@@ -210,7 +211,7 @@ export default function DashboardPage() {
       const target = lowerQuery.replace(/^(complete|done) /, '')
       let targetTasks: Task[] = []
       
-      if (target === 'all') {
+      if (target === 'all' || target === 'everything') {
         targetTasks = currentTasks.filter(t => t.status !== 'done')
       } else if (target === 'today') {
         const today = new Date().toLocaleDateString('en-CA')
@@ -227,6 +228,7 @@ export default function DashboardPage() {
           targets: targetTasks,
           confirmation: `Complete ${targetTasks.length} task${targetTasks.length > 1 ? 's' : ''}? Type "yes" or press Enter to confirm.`
         })
+        setSearchQuery('') // Clear the input for user to type "yes"
         return true
       }
     }
@@ -279,6 +281,11 @@ export default function DashboardPage() {
       return
     }
 
+    // Skip if we're already in command mode
+    if (commandMode) {
+      return
+    }
+
     // Check if it's a command first
     if (processCommand(searchQuery, tasks)) {
       return // Command mode activated, don't search
@@ -319,7 +326,7 @@ export default function DashboardPage() {
     }, 500) // 500ms debounce for better UX
 
     return () => clearTimeout(searchTimeout)
-  }, [searchQuery, tasks]) // Re-run when searchQuery or tasks change
+  }, [searchQuery]) // Only re-run when searchQuery changes, not tasks
   
   // Update search results when tasks change (without re-running AI)
   useEffect(() => {
@@ -1072,7 +1079,7 @@ export default function DashboardPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={commandMode ? commandMode.confirmation : "Ask me anything..."}
+                placeholder={commandMode ? 'Type "yes" to confirm or Escape to cancel' : "Ask me anything..."}
                 className={`${searchFocused ? 'h-12' : 'h-9'} w-full rounded border ${
                   commandMode ? 'border-orange-500 dark:border-orange-400' : searchFocused ? 'border-primary' : 'border-input'
                 } bg-background pl-10 pr-10 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all duration-200`}
@@ -1084,10 +1091,8 @@ export default function DashboardPage() {
                     setCommandMode(null)
                     setSearchFocused(false)
                     e.currentTarget.blur()
-                  } else if (e.key === 'Enter' && commandMode) {
-                    if (searchQuery.toLowerCase() === 'yes' || searchQuery === commandMode.command + ' ' + commandMode.targets.length) {
-                      executeCommand()
-                    }
+                  } else if (e.key === 'Enter' && commandMode && searchQuery.toLowerCase() === 'yes') {
+                    executeCommand()
                   }
                 }}
               />
@@ -1115,35 +1120,56 @@ export default function DashboardPage() {
             {searchFocused && !searchQuery && !commandMode && (
               <div className="mt-3 flex flex-wrap gap-2 animate-in fade-in duration-200">
                 <button
-                  onClick={() => setSearchQuery('high priority')}
+                  onClick={() => {
+                    setSearchQuery('high priority')
+                    setSearchFocused(false)
+                  }}
                   className="inline-flex items-center px-2 py-1 text-xs rounded bg-muted/50 hover:bg-muted text-muted-foreground transition-colors"
                 >
                   <Search className="h-3 w-3 mr-1" />
                   high priority
                 </button>
                 <button
-                  onClick={() => setSearchQuery('due today')}
+                  onClick={() => {
+                    setSearchQuery('due today')
+                    setSearchFocused(false)
+                  }}
                   className="inline-flex items-center px-2 py-1 text-xs rounded bg-muted/50 hover:bg-muted text-muted-foreground transition-colors"
                 >
                   <Calendar className="h-3 w-3 mr-1" />
                   due today
                 </button>
                 <button
-                  onClick={() => setSearchQuery('from kevin')}
+                  onClick={() => {
+                    setSearchQuery('from kevin')
+                    setSearchFocused(false)
+                  }}
                   className="inline-flex items-center px-2 py-1 text-xs rounded bg-muted/50 hover:bg-muted text-muted-foreground transition-colors"
                 >
                   <User className="h-3 w-3 mr-1" />
                   from kevin
                 </button>
                 <button
-                  onClick={() => setSearchQuery('delete all')}
+                  onClick={() => {
+                    const query = 'delete all'
+                    setSearchQuery(query)
+                    setSearchFocused(false)
+                    // Trigger the command processing
+                    setTimeout(() => processCommand(query, tasks), 100)
+                  }}
                   className="inline-flex items-center px-2 py-1 text-xs rounded bg-red-100/50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 transition-colors"
                 >
                   <AlertTriangle className="h-3 w-3 mr-1" />
                   delete all
                 </button>
                 <button
-                  onClick={() => setSearchQuery('complete today')}
+                  onClick={() => {
+                    const query = 'complete today'
+                    setSearchQuery(query)
+                    setSearchFocused(false)
+                    // Trigger the command processing
+                    setTimeout(() => processCommand(query, tasks), 100)
+                  }}
                   className="inline-flex items-center px-2 py-1 text-xs rounded bg-green-100/50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 transition-colors"
                 >
                   <CheckCircle className="h-3 w-3 mr-1" />
