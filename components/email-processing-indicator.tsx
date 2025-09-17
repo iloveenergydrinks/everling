@@ -50,15 +50,17 @@ export function EmailProcessingIndicator() {
     <div className="fixed bottom-4 right-4 z-50 space-y-2">
       {isProcessing && (
         <div className={cn(
-          "bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg shadow-xl p-4 flex items-center gap-4",
+          "bg-background border rounded shadow-lg p-3 flex items-center gap-3",
           "animate-in slide-in-from-bottom-2 duration-300",
-          "min-w-[320px]"
+          "min-w-[280px]"
         )}>
           <div className="flex items-center justify-center">
-            <div className="relative bg-blue-50 dark:bg-blue-950/30 rounded-full p-2">
-              <Mail className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              <div className="absolute -top-1 -right-1 bg-white dark:bg-gray-950 rounded-full p-0.5">
-                <Loader2 className="h-3 w-3 animate-spin text-blue-600 dark:text-blue-400" />
+            <div className="relative">
+              <div className="bg-muted rounded-full p-1.5">
+                <Mail className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div className="absolute -top-0.5 -right-0.5 bg-background rounded-full p-0.5 border">
+                <Loader2 className="h-2.5 w-2.5 animate-spin text-primary" />
               </div>
             </div>
           </div>
@@ -73,14 +75,14 @@ export function EmailProcessingIndicator() {
 
       {showSuccess && !isProcessing && (
         <div className={cn(
-          "border rounded-lg shadow-lg p-4 flex items-center gap-4",
+          "border rounded shadow-lg p-3 flex items-center gap-3",
           "animate-in slide-in-from-bottom-2 duration-300",
-          "min-w-[320px]",
-          "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/50"
+          "min-w-[280px]",
+          "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20"
         )}>
-          <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
           <div className="flex-1">
-            <p className="text-sm font-medium text-green-800 dark:text-green-100">
+            <p className="text-sm font-medium text-green-700 dark:text-green-400">
               Tasks created successfully!
             </p>
             <p className="text-xs text-green-600 dark:text-green-400">
