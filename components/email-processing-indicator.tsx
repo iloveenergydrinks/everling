@@ -50,15 +50,15 @@ export function EmailProcessingIndicator() {
     <div className="fixed bottom-4 right-4 z-50 space-y-2">
       {isProcessing && (
         <div className={cn(
-          "bg-background border rounded-lg shadow-lg p-4 flex items-center gap-4",
+          "bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg shadow-xl p-4 flex items-center gap-4",
           "animate-in slide-in-from-bottom-2 duration-300",
           "min-w-[320px]"
         )}>
           <div className="flex items-center justify-center">
-            <div className="relative">
-              <Mail className="h-5 w-5 text-muted-foreground" />
-              <div className="absolute -top-1 -right-1">
-                <Loader2 className="h-3 w-3 animate-spin text-primary" />
+            <div className="relative bg-blue-50 dark:bg-blue-950/30 rounded-full p-2">
+              <Mail className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div className="absolute -top-1 -right-1 bg-white dark:bg-gray-950 rounded-full p-0.5">
+                <Loader2 className="h-3 w-3 animate-spin text-blue-600 dark:text-blue-400" />
               </div>
             </div>
           </div>
