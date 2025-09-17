@@ -95,9 +95,12 @@ export async function createMultipleTasksFromEmail(
   for (let index = 0; index < tasksData.length; index++) {
     const taskData = tasksData[index]
     
-    // Check task limit
-    if (organization.tasksCreated >= organization.taskLimit) {
-      console.log(`📧 Task limit reached after creating ${index} of ${tasksData.length} tasks`)
+    // Check monthly task limit
+    const { canCreateTask, incrementMonthlyTaskCount } = await import('@/lib/monthly-limits')
+    const limitCheck = await canCreateTask(organization.id)
+    
+    if (!limitCheck.canCreate) {
+      console.log(`📧 Monthly task limit reached after creating ${index} of ${tasksData.length} tasks`)
       break
     }
 
@@ -278,11 +281,8 @@ export async function createMultipleTasksFromEmail(
       })
     }
 
-    // Update organization task count
-    await prisma.organization.update({
-      where: { id: organization.id },
-      data: { tasksCreated: { increment: 1 } }
-    })
+    // Update organization task count (both total and monthly)
+    await incrementMonthlyTaskCount(organization.id)
 
     // Apply smart deadline analysis to the created task
     await applySmartDeadlines(

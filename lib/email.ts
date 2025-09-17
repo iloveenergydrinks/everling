@@ -924,17 +924,49 @@ export async function processInboundEmail(emailData: EmailData) {
       }
     }
 
-    // Create new task with smart metadata and thread tracking (inside main try)
-    /* DUPLICATE BLOCK COMMENTED OUT: Check task limit only when creating new tasks */
-    if (organization.tasksCreated >= organization.taskLimit) {
+    // Check monthly task limit before creating new task
+    const { canCreateTask, incrementMonthlyTaskCount } = await import('@/lib/monthly-limits')
+    const limitCheck = await canCreateTask(organization.id)
+    
+    if (!limitCheck.canCreate) {
       await prisma.emailLog.update({
         where: { id: emailLog.id },
         data: { 
           processed: true,
-          error: 'Organization has reached task limit'
+          error: `Monthly task limit reached (${limitCheck.used}/${limitCheck.limit}). Resets ${limitCheck.resetsIn}`
         }
       })
-      throw new Error('Organization has reached task limit')
+      
+      // Send a friendly email back to the user about the limit
+      if (emailData.From && emailData.From !== 'noreply@postmarkapp.com') {
+        try {
+          await sendEmail({
+            to: emailData.From,
+            subject: 'Monthly Task Limit Reached - Upgrade to Continue',
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2>Monthly Task Limit Reached</h2>
+                <p>You've used all ${limitCheck.limit} tasks in your free plan this month.</p>
+                <p>Your limit will reset ${limitCheck.resetsIn}.</p>
+                <h3>Upgrade to Pro for:</h3>
+                <ul>
+                  <li>✅ Unlimited tasks</li>
+                  <li>📱 SMS notifications</li>
+                  <li>⚡ Priority support</li>
+                  <li>🎯 Advanced AI features</li>
+                </ul>
+                <p><a href="${process.env.NEXTAUTH_URL}/dashboard/settings" style="background: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Upgrade Now</a></p>
+                <p style="color: #666; font-size: 12px;">Your task was not created due to the limit. Please upgrade or wait for the monthly reset.</p>
+              </div>
+            `,
+            text: `Monthly task limit reached (${limitCheck.used}/${limitCheck.limit}). Upgrade to Pro for unlimited tasks. Resets ${limitCheck.resetsIn}.`
+          })
+        } catch (e) {
+          console.error('Failed to send limit notification email:', e)
+        }
+      }
+      
+      throw new Error(`Monthly task limit reached (${limitCheck.used}/${limitCheck.limit})`)
     }
 
     // Use smart task extraction result to prepare payload (already defined above)
@@ -1126,11 +1158,8 @@ export async function processInboundEmail(emailData: EmailData) {
       })
     }
 
-    // Update organization task count
-    await prisma.organization.update({
-      where: { id: organization.id },
-      data: { tasksCreated: { increment: 1 } }
-    })
+    // Update organization task count (both total and monthly)
+    await incrementMonthlyTaskCount(organization.id)
 
     // Apply smart deadline analysis to the created task
     await applySmartDeadlines(

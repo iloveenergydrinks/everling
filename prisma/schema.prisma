@@ -15,6 +15,11 @@ model Organization {
   plan         String   @default("free")
   taskLimit    Int      @default(100) @map("task_limit")
   tasksCreated Int      @default(0) @map("tasks_created")
+  
+  // Monthly task tracking
+  monthlyTasksUsed  Int      @default(0) @map("monthly_tasks_used")
+  monthlyResetDate  DateTime @default(now()) @map("monthly_reset_date")
+  
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 

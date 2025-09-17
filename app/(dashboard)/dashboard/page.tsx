@@ -867,6 +867,39 @@ export default function DashboardPage() {
               </p>
             </div>
           )}
+
+          {/* Monthly Usage Warning Banner */}
+          {organization && organization.plan === 'free' && (
+            <>
+              {organization.monthlyTasksUsed >= organization.taskLimit ? (
+                <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded transition-all duration-300">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-red-700 dark:text-red-400">
+                      ⚠️ Monthly limit reached! You've used all {organization.taskLimit} tasks this month.
+                    </p>
+                    <button
+                      onClick={() => setShowSettings(true)}
+                      className="text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                    >
+                      Upgrade to Pro
+                    </button>
+                  </div>
+                </div>
+              ) : organization.monthlyTasksUsed >= organization.taskLimit * 0.95 ? (
+                <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded transition-all duration-300">
+                  <p className="text-sm text-orange-700 dark:text-orange-400">
+                    ⚠️ Only {organization.taskLimit - organization.monthlyTasksUsed} tasks remaining this month!
+                  </p>
+                </div>
+              ) : organization.monthlyTasksUsed >= organization.taskLimit * 0.8 ? (
+                <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded transition-all duration-300">
+                  <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                    You've used {organization.monthlyTasksUsed} of {organization.taskLimit} tasks this month
+                  </p>
+                </div>
+              ) : null}
+            </>
+          )}
           
           {/* Header with Agent Email - with gradient background */}
           <div className="mb-12 p-8 border rounded-md relative overflow-hidden">
@@ -1366,7 +1399,7 @@ export default function DashboardPage() {
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Usage</p>
-                        <p className="text-sm">{organization?.tasksCreated || 0} / {organization?.taskLimit || 100} tasks</p>
+                        <p className="text-sm">{organization?.monthlyTasksUsed || 0} / {organization?.taskLimit || 100} this month</p>
                       </div>
                     </div>
                   </div>

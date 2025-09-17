@@ -108,6 +108,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check monthly task limit
+    const { canCreateTask, incrementMonthlyTaskCount } = await import('@/lib/monthly-limits')
+    const limitCheck = await canCreateTask(auth.organizationId)
+    
+    if (!limitCheck.canCreate) {
+      return NextResponse.json(
+        { 
+          error: "Monthly task limit reached",
+          details: {
+            used: limitCheck.used,
+            limit: limitCheck.limit,
+            resetsIn: limitCheck.resetsIn,
+            message: `You've reached your monthly limit of ${limitCheck.limit} tasks. Upgrade to Pro for unlimited tasks or wait for reset ${limitCheck.resetsIn}.`
+          }
+        },
+        { status: 403 }
+      )
+    }
+
     const task = await prisma.task.create({
       data: {
         organizationId: auth.organizationId,
@@ -137,11 +156,8 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Update organization task count
-    await prisma.organization.update({
-      where: { id: auth.organizationId },
-      data: { tasksCreated: { increment: 1 } }
-    })
+    // Update organization task count (both total and monthly)
+    await incrementMonthlyTaskCount(auth.organizationId)
 
     return NextResponse.json(task)
 
