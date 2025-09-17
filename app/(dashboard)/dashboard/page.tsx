@@ -93,6 +93,7 @@ export default function DashboardPage() {
     targets: Task[]
     confirmation: string
   } | null>(null)
+  const [searchFocused, setSearchFocused] = useState(false)
   
   // New filter state
   const [filters, setFilters] = useState<FilterState>({
@@ -169,7 +170,7 @@ export default function DashboardPage() {
   }, [showEmailLogs])
 
   // Process commands like "delete all", "complete today", etc.
-  const processCommand = (query: string) => {
+  const processCommand = (query: string, currentTasks: Task[]) => {
     const lowerQuery = query.toLowerCase().trim()
     
     // Check for delete commands
@@ -178,17 +179,17 @@ export default function DashboardPage() {
       let targetTasks: Task[] = []
       
       if (target === 'all') {
-        targetTasks = visibleTasks
+        targetTasks = currentTasks.filter(t => t.status !== 'done')
       } else if (target === 'completed' || target === 'done') {
         targetTasks = tasks.filter(t => t.status === 'done')
       } else if (target === 'today') {
         const today = new Date().toLocaleDateString('en-CA')
-        targetTasks = visibleTasks.filter(t => 
+        targetTasks = currentTasks.filter(t => 
           t.dueDate && new Date(t.dueDate).toLocaleDateString('en-CA') === today
         )
       } else if (target === 'overdue') {
         const today = new Date().toLocaleDateString('en-CA')
-        targetTasks = visibleTasks.filter(t => 
+        targetTasks = currentTasks.filter(t => 
           t.dueDate && new Date(t.dueDate).toLocaleDateString('en-CA') < today
         )
       }
@@ -210,10 +211,10 @@ export default function DashboardPage() {
       let targetTasks: Task[] = []
       
       if (target === 'all') {
-        targetTasks = visibleTasks.filter(t => t.status !== 'done')
+        targetTasks = currentTasks.filter(t => t.status !== 'done')
       } else if (target === 'today') {
         const today = new Date().toLocaleDateString('en-CA')
-        targetTasks = visibleTasks.filter(t => 
+        targetTasks = currentTasks.filter(t => 
           t.status !== 'done' && t.dueDate && 
           new Date(t.dueDate).toLocaleDateString('en-CA') === today
         )
@@ -279,7 +280,7 @@ export default function DashboardPage() {
     }
 
     // Check if it's a command first
-    if (processCommand(searchQuery)) {
+    if (processCommand(searchQuery, tasks)) {
       return // Command mode activated, don't search
     }
 
@@ -318,7 +319,7 @@ export default function DashboardPage() {
     }, 500) // 500ms debounce for better UX
 
     return () => clearTimeout(searchTimeout)
-  }, [searchQuery, visibleTasks]) // Only re-run when searchQuery changes, not on every task update
+  }, [searchQuery, tasks]) // Re-run when searchQuery or tasks change
   
   // Update search results when tasks change (without re-running AI)
   useEffect(() => {
@@ -1061,24 +1062,28 @@ export default function DashboardPage() {
           <div className="mb-8">
             <div className="relative">
               {commandMode ? (
-                <AlertTriangle className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
+                <AlertTriangle className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-orange-600 dark:text-orange-400" />
               ) : searchQuery && !isSearching ? (
-                <CheckCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                <CheckCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-600 dark:text-green-400" />
               ) : (
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               )}
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={commandMode ? commandMode.confirmation : "Ask me anything..."}
-                className={`h-9 w-full rounded border ${
-                  commandMode ? 'border-orange-500 dark:border-orange-400' : 'border-input'
-                } bg-background pl-9 pr-9 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring`}
+                className={`${searchFocused ? 'h-12' : 'h-9'} w-full rounded border ${
+                  commandMode ? 'border-orange-500 dark:border-orange-400' : searchFocused ? 'border-primary' : 'border-input'
+                } bg-background pl-10 pr-10 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all duration-200`}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') {
                     setSearchQuery('')
                     setCommandMode(null)
+                    setSearchFocused(false)
+                    e.currentTarget.blur()
                   } else if (e.key === 'Enter' && commandMode) {
                     if (searchQuery.toLowerCase() === 'yes' || searchQuery === commandMode.command + ' ' + commandMode.targets.length) {
                       executeCommand()
@@ -1088,7 +1093,7 @@ export default function DashboardPage() {
               />
               {isSearching && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <RefreshCw className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400 animate-spin" />
+                  <RefreshCw className="h-4 w-4 text-emerald-500 dark:text-emerald-400 animate-spin" />
                 </div>
               )}
               {(searchQuery && !isSearching) || commandMode ? (
@@ -1101,10 +1106,51 @@ export default function DashboardPage() {
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   title="Clear"
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <X className="h-4 w-4" />
                 </button>
               ) : null}
             </div>
+            
+            {/* Command suggestions when focused */}
+            {searchFocused && !searchQuery && !commandMode && (
+              <div className="mt-3 flex flex-wrap gap-2 animate-in fade-in duration-200">
+                <button
+                  onClick={() => setSearchQuery('high priority')}
+                  className="inline-flex items-center px-2 py-1 text-xs rounded bg-muted/50 hover:bg-muted text-muted-foreground transition-colors"
+                >
+                  <Search className="h-3 w-3 mr-1" />
+                  high priority
+                </button>
+                <button
+                  onClick={() => setSearchQuery('due today')}
+                  className="inline-flex items-center px-2 py-1 text-xs rounded bg-muted/50 hover:bg-muted text-muted-foreground transition-colors"
+                >
+                  <Calendar className="h-3 w-3 mr-1" />
+                  due today
+                </button>
+                <button
+                  onClick={() => setSearchQuery('from kevin')}
+                  className="inline-flex items-center px-2 py-1 text-xs rounded bg-muted/50 hover:bg-muted text-muted-foreground transition-colors"
+                >
+                  <User className="h-3 w-3 mr-1" />
+                  from kevin
+                </button>
+                <button
+                  onClick={() => setSearchQuery('delete all')}
+                  className="inline-flex items-center px-2 py-1 text-xs rounded bg-red-100/50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 transition-colors"
+                >
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  delete all
+                </button>
+                <button
+                  onClick={() => setSearchQuery('complete today')}
+                  className="inline-flex items-center px-2 py-1 text-xs rounded bg-green-100/50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 transition-colors"
+                >
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  complete today
+                </button>
+              </div>
+            )}
             
             {/* Command confirmation details */}
             {commandMode && (
