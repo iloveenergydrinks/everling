@@ -199,9 +199,8 @@ export default function DashboardPage() {
           active: true,
           command: 'delete',
           targets: targetTasks,
-          confirmation: `Delete ${targetTasks.length} task${targetTasks.length > 1 ? 's' : ''}? Type "yes" or press Enter to confirm.`
+          confirmation: `Delete ${targetTasks.length} task${targetTasks.length > 1 ? 's' : ''}?`
         })
-        setSearchQuery('') // Clear the input for user to type "yes"
         return true
       }
     }
@@ -226,9 +225,8 @@ export default function DashboardPage() {
           active: true,
           command: 'complete',
           targets: targetTasks,
-          confirmation: `Complete ${targetTasks.length} task${targetTasks.length > 1 ? 's' : ''}? Type "yes" or press Enter to confirm.`
+          confirmation: `Complete ${targetTasks.length} task${targetTasks.length > 1 ? 's' : ''}?`
         })
-        setSearchQuery('') // Clear the input for user to type "yes"
         return true
       }
     }
@@ -1079,10 +1077,11 @@ export default function DashboardPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={commandMode ? 'Type "yes" to confirm or Escape to cancel' : "Ask me anything..."}
+                placeholder="Ask me anything..."
+                disabled={commandMode !== null}
                 className={`${searchFocused ? 'h-12' : 'h-9'} w-full rounded border ${
-                  commandMode ? 'border-orange-500 dark:border-orange-400' : searchFocused ? 'border-primary' : 'border-input'
-                } bg-background pl-10 pr-10 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all duration-200`}
+                  commandMode ? 'border-orange-500 dark:border-orange-400 opacity-50' : searchFocused ? 'border-primary' : 'border-input'
+                } bg-background pl-10 pr-10 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all duration-200 disabled:cursor-not-allowed`}
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
                 onKeyDown={(e) => {
@@ -1091,8 +1090,6 @@ export default function DashboardPage() {
                     setCommandMode(null)
                     setSearchFocused(false)
                     e.currentTarget.blur()
-                  } else if (e.key === 'Enter' && commandMode && searchQuery.toLowerCase() === 'yes') {
-                    executeCommand()
                   }
                 }}
               />
@@ -1155,7 +1152,7 @@ export default function DashboardPage() {
                     setSearchQuery(query)
                     setSearchFocused(false)
                     // Trigger the command processing
-                    setTimeout(() => processCommand(query, tasks), 100)
+                    processCommand(query, tasks)
                   }}
                   className="inline-flex items-center px-2 py-1 text-xs rounded bg-red-100/50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 transition-colors"
                 >
@@ -1168,7 +1165,7 @@ export default function DashboardPage() {
                     setSearchQuery(query)
                     setSearchFocused(false)
                     // Trigger the command processing
-                    setTimeout(() => processCommand(query, tasks), 100)
+                    processCommand(query, tasks)
                   }}
                   className="inline-flex items-center px-2 py-1 text-xs rounded bg-green-100/50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 transition-colors"
                 >
@@ -1182,9 +1179,9 @@ export default function DashboardPage() {
             {commandMode && (
               <div className="mt-3 p-3 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded">
                 <p className="text-sm font-medium text-orange-700 dark:text-orange-400 mb-2">
-                  {commandMode.command === 'delete' ? '⚠️ Delete' : '✓ Complete'} {commandMode.targets.length} task{commandMode.targets.length > 1 ? 's' : ''}:
+                  {commandMode.command === 'delete' ? '⚠️ Delete' : '✓ Complete'} {commandMode.targets.length} task{commandMode.targets.length > 1 ? 's' : ''}?
                 </p>
-                <div className="space-y-1 max-h-32 overflow-y-auto">
+                <div className="space-y-1 max-h-32 overflow-y-auto mb-3">
                   {commandMode.targets.slice(0, 5).map(task => (
                     <p key={task.id} className="text-xs text-orange-600 dark:text-orange-400">
                       • {task.title}
@@ -1196,9 +1193,23 @@ export default function DashboardPage() {
                     </p>
                   )}
                 </div>
-                <p className="text-xs text-orange-600 dark:text-orange-400 mt-2">
-                  Type "yes" and press Enter to confirm, or Escape to cancel
-                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => executeCommand()}
+                    className="px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 rounded transition-colors"
+                  >
+                    Yes, {commandMode.command === 'delete' ? 'Delete' : 'Complete'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCommandMode(null)
+                      setSearchQuery('')
+                    }}
+                    className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             )}
           </div>
