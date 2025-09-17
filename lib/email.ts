@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { prisma } from '@/lib/prisma'
+import { ServerClient } from 'postmark'
 import { 
   calculateSmartPriority, 
   analyzeEmailThread, 
@@ -17,6 +18,38 @@ import { createMultipleTasksFromEmail } from '@/lib/email-multi-task'
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
 })
+
+const postmarkClient = new ServerClient(process.env.POSTMARK_SERVER_TOKEN || '')
+
+// Generic email sending function
+async function sendEmail({ to, subject, html, text }: {
+  to: string
+  subject: string
+  html: string
+  text?: string
+}) {
+  if (!process.env.POSTMARK_SERVER_TOKEN) {
+    console.log('[MOCK EMAIL] Would send to:', to)
+    console.log('[MOCK EMAIL] Subject:', subject)
+    return
+  }
+
+  try {
+    const result = await postmarkClient.sendEmail({
+      From: process.env.EMAIL_FROM || 'noreply@everling.io',
+      To: to,
+      Subject: subject,
+      HtmlBody: html,
+      TextBody: text || html.replace(/<[^>]*>/g, ''),
+      MessageStream: 'outbound'
+    })
+    console.log('Email sent successfully:', result.MessageID)
+    return result
+  } catch (error) {
+    console.error('Failed to send email:', error)
+    throw error
+  }
+}
 
 interface EmailData {
   From: string
