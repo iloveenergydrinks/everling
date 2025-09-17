@@ -14,7 +14,7 @@ import {
   Copy, Circle, Calendar, AlertCircle, Clock, 
   Inbox, ChevronUp, Mail, CheckCircle, RefreshCw,
   Plus, X, Search, ChevronDown, UserCheck, ArrowDownToLine,
-  Share2, Eye, Info, Users, UserX, GitBranch, User
+  Share2, Eye, Info, Users, UserX, GitBranch, User, AlertTriangle
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { showAlert, showConfirm, showPrompt } from "@/components/global-modal"
@@ -87,6 +87,12 @@ export default function DashboardPage() {
   const [showAllTasks, setShowAllTasks] = useState(false)
   const [searchResults, setSearchResults] = useState<Task[]>([]) 
   const [isSearching, setIsSearching] = useState(false)
+  const [commandMode, setCommandMode] = useState<{
+    active: boolean
+    command: string
+    targets: Task[]
+    confirmation: string
+  } | null>(null)
   
   // New filter state
   const [filters, setFilters] = useState<FilterState>({
@@ -162,12 +168,119 @@ export default function DashboardPage() {
     return () => clearInterval(interval)
   }, [showEmailLogs])
 
+  // Process commands like "delete all", "complete today", etc.
+  const processCommand = (query: string) => {
+    const lowerQuery = query.toLowerCase().trim()
+    
+    // Check for delete commands
+    if (lowerQuery.startsWith('delete ')) {
+      const target = lowerQuery.substring(7)
+      let targetTasks: Task[] = []
+      
+      if (target === 'all') {
+        targetTasks = visibleTasks
+      } else if (target === 'completed' || target === 'done') {
+        targetTasks = tasks.filter(t => t.status === 'done')
+      } else if (target === 'today') {
+        const today = new Date().toLocaleDateString('en-CA')
+        targetTasks = visibleTasks.filter(t => 
+          t.dueDate && new Date(t.dueDate).toLocaleDateString('en-CA') === today
+        )
+      } else if (target === 'overdue') {
+        const today = new Date().toLocaleDateString('en-CA')
+        targetTasks = visibleTasks.filter(t => 
+          t.dueDate && new Date(t.dueDate).toLocaleDateString('en-CA') < today
+        )
+      }
+      
+      if (targetTasks.length > 0) {
+        setCommandMode({
+          active: true,
+          command: 'delete',
+          targets: targetTasks,
+          confirmation: `Delete ${targetTasks.length} task${targetTasks.length > 1 ? 's' : ''}? Type "yes" or press Enter to confirm.`
+        })
+        return true
+      }
+    }
+    
+    // Check for complete commands
+    if (lowerQuery.startsWith('complete ') || lowerQuery.startsWith('done ')) {
+      const target = lowerQuery.replace(/^(complete|done) /, '')
+      let targetTasks: Task[] = []
+      
+      if (target === 'all') {
+        targetTasks = visibleTasks.filter(t => t.status !== 'done')
+      } else if (target === 'today') {
+        const today = new Date().toLocaleDateString('en-CA')
+        targetTasks = visibleTasks.filter(t => 
+          t.status !== 'done' && t.dueDate && 
+          new Date(t.dueDate).toLocaleDateString('en-CA') === today
+        )
+      }
+      
+      if (targetTasks.length > 0) {
+        setCommandMode({
+          active: true,
+          command: 'complete',
+          targets: targetTasks,
+          confirmation: `Complete ${targetTasks.length} task${targetTasks.length > 1 ? 's' : ''}? Type "yes" or press Enter to confirm.`
+        })
+        return true
+      }
+    }
+    
+    return false
+  }
+
+  // Execute the confirmed command
+  const executeCommand = async () => {
+    if (!commandMode) return
+    
+    try {
+      const response = await fetch('/api/tasks/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: commandMode.command,
+          taskIds: commandMode.targets.map(t => t.id)
+        })
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        toast({
+          title: "Success",
+          description: `${result.count} task${result.count > 1 ? 's' : ''} ${commandMode.command === 'delete' ? 'deleted' : 'completed'}`,
+          variant: "success"
+        })
+        fetchTasks() // Refresh the task list
+        setSearchQuery('')
+        setCommandMode(null)
+      } else {
+        throw new Error('Failed to execute command')
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: `Failed to ${commandMode.command} tasks`,
+        variant: "error"
+      })
+    }
+  }
+
   // AI-powered search with debouncing - only when query changes
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([])
       setIsSearching(false)
+      setCommandMode(null)
       return
+    }
+
+    // Check if it's a command first
+    if (processCommand(searchQuery)) {
+      return // Command mode activated, don't search
     }
 
     const searchTimeout = setTimeout(async () => {
@@ -205,7 +318,7 @@ export default function DashboardPage() {
     }, 500) // 500ms debounce for better UX
 
     return () => clearTimeout(searchTimeout)
-  }, [searchQuery]) // Only re-run when searchQuery changes, not on every task update
+  }, [searchQuery, visibleTasks]) // Only re-run when searchQuery changes, not on every task update
   
   // Update search results when tasks change (without re-running AI)
   useEffect(() => {
@@ -947,7 +1060,9 @@ export default function DashboardPage() {
           {/* Minimal AI search */}
           <div className="mb-8">
             <div className="relative">
-              {searchQuery && !isSearching ? (
+              {commandMode ? (
+                <AlertTriangle className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
+              ) : searchQuery && !isSearching ? (
                 <CheckCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-green-600 dark:text-green-400" />
               ) : (
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -956,11 +1071,18 @@ export default function DashboardPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Ask me anything..."
-                className="h-9 w-full rounded border border-input bg-background pl-9 pr-9 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                placeholder={commandMode ? commandMode.confirmation : "Ask me anything..."}
+                className={`h-9 w-full rounded border ${
+                  commandMode ? 'border-orange-500 dark:border-orange-400' : 'border-input'
+                } bg-background pl-9 pr-9 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring`}
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') {
                     setSearchQuery('')
+                    setCommandMode(null)
+                  } else if (e.key === 'Enter' && commandMode) {
+                    if (searchQuery.toLowerCase() === 'yes' || searchQuery === commandMode.command + ' ' + commandMode.targets.length) {
+                      executeCommand()
+                    }
                   }
                 }}
               />
@@ -969,19 +1091,44 @@ export default function DashboardPage() {
                   <RefreshCw className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400 animate-spin" />
                 </div>
               )}
-              {searchQuery && !isSearching && (
+              {(searchQuery && !isSearching) || commandMode ? (
                 <button
                   onClick={() => {
                     setSearchQuery('')
                     setSearchResults([])
+                    setCommandMode(null)
                   }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  title="Clear search"
+                  title="Clear"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
-              )}
+              ) : null}
             </div>
+            
+            {/* Command confirmation details */}
+            {commandMode && (
+              <div className="mt-3 p-3 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded">
+                <p className="text-sm font-medium text-orange-700 dark:text-orange-400 mb-2">
+                  {commandMode.command === 'delete' ? '⚠️ Delete' : '✓ Complete'} {commandMode.targets.length} task{commandMode.targets.length > 1 ? 's' : ''}:
+                </p>
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {commandMode.targets.slice(0, 5).map(task => (
+                    <p key={task.id} className="text-xs text-orange-600 dark:text-orange-400">
+                      • {task.title}
+                    </p>
+                  ))}
+                  {commandMode.targets.length > 5 && (
+                    <p className="text-xs text-orange-600 dark:text-orange-400">
+                      • ... and {commandMode.targets.length - 5} more
+                    </p>
+                  )}
+                </div>
+                <p className="text-xs text-orange-600 dark:text-orange-400 mt-2">
+                  Type "yes" and press Enter to confirm, or Escape to cancel
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Filter Pills */}
