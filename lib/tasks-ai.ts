@@ -177,6 +177,8 @@ export async function interpretSearchIntelligently(
   if (filters.people && filters.people.length > 0) {
     filteredTasks = filteredTasks.filter(task => {
       const taskPeople = [
+        task.title,  // IMPORTANT: Search in title too!
+        task.description,  // And description!
         task.emailMetadata?.smartAnalysis?.tags?.who,
         task.createdBy?.name,
         task.createdBy?.email,

@@ -14,7 +14,8 @@ const TaskCommandSchema = z.object({
     title: z.string(),
     description: z.string().optional(),
     priority: z.enum(['low', 'medium', 'high']).default('medium'),
-    dueDate: z.string().optional(), // Will parse natural language dates
+    dueDate: z.string().optional(), // ISO 8601 datetime string WITH TIME if specified
+    dueTime: z.string().optional(), // Separate time field if needed (HH:MM format)
     reminderDate: z.string().optional(),
     assignedTo: z.string().optional(),
   }).optional(),
@@ -97,6 +98,9 @@ For CREATION (any mention of remembering, reminding, needing to do something):
 - Set action to "create"
 - Extract task details
 - Understand dates in ANY language (domani = tomorrow, la semaine prochaine = next week, etc.)
+- IMPORTANT: Extract times! "alle 4" = 16:00, "at 3pm" = 15:00, "à 14h30" = 14:30
+- If time is specified, include it in dueDate as ISO 8601: "2025-09-18T16:00:00"
+- If no time specified, use midnight: "2025-09-18T00:00:00"
 
 For SEARCH (when looking for existing tasks):
 - Set action to "search"
@@ -106,6 +110,8 @@ Examples:
 - "elimina tutto" → action: "delete", targetTasks: {filter: "all"}
 - "delete today's tasks" → action: "delete", targetTasks: {filter: "today"}
 - "completa le attività di oggi" → action: "complete", targetTasks: {filter: "today"}
+- "domani alle 4 andare da michelutti" → action: "create", createTask: {title: "Andare da Michelutti", dueDate: "2025-09-18T16:00:00"}
+- "remind me to call john at 3pm" → action: "create", createTask: {title: "Call John", dueDate: "2025-09-17T15:00:00"}
 
 Default to "create" if there's ANY doubt - better to offer to create a task than miss the intent.
 Set action to "unknown" ONLY if the input makes no sense at all.`,

@@ -1330,7 +1330,20 @@ export default function DashboardPage() {
                         <div className="flex items-center gap-1.5">
                           <Calendar className="h-3 w-3 text-muted-foreground" />
                           <span className="text-xs text-muted-foreground">
-                            {new Date(aiCommand.createTask.dueDate).toLocaleDateString()}
+                            {(() => {
+                              const date = new Date(aiCommand.createTask.dueDate)
+                              const hasTime = !aiCommand.createTask.dueDate.endsWith('T00:00:00')
+                              if (hasTime) {
+                                return date.toLocaleString('en-US', { 
+                                  month: 'short', 
+                                  day: 'numeric', 
+                                  year: 'numeric',
+                                  hour: 'numeric',
+                                  minute: '2-digit'
+                                })
+                              }
+                              return date.toLocaleDateString()
+                            })()}
                           </span>
                         </div>
                       )}
