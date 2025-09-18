@@ -1212,29 +1212,21 @@ export default function DashboardPage() {
               <button
                 onClick={handleSearchSubmit}
                 disabled={!searchQuery.trim() || isSearching || isProcessingAI}
-                className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md transition-all duration-200 ${
+                className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded transition-all duration-200 ${
                   !searchQuery.trim() || isSearching || isProcessingAI
-                    ? 'text-muted-foreground cursor-not-allowed'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    ? 'text-muted-foreground/50 cursor-not-allowed'
+                    : commandMode
+                    ? 'bg-orange-500 text-white hover:bg-orange-600'
+                    : aiCommand
+                    ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                    : 'bg-primary text-primary-foreground hover:bg-primary/90'
                 }`}
-                title={isSearching || isProcessingAI ? "Processing..." : "Send message"}
+                title={isSearching || isProcessingAI ? "Processing..." : "Send"}
               >
                 {isSearching || isProcessingAI ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <svg 
-                    className="h-4 w-4" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth={2} 
-                      d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" 
-                    />
-                  </svg>
+                  <ArrowDownToLine className="h-3.5 w-3.5 -rotate-90" />
                 )}
               </button>
             </div>
