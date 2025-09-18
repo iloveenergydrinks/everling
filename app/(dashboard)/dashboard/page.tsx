@@ -88,6 +88,7 @@ export default function DashboardPage() {
   const [showAllTasks, setShowAllTasks] = useState(false)
   const [searchResults, setSearchResults] = useState<Task[]>([]) 
   const [isSearching, setIsSearching] = useState(false)
+  const [searchCompleted, setSearchCompleted] = useState(false)
   const [showHiddenTasks, setShowHiddenTasks] = useState(false)
   const [commandMode, setCommandMode] = useState<{
     active: boolean
@@ -434,6 +435,7 @@ export default function DashboardPage() {
 
     // Otherwise do a search
     setIsSearching(true)
+    setSearchCompleted(false)
     try {
       const response = await fetch('/api/search', {
         method: 'POST',
@@ -450,33 +452,41 @@ export default function DashboardPage() {
       if (response.ok) {
         const results = await response.json()
         setSearchResults(results)
+        setSearchCompleted(true)
         // Clear the search query after successful search
         if (results.length === 0) {
           setTimeout(() => {
             setSearchQuery('')
             setSearchResults([])
+            setSearchCompleted(false)
           }, 3000) // Clear after 3 seconds if no results
         }
       } else {
         const basicResults = interpretCommand(searchQuery, tasks, activeFilters)
         setSearchResults(basicResults)
+        setSearchCompleted(true)
       }
     } catch (error) {
       console.error('Search error:', error)
       const basicResults = interpretCommand(searchQuery, tasks, activeFilters)
       setSearchResults(basicResults)
+      setSearchCompleted(true)
     } finally {
       setIsSearching(false)
     }
   }
 
-  // Clear search when query is empty
+  // Clear search when query is empty or changes
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([])
+      setSearchCompleted(false)
       setIsSearching(false)
       setCommandMode(null)
       setAiCommand(null)
+    } else {
+      // When user is typing, clear the completed flag
+      setSearchCompleted(false)
     }
   }, [searchQuery])
   
@@ -1024,8 +1034,8 @@ export default function DashboardPage() {
   }, [tasks, filters, showAllTasks])
 
   const getVisibleTasks = (): Task[] => {
-    // If we have AI search results, use them
-    if (searchQuery.trim() && searchResults.length >= 0) {
+    // If we have completed a search (not currently searching), show search results
+    if (searchQuery.trim() && !isSearching && searchCompleted) {
       return searchResults.map((task, index) => ({
         ...task,
         relevanceScore: 1000 - index, // Higher score for earlier results
@@ -1033,7 +1043,7 @@ export default function DashboardPage() {
       }))
     }
     
-    // Otherwise use filtered tasks
+    // Otherwise use filtered tasks (while typing or no search)
     return filteredTasks
   }
   
@@ -1196,12 +1206,13 @@ export default function DashboardPage() {
               />
               {searchQuery && (
                 <button
-                  onClick={() => {
-                    setSearchQuery('')
-                    setSearchResults([])
-                    setCommandMode(null)
-                    setAiCommand(null)
-                  }}
+                onClick={() => {
+                  setSearchQuery('')
+                  setSearchResults([])
+                  setSearchCompleted(false)
+                  setCommandMode(null)
+                  setAiCommand(null)
+                }}
                   className="absolute right-10 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
                   title="Clear"
                 >
