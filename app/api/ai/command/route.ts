@@ -103,18 +103,26 @@ ${dateContext}
 
 Your job is to understand what the user wants to do, regardless of language or phrasing.
 
-IMPORTANT: Be VERY smart about understanding intent in ANY LANGUAGE:
+CRITICAL DISTINCTION - Search vs Create:
 
-For SEARCH (DEFAULT ACTION - use this for unclear/ambiguous input):
+For SEARCH/FILTER (DEFAULT ACTION - use this for queries about existing tasks):
 - This is the DEFAULT when intent is unclear
-- Single words, names, partial phrases without clear action words
-- Set action to "search" for general queries
-- Examples: "bepi", "meeting", "tomorrow", "urgent"
+- Looking for existing tasks: "task per domani", "tasks for tomorrow", "what's due today"
+- Filtering by time: "oggi", "domani", "tomorrow", "next week", "overdue"
+- Filtering by person: "bepi", "john's tasks", "assigned to me"
+- Filtering by status: "completed", "pending", "urgent tasks"
+- Questions about tasks: "what do I have", "show me", "list", "find"
+- Set action to "search" for ALL these cases
 
-For CREATION (ONLY when explicitly asking to create/remember):
-- MUST have clear creation keywords: ricordami, ricorda, remember, remind, rappelle, recuérdame, 记住, etc.
-- Even with TYPOS: "rirocrdami", "ricrodami", "remeber", "remmind" → still create
-- Set action to "create" ONLY when these keywords are present
+For CREATION (ONLY when explicitly asking to create NEW tasks):
+- MUST have EXPLICIT creation intent, not just mentioning time/date
+- Clear creation keywords: "ricordami di", "remind me to", "add task", "create", "nuovo task"
+- The intent is to ADD something new, not find something existing
+- Examples:
+  * "ricordami di chiamare bepi" → CREATE (explicit "ricordami di")
+  * "task per domani" → SEARCH (looking for tomorrow's tasks)
+  * "comprare latte domani" → SEARCH (no explicit creation keyword)
+  * "add task buy milk" → CREATE (explicit "add task")
 
 DETECT MULTIPLE TASKS:
 - Look for lists, commas, "and", "poi", "e", "y", "et", numbered items
@@ -145,26 +153,30 @@ For COMPLETION (only if explicitly asking to complete):
 - Set action to "complete"
 
 Examples:
-- "bepi" → action: "search", searchQuery: "bepi", confidence: 0.9
-- "meeting" → action: "search", searchQuery: "meeting", confidence: 0.9
+- "bepi" → action: "search", search: {query: "bepi"}, confidence: 0.9
+- "meeting" → action: "search", search: {query: "meeting"}, confidence: 0.9
+- "task per domani" → action: "search", search: {query: "tomorrow"}, confidence: 0.95
+- "tasks for today" → action: "search", search: {query: "today"}, confidence: 0.95
+- "cosa devo fare oggi" → action: "search", search: {query: "today"}, confidence: 0.9
+- "overdue tasks" → action: "search", search: {query: "overdue"}, confidence: 0.95
 - "ricordami di chiamare bepi domani alle 4" → action: "create", createTask: {
     title: "Chiamare Bepi",
     dueDate: "2025-09-19T16:00:00",
     tags: {who: "Bepi", when: "Tomorrow at 4 PM", what: "call"}
   }, confidence: 0.95
+- "add task buy milk" → action: "create", createTask: {title: "Buy milk"}, confidence: 0.95
+- "nuovo task: meeting con cliente" → action: "create", createTask: {title: "Meeting con cliente"}, confidence: 0.9
 - "remind me to call john and buy milk" → action: "create", createTasks: [
     {title: "Call John", tags: {who: "John", what: "call"}},
     {title: "Buy milk", tags: {what: "shopping"}}
   ], confidence: 0.95
-- "ricordami di 1. pagare bollette 2. chiamare dentista" → action: "create", createTasks: [
-    {title: "Pagare bollette", tags: {what: "payment"}},
-    {title: "Chiamare dentista", tags: {who: "dentista", what: "call"}}
-  ], confidence: 0.95
 - "cancella task fiori" → action: "delete", targetTasks: {searchTerms: "fiori", filter: "specific"}
 
-DEFAULT TO "SEARCH" for ambiguous input - it's a search box!
-Only use "create" when there are EXPLICIT creation keywords (remind, remember, ricordami, etc.)
-Set action to "unknown" ONLY if the input makes no sense at all.
+CRITICAL RULES:
+1. DEFAULT TO "SEARCH" - it's primarily a search box!
+2. Only use "create" when there are EXPLICIT creation keywords (remind me, ricordami di, add task, create, nuovo)
+3. Just mentioning time/date is NOT enough for creation - "domani" alone means search for tomorrow's tasks
+4. Set action to "unknown" ONLY if the input makes no sense at all
 
 IMPORTANT: If creating a task but no date/time is mentioned, set dueDate to null (don't make up dates).`,
       prompt: `Understand this request and extract the appropriate action: "${prompt}"
@@ -172,9 +184,12 @@ IMPORTANT: If creating a task but no date/time is mentioned, set dueDate to null
 User: ${session.user.email}
 ${context ? `Context: ${JSON.stringify(context)}` : ''}
 
-Remember: Extract ALL information mentioned. If they say a date/time, include it. If they don't mention any date/time, leave dueDate as null.
+CRITICAL: This is primarily a SEARCH box. Default to "search" unless there's an EXPLICIT creation request.
+- "task per domani" = SEARCH for tomorrow's tasks
+- "ricordami di X" = CREATE a new task
+- Just mentioning dates/times without creation keywords = SEARCH
 
-Remember: When in doubt, assume they want to create a task to remember something.`,
+Remember: Extract ALL information mentioned. If they say a date/time, include it. If they don't mention any date/time, leave dueDate as null.`,
     });
 
     // Add user context to the result
