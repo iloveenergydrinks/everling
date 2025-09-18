@@ -380,67 +380,61 @@ export default function DashboardPage() {
     }
   }
 
-  // AI-powered search with debouncing - only when query changes
+  // Handle search/command execution on Enter key
+  const handleSearchSubmit = async () => {
+    if (!searchQuery.trim()) return
+
+    // Check if it's a deletion/completion command first
+    if (processCommand(searchQuery, tasks)) {
+      return // Command mode activated
+    }
+
+    // For any meaningful query, try AI first
+    if (searchQuery.length > 10) {
+      const aiHandled = await processAICommand(searchQuery)
+      if (aiHandled) return // AI command mode activated
+    }
+
+    // Otherwise do a search
+    setIsSearching(true)
+    try {
+      const response = await fetch('/api/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: searchQuery,
+          tasks: tasks,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        })
+      })
+      
+      if (response.ok) {
+        const results = await response.json()
+        setSearchResults(results)
+      } else {
+        const basicResults = interpretCommand(searchQuery, tasks, activeFilters)
+        setSearchResults(basicResults)
+      }
+    } catch (error) {
+      console.error('Search error:', error)
+      const basicResults = interpretCommand(searchQuery, tasks, activeFilters)
+      setSearchResults(basicResults)
+    } finally {
+      setIsSearching(false)
+    }
+  }
+
+  // Clear search when query is empty
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([])
       setIsSearching(false)
       setCommandMode(null)
       setAiCommand(null)
-      return
     }
-
-    // Skip if we're already in command mode or AI command mode
-    if (commandMode || aiCommand) {
-      return
-    }
-
-    // Check if it's a deletion/completion command first
-    if (processCommand(searchQuery, tasks)) {
-      return // Command mode activated, don't search
-    }
-
-    const searchTimeout = setTimeout(async () => {
-      // For any query longer than 10 chars, try AI first
-      if (searchQuery.length > 10 && await processAICommand(searchQuery)) {
-        return // AI command mode activated
-      }
-      
-      setIsSearching(true)
-      try {
-        // Call the API endpoint that will use AI to interpret the search
-        const response = await fetch('/api/search', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: searchQuery,
-            tasks: tasks,
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-          })
-        })
-        
-        if (response.ok) {
-          const results = await response.json()
-          setSearchResults(results)
-        } else {
-          // Fallback to basic search if AI fails
-          const basicResults = interpretCommand(searchQuery, tasks, activeFilters)
-          setSearchResults(basicResults)
-        }
-      } catch (error) {
-        console.error('Search error:', error)
-        // Fallback to basic search
-        const basicResults = interpretCommand(searchQuery, tasks, activeFilters)
-        setSearchResults(basicResults)
-      } finally {
-        setIsSearching(false)
-      }
-    }, 500) // 500ms debounce for better UX
-
-    return () => clearTimeout(searchTimeout)
-  }, [searchQuery]) // Only re-run when searchQuery changes, not tasks
+  }, [searchQuery])
   
   // Update search results when tasks change (without re-running AI)
   useEffect(() => {
@@ -1199,7 +1193,7 @@ export default function DashboardPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={isProcessingAI ? "Understanding your request..." : "Ask me anything or add a task..."}
+                placeholder={isProcessingAI ? "Understanding your request..." : "Type and press Enter to search or create task..."}
                 disabled={commandMode !== null || aiCommand !== null}
                 className={`${searchFocused ? 'h-12' : 'h-9'} w-full rounded border ${
                   commandMode ? 'border-orange-500 dark:border-orange-400 opacity-50' : 
@@ -1212,8 +1206,13 @@ export default function DashboardPage() {
                   if (e.key === 'Escape') {
                     setSearchQuery('')
                     setCommandMode(null)
+                    setAiCommand(null)
+                    setSearchResults([])
                     setSearchFocused(false)
                     e.currentTarget.blur()
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault()
+                    handleSearchSubmit()
                   }
                 }}
               />
@@ -1241,9 +1240,11 @@ export default function DashboardPage() {
             {searchFocused && !searchQuery && !commandMode && (
               <div className="mt-3 flex flex-wrap gap-2 animate-in fade-in duration-200">
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     setSearchQuery('add task to review budget tomorrow')
                     setSearchFocused(false)
+                    // Auto-submit this one since it's a clear creation intent
+                    setTimeout(() => handleSearchSubmit(), 100)
                   }}
                   className="inline-flex items-center px-2 py-1 text-xs rounded bg-emerald-100/50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 transition-colors"
                 >
