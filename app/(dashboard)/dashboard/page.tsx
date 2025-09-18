@@ -472,52 +472,8 @@ export default function DashboardPage() {
             return isFromEmail && isNew && createdRecently
           })
           
-          // Show notification for each new email task
-          newEmailTasks.forEach((task: Task) => {
-            const fromEmail = task.emailMetadata?.from?.match(/<(.+?)>/)
-            const sender = fromEmail ? fromEmail[1] : (task.emailMetadata?.from || 'Unknown sender')
-            
-            toast({
-              title: "📧 New task from email",
-              description: `${task.title} - From: ${sender}`,
-              variant: "success"
-            })
-            
-            // Play notification sound (using Web Audio API for a simple beep)
-            try {
-              const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-              const oscillator = audioContext.createOscillator()
-              const gainNode = audioContext.createGain()
-              
-              oscillator.connect(gainNode)
-              gainNode.connect(audioContext.destination)
-              
-              oscillator.frequency.value = 800 // Frequency in Hz
-              oscillator.type = 'sine'
-              
-              gainNode.gain.setValueAtTime(0.1, audioContext.currentTime)
-              gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3)
-              
-              oscillator.start(audioContext.currentTime)
-              oscillator.stop(audioContext.currentTime + 0.3)
-            } catch {
-              // Fallback: try to play an MP3 if it exists
-              try {
-                const audio = new Audio('/notification.mp3')
-                audio.volume = 0.3
-                audio.play().catch(() => {})
-              } catch {}
-            }
-            
-            // Browser notification (if permission granted)
-            if ('Notification' in window && Notification.permission === 'granted') {
-              new Notification('New task from email', {
-                body: task.title,
-                icon: '/icon.png',
-                tag: task.id,
-              })
-            }
-          })
+          // Don't show individual notifications for email tasks
+          // The email processing indicator already shows this
           
           // Update the count for the banner (if you still want it)
           if (data.length > lastTaskCount) {

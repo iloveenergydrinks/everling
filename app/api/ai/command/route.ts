@@ -152,8 +152,12 @@ Remember: When in doubt, assume they want to create a task to remember something
             timestamp: new Date()
           };
 
-          // Calculate smart priority
-          const priorityScore = await calculateSmartPriority(emailData);
+          // Calculate smart priority (with empty context for chat)
+          const priorityScore = await calculateSmartPriority({
+            ...emailData,
+            previousEmails: [],
+            threadCount: 0
+          });
 
           // Extract full task details using the same AI as email
           const smartTasks = await extractSmartTask(
@@ -177,8 +181,12 @@ Remember: When in doubt, assume they want to create a task to remember something
             title: smartTask.title || command.createTask.title,
             description: smartTask.description || command.createTask.description,
             priority: smartTask.priority || command.createTask.priority || 'medium',
-            dueDate: smartTask.dueDate?.toISOString() || command.createTask.dueDate,
-            reminderDate: smartTask.reminderDate?.toISOString(),
+            dueDate: smartTask.dueDate ? 
+              (smartTask.dueDate instanceof Date ? smartTask.dueDate.toISOString() : smartTask.dueDate) : 
+              command.createTask.dueDate,
+            reminderDate: smartTask.reminderDate ? 
+              (smartTask.reminderDate instanceof Date ? smartTask.reminderDate.toISOString() : smartTask.reminderDate) : 
+              null,
             estimatedEffort: smartTask.estimatedEffort,
             businessImpact: smartTask.businessImpact,
             stakeholders: smartTask.stakeholders,
