@@ -16,6 +16,7 @@
     "railway:build": "npx prisma generate && node lib/db-auto-migrate.js && npm run build"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^2.0.17",
     "@anthropic-ai/sdk": "^0.24.3",
     "@auth/prisma-adapter": "^2.10.0",
     "@hookform/resolvers": "^3.9.0",
@@ -30,6 +31,7 @@
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-toast": "^1.2.1",
+    "ai": "^5.0.45",
     "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -46,7 +48,7 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "twilio": "^5.9.0",
-    "zod": "^3.23.8"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

@@ -94,6 +94,13 @@ export default function DashboardPage() {
     targets: Task[]
     confirmation: string
   } | null>(null)
+  const [aiCommand, setAiCommand] = useState<{
+    action: string
+    createTask?: any
+    bulkAction?: any
+    confidence: number
+  } | null>(null)
+  const [isProcessingAI, setIsProcessingAI] = useState(false)
   const [searchFocused, setSearchFocused] = useState(false)
   
   // New filter state
@@ -198,6 +205,88 @@ export default function DashboardPage() {
     if (age.isStale) return 'opacity-60 hover:opacity-80'
     if (age.daysSinceActivity > 7) return 'opacity-80 hover:opacity-100'
     return ''
+  }
+
+  // Check if query is a creation intent
+  const isCreationIntent = (query: string) => {
+    const lowerQuery = query.toLowerCase()
+    const creationKeywords = [
+      'add', 'create', 'new', 'make', 'remind me', 
+      'schedule', 'todo', 'task', 'need to', 'have to',
+      'don\'t forget', 'remember to'
+    ]
+    return creationKeywords.some(keyword => lowerQuery.includes(keyword))
+  }
+
+  // Process AI commands for task creation
+  const processAICommand = async (query: string) => {
+    if (!isCreationIntent(query)) return false
+    
+    setIsProcessingAI(true)
+    try {
+      const response = await fetch('/api/ai/command', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          prompt: query,
+          context: { 
+            currentTasks: tasks.length,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone 
+          }
+        })
+      })
+      
+      if (response.ok) {
+        const command = await response.json()
+        
+        // Only show preview for high confidence commands
+        if (command.confidence > 0.7) {
+          setAiCommand(command)
+          return true
+        }
+      }
+    } catch (error) {
+      console.error('AI command processing error:', error)
+    } finally {
+      setIsProcessingAI(false)
+    }
+    
+    return false
+  }
+
+  // Execute AI command (create task)
+  const executeAICommand = async () => {
+    if (!aiCommand?.createTask) return
+    
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: aiCommand.createTask.title,
+          description: aiCommand.createTask.description,
+          priority: aiCommand.createTask.priority,
+          dueDate: aiCommand.createTask.dueDate,
+        })
+      })
+      
+      if (response.ok) {
+        toast({
+          title: "Task created",
+          description: aiCommand.createTask.title,
+          variant: "success"
+        })
+        fetchTasks()
+        setAiCommand(null)
+        setSearchQuery('')
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create task",
+        variant: "error"
+      })
+    }
   }
 
   // Process commands like "delete all", "complete today", etc.
@@ -307,20 +396,26 @@ export default function DashboardPage() {
       setSearchResults([])
       setIsSearching(false)
       setCommandMode(null)
+      setAiCommand(null)
       return
     }
 
-    // Skip if we're already in command mode
-    if (commandMode) {
+    // Skip if we're already in command mode or AI command mode
+    if (commandMode || aiCommand) {
       return
     }
 
-    // Check if it's a command first
+    // Check if it's a deletion/completion command first
     if (processCommand(searchQuery, tasks)) {
       return // Command mode activated, don't search
     }
 
     const searchTimeout = setTimeout(async () => {
+      // Check if it's a creation intent first
+      if (await processAICommand(searchQuery)) {
+        return // AI command mode activated
+      }
+      
       setIsSearching(true)
       try {
         // Call the API endpoint that will use AI to interpret the search
@@ -1114,10 +1209,12 @@ export default function DashboardPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Ask me anything..."
-                disabled={commandMode !== null}
+                placeholder={isProcessingAI ? "Understanding your request..." : "Ask me anything or add a task..."}
+                disabled={commandMode !== null || aiCommand !== null}
                 className={`${searchFocused ? 'h-12' : 'h-9'} w-full rounded border ${
-                  commandMode ? 'border-orange-500 dark:border-orange-400 opacity-50' : searchFocused ? 'border-primary' : 'border-input'
+                  commandMode ? 'border-orange-500 dark:border-orange-400 opacity-50' : 
+                  aiCommand ? 'border-emerald-500 dark:border-emerald-400 opacity-50' :
+                  searchFocused ? 'border-primary' : 'border-input'
                 } bg-background pl-10 pr-10 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all duration-200 disabled:cursor-not-allowed`}
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
@@ -1153,6 +1250,16 @@ export default function DashboardPage() {
             {/* Command suggestions when focused */}
             {searchFocused && !searchQuery && !commandMode && (
               <div className="mt-3 flex flex-wrap gap-2 animate-in fade-in duration-200">
+                <button
+                  onClick={() => {
+                    setSearchQuery('add task to review budget tomorrow')
+                    setSearchFocused(false)
+                  }}
+                  className="inline-flex items-center px-2 py-1 text-xs rounded bg-emerald-100/50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 transition-colors"
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  add task
+                </button>
                 <button
                   onClick={() => {
                     setSearchQuery('high priority')
@@ -1209,6 +1316,69 @@ export default function DashboardPage() {
                   <CheckCircle className="h-3 w-3 mr-1" />
                   complete today
                 </button>
+              </div>
+            )}
+            
+            {/* AI Task Creation Preview */}
+            {aiCommand && aiCommand.createTask && (
+              <div className="mt-3 p-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded animate-in fade-in duration-200">
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                    Create new task:
+                  </p>
+                  <div className="space-y-2 text-sm">
+                    <div>
+                      <span className="text-xs text-emerald-600 dark:text-emerald-500">Title:</span>
+                      <p className="font-medium">{aiCommand.createTask.title}</p>
+                    </div>
+                    {aiCommand.createTask.description && (
+                      <div>
+                        <span className="text-xs text-emerald-600 dark:text-emerald-500">Description:</span>
+                        <p className="text-muted-foreground">{aiCommand.createTask.description}</p>
+                      </div>
+                    )}
+                    <div className="flex gap-4 text-xs">
+                      {aiCommand.createTask.priority && (
+                        <span className={`px-2 py-0.5 rounded ${
+                          aiCommand.createTask.priority === 'high' 
+                            ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                            : aiCommand.createTask.priority === 'medium'
+                            ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+                        }`}>
+                          {aiCommand.createTask.priority} priority
+                        </span>
+                      )}
+                      {aiCommand.createTask.dueDate && (
+                        <span className="text-muted-foreground">
+                          Due: {new Date(aiCommand.createTask.dueDate).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => executeAICommand()}
+                      className="px-3 py-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 rounded transition-colors"
+                    >
+                      Create Task
+                    </button>
+                    <button
+                      onClick={() => {
+                        setAiCommand(null)
+                        setSearchQuery('')
+                      }}
+                      className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  {aiCommand.confidence < 0.9 && (
+                    <p className="text-xs text-emerald-600/60 dark:text-emerald-400/60">
+                      Confidence: {Math.round(aiCommand.confidence * 100)}%
+                    </p>
+                  )}
+                </div>
               </div>
             )}
             
