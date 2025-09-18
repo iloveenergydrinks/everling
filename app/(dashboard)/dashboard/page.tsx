@@ -1179,70 +1179,62 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Chat-like AI interface */}
+          {/* Claude-style AI interface */}
           <div className="mb-8">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Ask anything or describe a task..."
-                  disabled={commandMode !== null || aiCommand !== null || isSearching || isProcessingAI}
-                  className={`h-11 w-full rounded-l-md border-y border-l ${
-                    commandMode ? 'border-orange-500 dark:border-orange-400' : 
-                    aiCommand ? 'border-emerald-500 dark:border-emerald-400' :
-                    searchFocused ? 'border-primary' : 'border-input'
-                  } bg-background px-4 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:rounded-l-md transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50`}
-                  onFocus={() => setSearchFocused(true)}
-                  onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape') {
-                      setSearchQuery('')
-                      setCommandMode(null)
-                      setAiCommand(null)
-                      setSearchResults([])
-                      setSearchFocused(false)
-                      e.currentTarget.blur()
-                    } else if (e.key === 'Enter' && searchQuery.trim() && !isSearching && !isProcessingAI) {
-                      e.preventDefault()
-                      handleSearchSubmit()
-                    }
-                  }}
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => {
-                      setSearchQuery('')
-                      setSearchResults([])
-                      setCommandMode(null)
-                      setAiCommand(null)
-                    }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    title="Clear"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Ask anything or describe a task..."
+                disabled={commandMode !== null || aiCommand !== null || isSearching || isProcessingAI}
+                className={`h-12 w-full rounded-lg border ${
+                  commandMode ? 'border-orange-500 dark:border-orange-400' : 
+                  aiCommand ? 'border-emerald-500 dark:border-emerald-400' :
+                  searchFocused ? 'border-primary' : 'border-input'
+                } bg-background pl-4 pr-12 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50`}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setSearchQuery('')
+                    setCommandMode(null)
+                    setAiCommand(null)
+                    setSearchResults([])
+                    setSearchFocused(false)
+                    e.currentTarget.blur()
+                  } else if (e.key === 'Enter' && searchQuery.trim() && !isSearching && !isProcessingAI) {
+                    e.preventDefault()
+                    handleSearchSubmit()
+                  }
+                }}
+              />
               <button
                 onClick={handleSearchSubmit}
-                disabled={!searchQuery.trim() || isSearching || isProcessingAI || commandMode !== null || aiCommand !== null}
-                className={`h-11 px-4 rounded-r-md border-y border-r transition-all duration-200 flex items-center justify-center min-w-[60px] ${
+                disabled={!searchQuery.trim() || isSearching || isProcessingAI}
+                className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md transition-all duration-200 ${
                   !searchQuery.trim() || isSearching || isProcessingAI
-                    ? 'bg-muted text-muted-foreground cursor-not-allowed border-input'
-                    : commandMode 
-                    ? 'bg-orange-500 text-white hover:bg-orange-600 border-orange-500'
-                    : aiCommand
-                    ? 'bg-emerald-500 text-white hover:bg-emerald-600 border-emerald-500'
-                    : 'bg-primary text-primary-foreground hover:bg-primary/90 border-primary'
+                    ? 'text-muted-foreground cursor-not-allowed'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 }`}
-                title={isSearching || isProcessingAI ? "Processing..." : "Send"}
+                title={isSearching || isProcessingAI ? "Processing..." : "Send message"}
               >
                 {isSearching || isProcessingAI ? (
                   <RefreshCw className="h-4 w-4 animate-spin" />
                 ) : (
-                  <ArrowDownToLine className="h-4 w-4 -rotate-90" />
+                  <svg 
+                    className="h-4 w-4" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" 
+                    />
+                  </svg>
                 )}
               </button>
             </div>
