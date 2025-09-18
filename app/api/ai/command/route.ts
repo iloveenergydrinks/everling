@@ -7,7 +7,7 @@ import { authOptions } from '@/lib/auth';
 
 // Define our task command schema
 const TaskCommandSchema = z.object({
-  action: z.enum(['create', 'update', 'search', 'bulk', 'unknown']),
+  action: z.enum(['create', 'delete', 'complete', 'update', 'search', 'unknown']),
   
   // For creating a single task
   createTask: z.object({
@@ -19,11 +19,11 @@ const TaskCommandSchema = z.object({
     assignedTo: z.string().optional(),
   }).optional(),
   
-  // For bulk operations
-  bulkAction: z.object({
-    operation: z.enum(['delete', 'complete', 'archive']),
-    filter: z.string(), // e.g., "all", "today", "overdue", "from kevin"
-    count: z.number().optional(),
+  // For deletion/completion
+  targetTasks: z.object({
+    searchTerms: z.string().optional(), // What to search for in task titles/descriptions
+    filter: z.enum(['all', 'today', 'tomorrow', 'overdue', 'completed', 'specific']).optional(),
+    estimatedCount: z.number().optional(),
   }).optional(),
   
   // For search/filter
@@ -79,27 +79,33 @@ ${dateContext}
 
 Your job is to understand what the user wants to do, regardless of language or phrasing.
 
-IMPORTANT: Be VERY smart about understanding intent:
-- If someone says ANYTHING that sounds like they want to remember something, create a task
-- If they mention doing something in the future, create a task
-- If they mention someone's name and an action, create a task
-- Understand reminders in ANY language (ricordami, recuérdame, rappelle-moi, etc.)
-- Understand context: "mail to valeria" means "send email to Valeria"
+IMPORTANT: Be VERY smart about understanding intent in ANY LANGUAGE:
 
-For task creation:
-- Extract a clear, action-oriented title
-- Keep names of people mentioned (like Valeria, Kevin, etc.)
-- Parse dates in any language (domani, mañana, demain = tomorrow)
-- Detect urgency from tone and words
-- Set action to "create" with high confidence if it seems like they want to track something
+For DELETION (delete, cancella, elimina, supprimer, löschen, 删除, etc.):
+- Set action to "delete"
+- If they mention specific text (like "fiori", "budget", etc.), set searchTerms to that text
+- If they say all/tutto/tous/alle, set filter to "all"
+- If they say today/oggi/hoy/aujourd'hui, set filter to "today"
+- If they say completed/completati/terminé, set filter to "completed"
+- Otherwise set filter to "specific" and put the search terms in searchTerms
 
-For searches:
-- If they're asking about existing tasks or looking for information
+For COMPLETION (complete, completa, terminar, finir, etc.):
+- Set action to "complete"
+- Same logic as deletion for filters and search terms
+
+For CREATION (any mention of remembering, reminding, needing to do something):
+- Set action to "create"
+- Extract task details
+- Understand dates in ANY language (domani = tomorrow, la semaine prochaine = next week, etc.)
+
+For SEARCH (when looking for existing tasks):
 - Set action to "search"
 
-For bulk operations:
-- Only if explicitly trying to delete/complete multiple tasks
-- Set action to "bulk"
+Examples:
+- "cancella task fiori" → action: "delete", targetTasks: {searchTerms: "fiori", filter: "specific"}
+- "elimina tutto" → action: "delete", targetTasks: {filter: "all"}
+- "delete today's tasks" → action: "delete", targetTasks: {filter: "today"}
+- "completa le attività di oggi" → action: "complete", targetTasks: {filter: "today"}
 
 Default to "create" if there's ANY doubt - better to offer to create a task than miss the intent.
 Set action to "unknown" ONLY if the input makes no sense at all.`,

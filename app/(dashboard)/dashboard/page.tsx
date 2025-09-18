@@ -229,10 +229,44 @@ export default function DashboardPage() {
       if (response.ok) {
         const command = await response.json()
         
-        // Only show preview for high confidence commands
+        // Handle different command types
         if (command.confidence > 0.7) {
-          setAiCommand(command)
-          return true
+          if (command.action === 'delete' || command.action === 'complete') {
+            // Find matching tasks based on AI's understanding
+            let targetTasks: Task[] = []
+            
+            if (command.targetTasks?.filter === 'all') {
+              targetTasks = tasks.filter(t => t.status !== 'done')
+            } else if (command.targetTasks?.filter === 'today') {
+              const today = new Date().toLocaleDateString('en-CA')
+              targetTasks = tasks.filter(t => 
+                t.status !== 'done' && t.dueDate && 
+                new Date(t.dueDate).toLocaleDateString('en-CA') === today
+              )
+            } else if (command.targetTasks?.filter === 'completed') {
+              targetTasks = tasks.filter(t => t.status === 'done')
+            } else if (command.targetTasks?.searchTerms) {
+              // Search for tasks matching the terms
+              const searchTerms = command.targetTasks.searchTerms.toLowerCase()
+              targetTasks = tasks.filter(t => 
+                t.title.toLowerCase().includes(searchTerms) || 
+                (t.description && t.description.toLowerCase().includes(searchTerms))
+              )
+            }
+            
+            if (targetTasks.length > 0) {
+              setCommandMode({
+                active: true,
+                command: command.action,
+                targets: targetTasks,
+                confirmation: `${command.action === 'delete' ? 'Delete' : 'Complete'} ${targetTasks.length} task${targetTasks.length > 1 ? 's' : ''}?`
+              })
+              return true
+            }
+          } else if (command.action === 'create' && command.createTask) {
+            setAiCommand(command)
+            return true
+          }
         }
       }
     } catch (error) {
@@ -279,74 +313,10 @@ export default function DashboardPage() {
     }
   }
 
-  // Process commands like "delete all", "complete today", etc.
+  // Process commands - NO HARDCODING, let AI handle everything
   const processCommand = (query: string, currentTasks: Task[]) => {
-    const lowerQuery = query.toLowerCase().trim()
-    
-    // Check for delete commands (English and Italian)
-    if (lowerQuery.startsWith('delete ') || lowerQuery.startsWith('cancella ') || lowerQuery.startsWith('elimina ')) {
-      const target = lowerQuery.replace(/^(delete|cancella|elimina) /, '').trim()
-      let targetTasks: Task[] = []
-      
-      if (target === 'all' || target === 'everything' || target === 'tutto' || target === 'tutti') {
-        targetTasks = currentTasks.filter(t => t.status !== 'done')
-      } else if (target === 'completed' || target === 'done' || target === 'completati') {
-        targetTasks = tasks.filter(t => t.status === 'done')
-      } else if (target === 'today' || target === 'oggi') {
-        const today = new Date().toLocaleDateString('en-CA')
-        targetTasks = currentTasks.filter(t => 
-          t.dueDate && new Date(t.dueDate).toLocaleDateString('en-CA') === today
-        )
-      } else if (target === 'overdue' || target === 'scaduti') {
-        const today = new Date().toLocaleDateString('en-CA')
-        targetTasks = currentTasks.filter(t => 
-          t.dueDate && new Date(t.dueDate).toLocaleDateString('en-CA') < today
-        )
-      } else {
-        // Try to find tasks that match the target text
-        targetTasks = currentTasks.filter(t => 
-          t.title.toLowerCase().includes(target) || 
-          (t.description && t.description.toLowerCase().includes(target))
-        )
-      }
-      
-      if (targetTasks.length > 0) {
-        setCommandMode({
-          active: true,
-          command: 'delete',
-          targets: targetTasks,
-          confirmation: `Delete ${targetTasks.length} task${targetTasks.length > 1 ? 's' : ''}?`
-        })
-        return true
-      }
-    }
-    
-    // Check for complete commands
-    if (lowerQuery.startsWith('complete ') || lowerQuery.startsWith('done ')) {
-      const target = lowerQuery.replace(/^(complete|done) /, '')
-      let targetTasks: Task[] = []
-      
-      if (target === 'all' || target === 'everything') {
-        targetTasks = currentTasks.filter(t => t.status !== 'done')
-      } else if (target === 'today') {
-        const today = new Date().toLocaleDateString('en-CA')
-        targetTasks = currentTasks.filter(t => 
-          t.status !== 'done' && t.dueDate && 
-          new Date(t.dueDate).toLocaleDateString('en-CA') === today
-        )
-      }
-      
-      if (targetTasks.length > 0) {
-        setCommandMode({
-          active: true,
-          command: 'complete',
-          targets: targetTasks,
-          confirmation: `Complete ${targetTasks.length} task${targetTasks.length > 1 ? 's' : ''}?`
-        })
-        return true
-      }
-    }
-    
+    // This function is now ONLY for backwards compatibility with the old delete/complete UI
+    // ALL language understanding should go through AI
     return false
   }
 
@@ -390,16 +360,9 @@ export default function DashboardPage() {
   const handleSearchSubmit = async () => {
     if (!searchQuery.trim()) return
 
-    // Check if it's a deletion/completion command first
-    if (processCommand(searchQuery, tasks)) {
-      return // Command mode activated
-    }
-
-    // For any meaningful query, try AI first
-    if (searchQuery.length > 10) {
-      const aiHandled = await processAICommand(searchQuery)
-      if (aiHandled) return // AI command mode activated
-    }
+    // Always try AI first for ANY input
+    const aiHandled = await processAICommand(searchQuery)
+    if (aiHandled) return // AI handled the command
 
     // Otherwise do a search
     setIsSearching(true)
