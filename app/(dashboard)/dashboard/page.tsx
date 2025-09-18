@@ -87,6 +87,7 @@ export default function DashboardPage() {
   const [showAllTasks, setShowAllTasks] = useState(false)
   const [searchResults, setSearchResults] = useState<Task[]>([]) 
   const [isSearching, setIsSearching] = useState(false)
+  const [showHiddenTasks, setShowHiddenTasks] = useState(false)
   const [commandMode, setCommandMode] = useState<{
     active: boolean
     command: string
@@ -168,6 +169,36 @@ export default function DashboardPage() {
     
     return () => clearInterval(interval)
   }, [showEmailLogs])
+
+  // Calculate task age and staleness
+  const getTaskAge = (task: Task) => {
+    const now = new Date()
+    const created = new Date(task.createdAt)
+    const daysDiff = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24))
+    
+    // For now, use creation date as the last activity date
+    // In the future, we could track actual updates/interactions
+    const daysSinceActivity = daysDiff
+    
+    return {
+      daysOld: daysDiff,
+      daysSinceActivity,
+      isStale: daysSinceActivity > 30,
+      isVeryStale: daysSinceActivity > 60,
+      isHidden: daysSinceActivity > 90 && !showHiddenTasks
+    }
+  }
+
+  // Get task fade class based on age
+  const getTaskFadeClass = (task: Task) => {
+    const age = getTaskAge(task)
+    
+    if (age.isHidden) return 'hidden'
+    if (age.isVeryStale) return 'opacity-40 hover:opacity-60'
+    if (age.isStale) return 'opacity-60 hover:opacity-80'
+    if (age.daysSinceActivity > 7) return 'opacity-80 hover:opacity-100'
+    return ''
+  }
 
   // Process commands like "delete all", "complete today", etc.
   const processCommand = (query: string, currentTasks: Task[]) => {
@@ -936,6 +967,12 @@ export default function DashboardPage() {
   
   const visibleTasks = getVisibleTasks()
   const hiddenTaskCount = tasks.filter(t => t.status !== 'done').length - (showAllTasks ? 0 : Math.min(5, visibleTasks.length))
+  
+  // Count stale hidden tasks
+  const staleHiddenCount = tasks.filter(task => {
+    const age = getTaskAge(task)
+    return age.isHidden && task.status !== 'done'
+  }).length
 
   const agentEmail = session?.user?.organizationSlug 
     ? `${session.user.organizationSlug}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN || "everling.io"}`
@@ -1347,11 +1384,15 @@ export default function DashboardPage() {
               </div>
             ) : (
               <>
-                {visibleTasks.map((task) => (
-                  <div 
-                    key={task.id}
-                    className="p-4 border rounded hover:bg-muted/30 transition-colors"
-                  >
+                {visibleTasks.map((task) => {
+                  const age = getTaskAge(task)
+                  if (age.isHidden) return null
+                  
+                  return (
+                    <div 
+                      key={task.id}
+                      className={`p-4 border rounded hover:bg-muted/30 transition-all duration-300 ${getTaskFadeClass(task)}`}
+                    >
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
                         {/* Task Relationship Indicators - Minimal UI */}
@@ -1419,7 +1460,14 @@ export default function DashboardPage() {
                           </div>
                         )}
                         
-                        <h3 className="text-sm font-medium mb-1 truncate" title={task.title}>{task.title}</h3>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-sm font-medium truncate flex-1" title={task.title}>{task.title}</h3>
+                          {age.isStale && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                              stale
+                            </span>
+                          )}
+                        </div>
                         {task.description && (
                           <div className="text-xs text-muted-foreground mb-2 overflow-hidden" style={{ 
                             wordBreak: 'break-word', 
@@ -1506,7 +1554,8 @@ export default function DashboardPage() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  )
+                })}
                 
                 {/* Show more button */}
                 {hiddenTaskCount > 0 && !searchQuery && (
@@ -1521,6 +1570,20 @@ export default function DashboardPage() {
                     )}
                   </button>
                 )}
+                
+                {/* Show hidden stale tasks toggle */}
+                {staleHiddenCount > 0 && (
+                  <button
+                    onClick={() => setShowHiddenTasks(!showHiddenTasks)}
+                    className="w-full py-2 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Clock className="h-3 w-3" />
+                    {showHiddenTasks 
+                      ? 'Hide stale tasks' 
+                      : `${staleHiddenCount} stale task${staleHiddenCount > 1 ? 's' : ''} hidden (90+ days old)`
+                    }
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -1532,7 +1595,7 @@ export default function DashboardPage() {
                 onClick={() => setShowCompleted(true)}
                 className="hover:text-foreground"
               >
-                Completed
+                Completed Tasks
               </button>
               <button
                 onClick={() => {
