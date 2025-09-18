@@ -211,7 +211,7 @@ export default function DashboardPage() {
   // Process AI commands - let AI decide what to do with ANY input
   const processAICommand = async (query: string) => {
     // Don't process very short queries
-    if (query.trim().length < 5) return false
+    if (query.trim().length < 3) return false
     
     setIsProcessingAI(true)
     try {
@@ -229,11 +229,20 @@ export default function DashboardPage() {
       
       if (response.ok) {
         const command = await response.json()
-        console.log('AI command response:', command)
+        console.log('AI command response:', {
+          action: command.action,
+          confidence: command.confidence,
+          hasCreateTask: !!command.createTask,
+          createTask: command.createTask
+        })
         
         // Handle different command types
-        if (command.confidence > 0.7) {
-          if (command.action === 'delete' || command.action === 'complete') {
+        if (command.confidence > 0.5) {
+          if (command.action === 'search') {
+            // AI determined this is a search, not a command
+            // Just proceed with regular search
+            return false
+          } else if (command.action === 'delete' || command.action === 'complete') {
             // Find matching tasks based on AI's understanding
             let targetTasks: Task[] = []
             
@@ -1578,7 +1587,7 @@ export default function DashboardPage() {
               <div className="text-center py-12 border rounded">
                 <p className="text-sm text-muted-foreground">
                   {searchQuery ? (
-                    isSearching ? "Searching..." : `No tasks found for "${searchQuery}"`
+                    isSearching ? "Searching..." : "No matching tasks found"
                   ) : (
                     "No tasks to show"
                   )}
