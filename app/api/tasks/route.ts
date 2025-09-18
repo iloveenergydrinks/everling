@@ -99,7 +99,21 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { title, description, priority, dueDate, assignedToId } = body
+    const { 
+      title, 
+      description, 
+      priority, 
+      dueDate, 
+      reminderDate,
+      assignedToId,
+      assignedToEmail,
+      assignedByEmail,
+      taskType,
+      userRole,
+      emailMetadata,
+      stakeholders,
+      createdVia
+    } = body
 
     if (!title) {
       return NextResponse.json(
@@ -134,9 +148,16 @@ export async function POST(request: NextRequest) {
         description,
         priority: priority || 'medium',
         dueDate: dueDate ? new Date(dueDate) : null,
+        reminderDate: reminderDate ? new Date(reminderDate) : null,
         assignedToId,
+        assignedToEmail,
+        assignedByEmail,
+        taskType,
+        userRole,
+        emailMetadata,
+        stakeholders,
         createdById: auth.userId,
-        createdVia: 'web'
+        createdVia: createdVia || 'web'
       },
       include: {
         createdBy: {

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { extractSmartTask, calculateSmartPriority, extractTaskRelationships } from '@/lib/smart-agent';
 
 // Define our task command schema
 const TaskCommandSchema = z.object({
@@ -114,21 +115,81 @@ Examples:
 - "remind me to call john at 3pm" → action: "create", createTask: {title: "Call John", dueDate: "2025-09-17T15:00:00"}
 
 Default to "create" if there's ANY doubt - better to offer to create a task than miss the intent.
-Set action to "unknown" ONLY if the input makes no sense at all.`,
+Set action to "unknown" ONLY if the input makes no sense at all.
+
+IMPORTANT: If creating a task but no date/time is mentioned, set dueDate to null (don't make up dates).`,
       prompt: `Understand this request and extract the appropriate action: "${prompt}"
       
 User: ${session.user.email}
 ${context ? `Context: ${JSON.stringify(context)}` : ''}
 
+Remember: Extract ALL information mentioned. If they say a date/time, include it. If they don't mention any date/time, leave dueDate as null.
+
 Remember: When in doubt, assume they want to create a task to remember something.`,
     });
 
     // Add user context to the result
-    const command = {
+    let command = {
       ...result.object,
       userEmail: session.user.email,
       timestamp: new Date().toISOString(),
     };
+
+    // If it's a create action, enhance with smart extraction
+    if (command.action === 'create' && command.createTask) {
+      try {
+        // Create email-like data from the chat input
+        const emailData = {
+          from: session.user.email!,
+          subject: command.createTask.title,
+          body: prompt, // Use the full prompt as the body
+          timestamp: new Date()
+        };
+
+        // Calculate smart priority
+        const priorityScore = await calculateSmartPriority(emailData);
+
+        // Extract full task details using the same AI as email
+        const smartTasks = await extractSmartTask(
+          emailData,
+          null, // No thread context for chat
+          priorityScore
+        );
+
+        // Get the extracted task (could be multiple, but we'll take the first)
+        const smartTask = Array.isArray(smartTasks) ? smartTasks[0] : smartTasks;
+
+        // Extract relationships
+        const relationships = await extractTaskRelationships(
+          emailData,
+          null,
+          session.user.email!
+        );
+
+        // Merge the smart extraction with the initial command
+        command.createTask = {
+          title: smartTask.title,
+          description: smartTask.description,
+          priority: smartTask.priority,
+          dueDate: smartTask.dueDate?.toISOString() || command.createTask.dueDate,
+          reminderDate: smartTask.reminderDate?.toISOString(),
+          estimatedEffort: smartTask.estimatedEffort,
+          businessImpact: smartTask.businessImpact,
+          stakeholders: smartTask.stakeholders,
+          projectTag: smartTask.projectTag,
+          dependencies: smartTask.dependencies,
+          tags: smartTask.tags,
+          // Add relationships
+          assignedToEmail: relationships.assignedToEmail,
+          assignedByEmail: relationships.assignedByEmail,
+          taskType: relationships.taskType,
+          userRole: relationships.userRole
+        };
+      } catch (error) {
+        console.error('Smart extraction failed, using basic extraction:', error);
+        // Keep the basic extraction if smart fails
+      }
+    }
 
     return NextResponse.json(command);
 

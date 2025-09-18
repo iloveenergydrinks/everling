@@ -14,7 +14,8 @@ import {
   Copy, Circle, Calendar, AlertCircle, Clock, 
   Inbox, ChevronUp, Mail, CheckCircle, RefreshCw,
   Plus, X, Search, ChevronDown, UserCheck, ArrowDownToLine,
-  Share2, Eye, Info, Users, UserX, GitBranch, User, AlertTriangle
+  Share2, Eye, Info, Users, UserX, GitBranch, User, AlertTriangle,
+  MapPin
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { showAlert, showConfirm, showPrompt } from "@/components/global-modal"
@@ -228,6 +229,7 @@ export default function DashboardPage() {
       
       if (response.ok) {
         const command = await response.json()
+        console.log('AI command response:', command)
         
         // Handle different command types
         if (command.confidence > 0.7) {
@@ -282,16 +284,39 @@ export default function DashboardPage() {
   const executeAICommand = async () => {
     if (!aiCommand?.createTask) return
     
+    console.log('Creating task with AI command:', aiCommand.createTask)
+    
     try {
+      // Create task with all the smart extraction data
+      const taskData = {
+        title: aiCommand.createTask.title,
+        description: aiCommand.createTask.description,
+        priority: aiCommand.createTask.priority || 'medium',
+        dueDate: aiCommand.createTask.dueDate,
+        reminderDate: aiCommand.createTask.reminderDate,
+        // Metadata from smart extraction
+        emailMetadata: {
+          smartAnalysis: {
+            tags: aiCommand.createTask.tags,
+            estimatedEffort: aiCommand.createTask.estimatedEffort,
+            businessImpact: aiCommand.createTask.businessImpact,
+            projectTag: aiCommand.createTask.projectTag,
+            dependencies: aiCommand.createTask.dependencies,
+          }
+        },
+        // Relationships
+        assignedToEmail: aiCommand.createTask.assignedToEmail,
+        assignedByEmail: aiCommand.createTask.assignedByEmail,
+        taskType: aiCommand.createTask.taskType,
+        userRole: aiCommand.createTask.userRole,
+        stakeholders: aiCommand.createTask.stakeholders,
+        createdVia: 'chat' // Mark it as created via chat
+      }
+      
       const response = await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: aiCommand.createTask.title,
-          description: aiCommand.createTask.description,
-          priority: aiCommand.createTask.priority,
-          dueDate: aiCommand.createTask.dueDate,
-        })
+        body: JSON.stringify(taskData)
       })
       
       if (response.ok) {
@@ -1311,7 +1336,7 @@ export default function DashboardPage() {
                         <div className="text-sm text-muted-foreground">{aiCommand.createTask.description}</div>
                       </div>
                     )}
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center gap-3">
                       {aiCommand.createTask.priority && (
                         <div className="flex items-center gap-2">
                           <Circle className={`h-2 w-2 fill-current ${
@@ -1347,7 +1372,28 @@ export default function DashboardPage() {
                           </span>
                         </div>
                       )}
+                      {aiCommand.createTask.tags?.who && (
+                        <div className="flex items-center gap-1.5">
+                          <User className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">{aiCommand.createTask.tags.who}</span>
+                        </div>
+                      )}
+                      {aiCommand.createTask.tags?.where && (
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">{aiCommand.createTask.tags.where}</span>
+                        </div>
+                      )}
                     </div>
+                    {aiCommand.createTask.tags?.extras && aiCommand.createTask.tags.extras.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {aiCommand.createTask.tags.extras.map((tag, i) => (
+                          <span key={i} className="px-2 py-0.5 text-xs border rounded-full text-muted-foreground">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="flex gap-2 pt-1">
                     <button
