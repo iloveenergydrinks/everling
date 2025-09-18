@@ -283,24 +283,30 @@ export default function DashboardPage() {
   const processCommand = (query: string, currentTasks: Task[]) => {
     const lowerQuery = query.toLowerCase().trim()
     
-    // Check for delete commands
-    if (lowerQuery.startsWith('delete ')) {
-      const target = lowerQuery.substring(7)
+    // Check for delete commands (English and Italian)
+    if (lowerQuery.startsWith('delete ') || lowerQuery.startsWith('cancella ') || lowerQuery.startsWith('elimina ')) {
+      const target = lowerQuery.replace(/^(delete|cancella|elimina) /, '').trim()
       let targetTasks: Task[] = []
       
-      if (target === 'all' || target === 'everything') {
+      if (target === 'all' || target === 'everything' || target === 'tutto' || target === 'tutti') {
         targetTasks = currentTasks.filter(t => t.status !== 'done')
-      } else if (target === 'completed' || target === 'done') {
+      } else if (target === 'completed' || target === 'done' || target === 'completati') {
         targetTasks = tasks.filter(t => t.status === 'done')
-      } else if (target === 'today') {
+      } else if (target === 'today' || target === 'oggi') {
         const today = new Date().toLocaleDateString('en-CA')
         targetTasks = currentTasks.filter(t => 
           t.dueDate && new Date(t.dueDate).toLocaleDateString('en-CA') === today
         )
-      } else if (target === 'overdue') {
+      } else if (target === 'overdue' || target === 'scaduti') {
         const today = new Date().toLocaleDateString('en-CA')
         targetTasks = currentTasks.filter(t => 
           t.dueDate && new Date(t.dueDate).toLocaleDateString('en-CA') < today
+        )
+      } else {
+        // Try to find tasks that match the target text
+        targetTasks = currentTasks.filter(t => 
+          t.title.toLowerCase().includes(target) || 
+          (t.description && t.description.toLowerCase().includes(target))
         )
       }
       
@@ -413,6 +419,13 @@ export default function DashboardPage() {
       if (response.ok) {
         const results = await response.json()
         setSearchResults(results)
+        // Clear the search query after successful search
+        if (results.length === 0) {
+          setTimeout(() => {
+            setSearchQuery('')
+            setSearchResults([])
+          }, 3000) // Clear after 3 seconds if no results
+        }
       } else {
         const basicResults = interpretCommand(searchQuery, tasks, activeFilters)
         setSearchResults(basicResults)
@@ -1192,7 +1205,7 @@ export default function DashboardPage() {
                   commandMode ? 'border-orange-500 dark:border-orange-400' : 
                   aiCommand ? 'border-emerald-500 dark:border-emerald-400' :
                   searchFocused ? 'border-primary' : 'border-input'
-                } bg-background pl-4 pr-12 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50`}
+                } bg-background pl-4 ${searchQuery ? 'pr-20' : 'pr-12'} text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50`}
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
                 onKeyDown={(e) => {
@@ -1209,6 +1222,20 @@ export default function DashboardPage() {
                   }
                 }}
               />
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('')
+                    setSearchResults([])
+                    setCommandMode(null)
+                    setAiCommand(null)
+                  }}
+                  className="absolute right-10 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+                  title="Clear"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
               <button
                 onClick={handleSearchSubmit}
                 disabled={!searchQuery.trim() || isSearching || isProcessingAI}
