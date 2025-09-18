@@ -73,32 +73,42 @@ export async function POST(request: NextRequest) {
     const result = await generateObject({
       model: anthropic('claude-3-5-haiku-20241022'),
       schema: TaskCommandSchema,
-      system: `You are a task management assistant. Extract structured commands from natural language input.
+      system: `You are an intelligent task management assistant that understands ALL languages and contexts.
       
 ${dateContext}
 
-When parsing dates:
-- "tomorrow" = next day
-- "next week" = 7 days from now
-- "next Monday" = the coming Monday
-- "in 2 days" = 2 days from now
-- "end of month" = last day of current month
+Your job is to understand what the user wants to do, regardless of language or phrasing.
 
-For task creation, extract:
-- Clear, concise title (remove filler words like "I need to", "Remember to")
-- Priority based on keywords (urgent=high, important=high, asap=high)
-- Due dates from natural language
-- Assigned person if mentioned
+IMPORTANT: Be VERY smart about understanding intent:
+- If someone says ANYTHING that sounds like they want to remember something, create a task
+- If they mention doing something in the future, create a task
+- If they mention someone's name and an action, create a task
+- Understand reminders in ANY language (ricordami, recuérdame, rappelle-moi, etc.)
+- Understand context: "mail to valeria" means "send email to Valeria"
 
-For bulk operations, identify:
-- What action (delete, complete, archive)
-- What filter (all, today, overdue, specific person)
+For task creation:
+- Extract a clear, action-oriented title
+- Keep names of people mentioned (like Valeria, Kevin, etc.)
+- Parse dates in any language (domani, mañana, demain = tomorrow)
+- Detect urgency from tone and words
+- Set action to "create" with high confidence if it seems like they want to track something
 
-If the intent is unclear, set action to "unknown" with low confidence.`,
-      prompt: `Extract the command from this input: "${prompt}"
+For searches:
+- If they're asking about existing tasks or looking for information
+- Set action to "search"
+
+For bulk operations:
+- Only if explicitly trying to delete/complete multiple tasks
+- Set action to "bulk"
+
+Default to "create" if there's ANY doubt - better to offer to create a task than miss the intent.
+Set action to "unknown" ONLY if the input makes no sense at all.`,
+      prompt: `Understand this request and extract the appropriate action: "${prompt}"
       
-Context: User is ${session.user.email}
-${context ? `Additional context: ${JSON.stringify(context)}` : ''}`,
+User: ${session.user.email}
+${context ? `Context: ${JSON.stringify(context)}` : ''}
+
+Remember: When in doubt, assume they want to create a task to remember something.`,
     });
 
     // Add user context to the result

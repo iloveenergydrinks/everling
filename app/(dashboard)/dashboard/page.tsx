@@ -207,20 +207,10 @@ export default function DashboardPage() {
     return ''
   }
 
-  // Check if query is a creation intent
-  const isCreationIntent = (query: string) => {
-    const lowerQuery = query.toLowerCase()
-    const creationKeywords = [
-      'add', 'create', 'new', 'make', 'remind me', 
-      'schedule', 'todo', 'task', 'need to', 'have to',
-      'don\'t forget', 'remember to'
-    ]
-    return creationKeywords.some(keyword => lowerQuery.includes(keyword))
-  }
-
-  // Process AI commands for task creation
+  // Process AI commands - let AI decide what to do with ANY input
   const processAICommand = async (query: string) => {
-    if (!isCreationIntent(query)) return false
+    // Don't process very short queries
+    if (query.trim().length < 5) return false
     
     setIsProcessingAI(true)
     try {
@@ -411,8 +401,8 @@ export default function DashboardPage() {
     }
 
     const searchTimeout = setTimeout(async () => {
-      // Check if it's a creation intent first
-      if (await processAICommand(searchQuery)) {
+      // For any query longer than 10 chars, try AI first
+      if (searchQuery.length > 10 && await processAICommand(searchQuery)) {
         return // AI command mode activated
       }
       
