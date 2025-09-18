@@ -16,9 +16,15 @@ const TaskCommandSchema = z.object({
     description: z.string().optional(),
     priority: z.enum(['low', 'medium', 'high']).default('medium'),
     dueDate: z.string().optional(), // ISO 8601 datetime string WITH TIME if specified
-    dueTime: z.string().optional(), // Separate time field if needed (HH:MM format)
     reminderDate: z.string().optional(),
     assignedTo: z.string().optional(),
+    // Tags for rich context
+    tags: z.object({
+      who: z.string().optional(), // Person mentioned
+      where: z.string().optional(), // Location mentioned
+      when: z.string().optional(), // Time description
+      what: z.string().optional(), // Action type
+    }).optional(),
   }).optional(),
   
   // For deletion/completion
@@ -93,11 +99,16 @@ For CREATION (ONLY when explicitly asking to create/remember):
 - MUST have clear creation keywords: ricordami, ricorda, remember, remind, rappelle, recuérdame, 记住, etc.
 - Even with TYPOS: "rirocrdami", "ricrodami", "remeber", "remmind" → still create
 - Set action to "create" ONLY when these keywords are present
-- Extract whatever details you can
-- Understand dates in ANY language (domani = tomorrow, la semaine prochaine = next week, etc.)
-- IMPORTANT: Extract times! "alle 4" = 16:00, "at 3pm" = 15:00, "à 14h30" = 14:30
-- If time is specified, include it in dueDate as ISO 8601: "2025-09-18T16:00:00"
-- If no time specified but date mentioned, use midnight: "2025-09-18T00:00:00"
+- Extract ALL details in ONE pass:
+  - Title: Clear, action-oriented (e.g., "Call Bepi", "Meeting with Michelutti")
+  - Description: Any additional context
+  - Priority: Detect urgency (ASAP/urgent → high, normal → medium, whenever → low)
+  - Due date AND time: Parse completely
+    * "domani alle 4" → "2025-09-19T16:00:00"
+    * "tomorrow at 3pm" → "2025-09-19T15:00:00"
+    * "lunedì" → next Monday at midnight
+  - Extract WHO is mentioned (for tags)
+  - Extract WHERE if mentioned (for tags)
 
 For DELETION (only if explicitly asking to delete):
 - Must have clear delete intent: delete, cancella, elimina, supprimer, etc.
@@ -110,12 +121,16 @@ For COMPLETION (only if explicitly asking to complete):
 Examples:
 - "bepi" → action: "search", searchQuery: "bepi", confidence: 0.9
 - "meeting" → action: "search", searchQuery: "meeting", confidence: 0.9
-- "andare" → action: "search", searchQuery: "andare", confidence: 0.8
-- "ricordami di" → action: "create", createTask: {title: "ricordami di"}, confidence: 0.95
-- "rirocrdami di andare" → action: "create", createTask: {title: "andare"}, confidence: 0.9
-- "remember to call" → action: "create", createTask: {title: "Call"}, confidence: 0.95
+- "ricordami di chiamare bepi domani alle 4" → action: "create", createTask: {
+    title: "Chiamare Bepi",
+    dueDate: "2025-09-19T16:00:00",
+    tags: {who: "Bepi", when: "Tomorrow at 4 PM", what: "call"}
+  }, confidence: 0.95
+- "remind me to meet john at starbucks" → action: "create", createTask: {
+    title: "Meet John at Starbucks",
+    tags: {who: "John", where: "Starbucks", what: "meeting"}
+  }, confidence: 0.95
 - "cancella task fiori" → action: "delete", targetTasks: {searchTerms: "fiori", filter: "specific"}
-- "remind me to call john at 3pm" → action: "create", createTask: {title: "Call John", dueDate: "2025-09-17T15:00:00"}
 
 DEFAULT TO "SEARCH" for ambiguous input - it's a search box!
 Only use "create" when there are EXPLICIT creation keywords (remind, remember, ricordami, etc.)
@@ -139,76 +154,16 @@ Remember: When in doubt, assume they want to create a task to remember something
       timestamp: new Date().toISOString(),
     };
 
-    // If it's a create action, enhance with smart extraction (but keep it optional)
+    // For chat commands, we already have the extraction from the first AI call
+    // Skip the heavy smart extraction to keep it fast
     if (command.action === 'create' && command.createTask) {
-      try {
-        // Only do smart extraction if we have enough content
-        if (prompt.length > 10) {
-          // Create email-like data from the chat input
-          const emailData = {
-            from: session.user.email!,
-            subject: command.createTask.title || prompt,
-            body: prompt,
-            timestamp: new Date()
-          };
-
-          // Calculate smart priority (with empty context for chat)
-          const priorityScore = await calculateSmartPriority({
-            ...emailData,
-            previousEmails: [],
-            threadCount: 0
-          });
-
-          // Extract full task details using the same AI as email
-          const smartTasks = await extractSmartTask(
-            emailData,
-            null, // No thread context for chat
-            priorityScore
-          );
-
-          // Get the extracted task (could be multiple, but we'll take the first)
-          const smartTask = Array.isArray(smartTasks) ? smartTasks[0] : smartTasks;
-
-          // Extract relationships
-          const relationships = await extractTaskRelationships(
-            emailData,
-            null,
-            session.user.email!
-          );
-
-          // Merge the smart extraction with the initial command (keep original if smart extraction is empty)
-          command.createTask = {
-            title: smartTask.title || command.createTask.title,
-            description: smartTask.description || command.createTask.description,
-            priority: smartTask.priority || command.createTask.priority || 'medium',
-            dueDate: smartTask.dueDate ? 
-              (smartTask.dueDate instanceof Date ? smartTask.dueDate.toISOString() : smartTask.dueDate) : 
-              command.createTask.dueDate,
-            reminderDate: smartTask.reminderDate ? 
-              (smartTask.reminderDate instanceof Date ? smartTask.reminderDate.toISOString() : smartTask.reminderDate) : 
-              null,
-            estimatedEffort: smartTask.estimatedEffort,
-            businessImpact: smartTask.businessImpact,
-            stakeholders: smartTask.stakeholders,
-            projectTag: smartTask.projectTag,
-            dependencies: smartTask.dependencies,
-            tags: smartTask.tags,
-            // Add relationships
-            assignedToEmail: relationships.assignedToEmail,
-            assignedByEmail: relationships.assignedByEmail,
-            taskType: relationships.taskType || 'self',
-            userRole: relationships.userRole || 'executor'
-          };
-        }
-      } catch (error) {
-        console.error('Smart extraction failed:', {
-          error: error instanceof Error ? error.message : error,
-          stack: error instanceof Error ? error.stack : undefined,
-          prompt,
-          createTask: command.createTask
-        });
-        // Keep the basic extraction if smart fails
-      }
+      // Just add default values for chat-created tasks
+      command.createTask = {
+        ...command.createTask,
+        taskType: 'self',
+        userRole: 'executor',
+        createdVia: 'chat'
+      };
     }
 
     return NextResponse.json(command);
