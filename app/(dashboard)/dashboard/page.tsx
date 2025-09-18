@@ -1179,61 +1179,72 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Minimal AI search */}
+          {/* Chat-like AI interface */}
           <div className="mb-8">
-            <div className="relative">
-              {commandMode ? (
-                <AlertTriangle className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-orange-600 dark:text-orange-400" />
-              ) : searchQuery && !isSearching ? (
-                <CheckCircle className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-600 dark:text-green-400" />
-              ) : (
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              )}
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={isProcessingAI ? "Understanding your request..." : "Type and press Enter to search or create task..."}
-                disabled={commandMode !== null || aiCommand !== null}
-                className={`${searchFocused ? 'h-12' : 'h-9'} w-full rounded border ${
-                  commandMode ? 'border-orange-500 dark:border-orange-400 opacity-50' : 
-                  aiCommand ? 'border-emerald-500 dark:border-emerald-400 opacity-50' :
-                  searchFocused ? 'border-primary' : 'border-input'
-                } bg-background pl-10 pr-10 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-all duration-200 disabled:cursor-not-allowed`}
-                onFocus={() => setSearchFocused(true)}
-                onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') {
-                    setSearchQuery('')
-                    setCommandMode(null)
-                    setAiCommand(null)
-                    setSearchResults([])
-                    setSearchFocused(false)
-                    e.currentTarget.blur()
-                  } else if (e.key === 'Enter') {
-                    e.preventDefault()
-                    handleSearchSubmit()
-                  }
-                }}
-              />
-              {isSearching && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <RefreshCw className="h-4 w-4 text-emerald-500 dark:text-emerald-400 animate-spin" />
-                </div>
-              )}
-              {(searchQuery && !isSearching) || commandMode ? (
-                <button
-                  onClick={() => {
-                    setSearchQuery('')
-                    setSearchResults([])
-                    setCommandMode(null)
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Ask anything or describe a task..."
+                  disabled={commandMode !== null || aiCommand !== null || isSearching || isProcessingAI}
+                  className={`h-11 w-full rounded-l-md border-y border-l ${
+                    commandMode ? 'border-orange-500 dark:border-orange-400' : 
+                    aiCommand ? 'border-emerald-500 dark:border-emerald-400' :
+                    searchFocused ? 'border-primary' : 'border-input'
+                  } bg-background px-4 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:rounded-l-md transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50`}
+                  onFocus={() => setSearchFocused(true)}
+                  onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      setSearchQuery('')
+                      setCommandMode(null)
+                      setAiCommand(null)
+                      setSearchResults([])
+                      setSearchFocused(false)
+                      e.currentTarget.blur()
+                    } else if (e.key === 'Enter' && searchQuery.trim() && !isSearching && !isProcessingAI) {
+                      e.preventDefault()
+                      handleSearchSubmit()
+                    }
                   }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  title="Clear"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              ) : null}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery('')
+                      setSearchResults([])
+                      setCommandMode(null)
+                      setAiCommand(null)
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    title="Clear"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={handleSearchSubmit}
+                disabled={!searchQuery.trim() || isSearching || isProcessingAI || commandMode !== null || aiCommand !== null}
+                className={`h-11 px-4 rounded-r-md border-y border-r transition-all duration-200 flex items-center justify-center min-w-[60px] ${
+                  !searchQuery.trim() || isSearching || isProcessingAI
+                    ? 'bg-muted text-muted-foreground cursor-not-allowed border-input'
+                    : commandMode 
+                    ? 'bg-orange-500 text-white hover:bg-orange-600 border-orange-500'
+                    : aiCommand
+                    ? 'bg-emerald-500 text-white hover:bg-emerald-600 border-emerald-500'
+                    : 'bg-primary text-primary-foreground hover:bg-primary/90 border-primary'
+                }`}
+                title={isSearching || isProcessingAI ? "Processing..." : "Send"}
+              >
+                {isSearching || isProcessingAI ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ArrowDownToLine className="h-4 w-4 -rotate-90" />
+                )}
+              </button>
             </div>
             
             {/* Command suggestions when focused */}
