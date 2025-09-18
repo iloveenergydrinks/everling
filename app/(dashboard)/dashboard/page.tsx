@@ -1307,45 +1307,49 @@ export default function DashboardPage() {
             
             {/* AI Task Creation Preview */}
             {aiCommand && aiCommand.createTask && (
-              <div className="mt-3 p-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded animate-in fade-in duration-200">
+              <div className="mt-3 p-4 border rounded bg-muted/30 animate-in fade-in duration-200">
                 <div className="space-y-3">
-                  <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
-                    Create new task:
-                  </p>
-                  <div className="space-y-2 text-sm">
-                    <div>
-                      <span className="text-xs text-emerald-600 dark:text-emerald-500">Title:</span>
-                      <p className="font-medium">{aiCommand.createTask.title}</p>
+                  <h3 className="text-sm font-medium">Create new task</h3>
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Title</label>
+                      <div className="text-sm font-medium">{aiCommand.createTask.title}</div>
                     </div>
                     {aiCommand.createTask.description && (
-                      <div>
-                        <span className="text-xs text-emerald-600 dark:text-emerald-500">Description:</span>
-                        <p className="text-muted-foreground">{aiCommand.createTask.description}</p>
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">Description</label>
+                        <div className="text-sm text-muted-foreground">{aiCommand.createTask.description}</div>
                       </div>
                     )}
-                    <div className="flex gap-4 text-xs">
+                    <div className="flex items-center gap-4">
                       {aiCommand.createTask.priority && (
-                        <span className={`px-2 py-0.5 rounded ${
-                          aiCommand.createTask.priority === 'high' 
-                            ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                            : aiCommand.createTask.priority === 'medium'
-                            ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
-                            : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
-                        }`}>
-                          {aiCommand.createTask.priority} priority
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <Circle className={`h-2 w-2 fill-current ${
+                            aiCommand.createTask.priority === 'high' 
+                              ? 'text-red-500'
+                              : aiCommand.createTask.priority === 'medium'
+                              ? 'text-yellow-500'
+                              : 'text-gray-400'
+                          }`} />
+                          <span className="text-xs text-muted-foreground">
+                            {aiCommand.createTask.priority} priority
+                          </span>
+                        </div>
                       )}
                       {aiCommand.createTask.dueDate && (
-                        <span className="text-muted-foreground">
-                          Due: {new Date(aiCommand.createTask.dueDate).toLocaleDateString()}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(aiCommand.createTask.dueDate).toLocaleDateString()}
+                          </span>
+                        </div>
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 pt-1">
                     <button
                       onClick={() => executeAICommand()}
-                      className="px-3 py-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 rounded transition-colors"
+                      className="px-3 py-1.5 text-xs border rounded hover:bg-muted transition-colors"
                     >
                       Create Task
                     </button>
@@ -1354,13 +1358,13 @@ export default function DashboardPage() {
                         setAiCommand(null)
                         setSearchQuery('')
                       }}
-                      className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded transition-colors"
+                      className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                       Cancel
                     </button>
                   </div>
                   {aiCommand.confidence < 0.9 && (
-                    <p className="text-xs text-emerald-600/60 dark:text-emerald-400/60">
+                    <p className="text-xs text-muted-foreground/60">
                       Confidence: {Math.round(aiCommand.confidence * 100)}%
                     </p>
                   )}
