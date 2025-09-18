@@ -10,7 +10,7 @@ import { extractSmartTask, calculateSmartPriority, extractTaskRelationships } fr
 const TaskCommandSchema = z.object({
   action: z.enum(['create', 'delete', 'complete', 'update', 'search', 'unknown']),
   
-  // For creating a single task
+  // For creating tasks (single or multiple)
   createTask: z.object({
     title: z.string(),
     description: z.string().optional(),
@@ -26,6 +26,22 @@ const TaskCommandSchema = z.object({
       what: z.string().optional(), // Action type
     }).optional(),
   }).optional(),
+  
+  // For creating multiple tasks
+  createTasks: z.array(z.object({
+    title: z.string(),
+    description: z.string().optional(),
+    priority: z.enum(['low', 'medium', 'high']).default('medium'),
+    dueDate: z.string().optional(),
+    reminderDate: z.string().optional(),
+    assignedTo: z.string().optional(),
+    tags: z.object({
+      who: z.string().optional(),
+      where: z.string().optional(),
+      when: z.string().optional(),
+      what: z.string().optional(),
+    }).optional(),
+  })).optional(),
   
   // For deletion/completion
   targetTasks: z.object({
@@ -99,7 +115,17 @@ For CREATION (ONLY when explicitly asking to create/remember):
 - MUST have clear creation keywords: ricordami, ricorda, remember, remind, rappelle, recuérdame, 记住, etc.
 - Even with TYPOS: "rirocrdami", "ricrodami", "remeber", "remmind" → still create
 - Set action to "create" ONLY when these keywords are present
-- Extract ALL details in ONE pass:
+
+DETECT MULTIPLE TASKS:
+- Look for lists, commas, "and", "poi", "e", "y", "et", numbered items
+- Examples of multiple tasks:
+  * "remind me to call john and send email to mary"
+  * "ricordami di chiamare bepi, comprare latte e pagare bollette"
+  * "1. buy milk 2. call dentist 3. finish report"
+- If multiple tasks detected, use createTasks array
+- If single task, use createTask object
+
+Extract ALL details in ONE pass for EACH task:
   - Title: Clear, action-oriented (e.g., "Call Bepi", "Meeting with Michelutti")
   - Description: Any additional context
   - Priority: Detect urgency (ASAP/urgent → high, normal → medium, whenever → low)
@@ -126,10 +152,14 @@ Examples:
     dueDate: "2025-09-19T16:00:00",
     tags: {who: "Bepi", when: "Tomorrow at 4 PM", what: "call"}
   }, confidence: 0.95
-- "remind me to meet john at starbucks" → action: "create", createTask: {
-    title: "Meet John at Starbucks",
-    tags: {who: "John", where: "Starbucks", what: "meeting"}
-  }, confidence: 0.95
+- "remind me to call john and buy milk" → action: "create", createTasks: [
+    {title: "Call John", tags: {who: "John", what: "call"}},
+    {title: "Buy milk", tags: {what: "shopping"}}
+  ], confidence: 0.95
+- "ricordami di 1. pagare bollette 2. chiamare dentista" → action: "create", createTasks: [
+    {title: "Pagare bollette", tags: {what: "payment"}},
+    {title: "Chiamare dentista", tags: {who: "dentista", what: "call"}}
+  ], confidence: 0.95
 - "cancella task fiori" → action: "delete", targetTasks: {searchTerms: "fiori", filter: "specific"}
 
 DEFAULT TO "SEARCH" for ambiguous input - it's a search box!
@@ -156,14 +186,24 @@ Remember: When in doubt, assume they want to create a task to remember something
 
     // For chat commands, we already have the extraction from the first AI call
     // Skip the heavy smart extraction to keep it fast
-    if (command.action === 'create' && command.createTask) {
-      // Just add default values for chat-created tasks
-      command.createTask = {
-        ...command.createTask,
-        taskType: 'self',
-        userRole: 'executor',
-        createdVia: 'chat'
-      };
+    if (command.action === 'create') {
+      if (command.createTask) {
+        // Single task - add default values
+        command.createTask = {
+          ...command.createTask,
+          taskType: 'self',
+          userRole: 'executor',
+          createdVia: 'chat'
+        };
+      } else if (command.createTasks) {
+        // Multiple tasks - add default values to each
+        command.createTasks = command.createTasks.map(task => ({
+          ...task,
+          taskType: 'self',
+          userRole: 'executor',
+          createdVia: 'chat'
+        }));
+      }
     }
 
     return NextResponse.json(command);

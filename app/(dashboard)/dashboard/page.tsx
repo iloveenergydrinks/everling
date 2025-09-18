@@ -272,7 +272,7 @@ export default function DashboardPage() {
               })
               return true
             }
-          } else if (command.action === 'create' && command.createTask) {
+          } else if (command.action === 'create' && (command.createTask || command.createTasks)) {
             setAiCommand(command)
             return true
           }
@@ -287,59 +287,95 @@ export default function DashboardPage() {
     return false
   }
 
-  // Execute AI command (create task)
+  // Execute AI command (create task or tasks)
   const executeAICommand = async () => {
-    if (!aiCommand?.createTask) return
+    if (!aiCommand || (!aiCommand.createTask && !aiCommand.createTasks)) return
     
-    console.log('Creating task with AI command:', aiCommand.createTask)
+    console.log('Creating task(s) with AI command:', aiCommand)
     
     try {
-      // Create task with all the smart extraction data
-      const taskData = {
-        title: aiCommand.createTask.title,
-        description: aiCommand.createTask.description,
-        priority: aiCommand.createTask.priority || 'medium',
-        dueDate: aiCommand.createTask.dueDate,
-        reminderDate: aiCommand.createTask.reminderDate,
-        // Metadata from smart extraction
-        emailMetadata: {
-          smartAnalysis: {
-            tags: aiCommand.createTask.tags,
-            estimatedEffort: aiCommand.createTask.estimatedEffort,
-            businessImpact: aiCommand.createTask.businessImpact,
-            projectTag: aiCommand.createTask.projectTag,
-            dependencies: aiCommand.createTask.dependencies,
-          }
-        },
-        // Relationships
-        assignedToEmail: aiCommand.createTask.assignedToEmail,
-        assignedByEmail: aiCommand.createTask.assignedByEmail,
-        taskType: aiCommand.createTask.taskType,
-        userRole: aiCommand.createTask.userRole,
-        stakeholders: aiCommand.createTask.stakeholders,
-        createdVia: 'chat' // Mark it as created via chat
-      }
-      
-      const response = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(taskData)
-      })
-      
-      if (response.ok) {
-        toast({
-          title: "Task created",
-          description: aiCommand.createTask.title,
-          variant: "success"
+      // Handle single task
+      if (aiCommand.createTask) {
+        const taskData = {
+          title: aiCommand.createTask.title,
+          description: aiCommand.createTask.description,
+          priority: aiCommand.createTask.priority || 'medium',
+          dueDate: aiCommand.createTask.dueDate,
+          reminderDate: aiCommand.createTask.reminderDate,
+          emailMetadata: {
+            smartAnalysis: {
+              tags: aiCommand.createTask.tags,
+            }
+          },
+          taskType: aiCommand.createTask.taskType,
+          userRole: aiCommand.createTask.userRole,
+          createdVia: 'chat'
+        }
+        
+        const response = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(taskData)
         })
-        fetchTasks()
-        setAiCommand(null)
-        setSearchQuery('')
+        
+        if (response.ok) {
+          toast({
+            title: "Task created",
+            description: aiCommand.createTask.title,
+            variant: "success"
+          })
+          fetchTasks()
+          setAiCommand(null)
+          setSearchQuery('')
+        }
+      }
+      // Handle multiple tasks
+      else if (aiCommand.createTasks) {
+        let successCount = 0
+        
+        for (const task of aiCommand.createTasks) {
+          const taskData = {
+            title: task.title,
+            description: task.description,
+            priority: task.priority || 'medium',
+            dueDate: task.dueDate,
+            reminderDate: task.reminderDate,
+            emailMetadata: {
+              smartAnalysis: {
+                tags: task.tags,
+              }
+            },
+            taskType: task.taskType || 'self',
+            userRole: task.userRole || 'executor',
+            createdVia: 'chat'
+          }
+          
+          const response = await fetch('/api/tasks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(taskData)
+          })
+          
+          if (response.ok) {
+            successCount++
+          }
+        }
+        
+        if (successCount > 0) {
+          toast({
+            title: `${successCount} task${successCount > 1 ? 's' : ''} created`,
+            description: `Successfully created ${successCount} of ${aiCommand.createTasks.length} tasks`,
+            variant: "success"
+          })
+          fetchTasks()
+          setAiCommand(null)
+          setSearchQuery('')
+        }
       }
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to create task",
+        description: "Failed to create task(s)",
         variant: "error"
       })
     }
@@ -1269,86 +1305,98 @@ export default function DashboardPage() {
             )}
             
             {/* AI Task Creation Preview */}
-            {aiCommand && aiCommand.createTask && (
+            {aiCommand && (aiCommand.createTask || aiCommand.createTasks) && (
               <div className="mt-3 p-4 border rounded bg-muted/30 animate-in fade-in duration-200">
                 <div className="space-y-3">
-                  <h3 className="text-sm font-medium">Create new task</h3>
-                  <div className="space-y-3">
-                    <div className="space-y-1">
-                      <label className="text-xs text-muted-foreground">Title</label>
-                      <div className="text-sm font-medium">{aiCommand.createTask.title}</div>
-                    </div>
-                    {aiCommand.createTask.description && (
+                  <h3 className="text-sm font-medium">
+                    {aiCommand.createTasks ? `Create ${aiCommand.createTasks.length} tasks` : 'Create new task'}
+                  </h3>
+                  
+                  {/* Single task preview */}
+                  {aiCommand.createTask && (
+                    <div className="space-y-3">
                       <div className="space-y-1">
-                        <label className="text-xs text-muted-foreground">Description</label>
-                        <div className="text-sm text-muted-foreground">{aiCommand.createTask.description}</div>
+                        <label className="text-xs text-muted-foreground">Title</label>
+                        <div className="text-sm font-medium">{aiCommand.createTask.title}</div>
                       </div>
-                    )}
-                    <div className="flex flex-wrap items-center gap-3">
-                      {aiCommand.createTask.priority && (
-                        <div className="flex items-center gap-2">
-                          <Circle className={`h-2 w-2 fill-current ${
-                            aiCommand.createTask.priority === 'high' 
-                              ? 'text-red-500'
-                              : aiCommand.createTask.priority === 'medium'
-                              ? 'text-yellow-500'
-                              : 'text-gray-400'
-                          }`} />
-                          <span className="text-xs text-muted-foreground">
-                            {aiCommand.createTask.priority} priority
-                          </span>
+                      {aiCommand.createTask.description && (
+                        <div className="space-y-1">
+                          <label className="text-xs text-muted-foreground">Description</label>
+                          <div className="text-sm text-muted-foreground">{aiCommand.createTask.description}</div>
                         </div>
                       )}
-                      {aiCommand.createTask.dueDate && (
-                        <div className="flex items-center gap-1.5">
-                          <Calendar className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">
-                            {(() => {
-                              const date = new Date(aiCommand.createTask.dueDate)
-                              const hasTime = !aiCommand.createTask.dueDate.endsWith('T00:00:00')
-                              if (hasTime) {
-                                return date.toLocaleString('en-US', { 
-                                  month: 'short', 
-                                  day: 'numeric', 
-                                  year: 'numeric',
-                                  hour: 'numeric',
-                                  minute: '2-digit'
-                                })
-                              }
-                              return date.toLocaleDateString()
-                            })()}
-                          </span>
-                        </div>
-                      )}
-                      {aiCommand.createTask.tags?.who && (
-                        <div className="flex items-center gap-1.5">
-                          <User className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">{aiCommand.createTask.tags.who}</span>
-                        </div>
-                      )}
-                      {aiCommand.createTask.tags?.where && (
-                        <div className="flex items-center gap-1.5">
-                          <MapPin className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">{aiCommand.createTask.tags.where}</span>
-                        </div>
-                      )}
+                      <div className="flex flex-wrap items-center gap-3">
+                        {aiCommand.createTask.priority && (
+                          <div className="flex items-center gap-2">
+                            <Circle className={`h-2 w-2 fill-current ${
+                              aiCommand.createTask.priority === 'high' 
+                                ? 'text-red-500'
+                                : aiCommand.createTask.priority === 'medium'
+                                ? 'text-yellow-500'
+                                : 'text-gray-400'
+                            }`} />
+                            <span className="text-xs text-muted-foreground">
+                              {aiCommand.createTask.priority} priority
+                            </span>
+                          </div>
+                        )}
+                        {aiCommand.createTask.dueDate && (
+                          <div className="flex items-center gap-1.5">
+                            <Calendar className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(aiCommand.createTask.dueDate).toLocaleDateString()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    {aiCommand.createTask.tags?.extras && aiCommand.createTask.tags.extras.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {aiCommand.createTask.tags.extras.map((tag, i) => (
-                          <span key={i} className="px-2 py-0.5 text-xs border rounded-full text-muted-foreground">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  )}
+                  
+                  {/* Multiple tasks preview */}
+                  {aiCommand.createTasks && (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {aiCommand.createTasks.map((task, index) => (
+                        <div key={index} className="p-2 border rounded bg-background/50">
+                          <div className="font-medium text-sm">{task.title}</div>
+                          {task.description && (
+                            <div className="text-xs text-muted-foreground mt-1">{task.description}</div>
+                          )}
+                          <div className="flex items-center gap-3 mt-2">
+                            {task.priority && (
+                              <div className="flex items-center gap-1">
+                                <Circle className={`h-2 w-2 fill-current ${
+                                  task.priority === 'high' 
+                                    ? 'text-red-500'
+                                    : task.priority === 'medium'
+                                    ? 'text-yellow-500'
+                                    : 'text-gray-400'
+                                }`} />
+                                <span className="text-xs text-muted-foreground">{task.priority}</span>
+                              </div>
+                            )}
+                            {task.dueDate && (
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-2.5 w-2.5 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground">
+                                  {new Date(task.dueDate).toLocaleDateString()}
+                                </span>
+                              </div>
+                            )}
+                            {task.tags?.who && (
+                              <span className="text-xs text-muted-foreground">👤 {task.tags.who}</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
                   <div className="flex gap-2 pt-1">
                     <button
                       onClick={() => executeAICommand()}
                       className="px-3 py-1.5 text-xs border rounded hover:bg-muted transition-colors"
                     >
-                      Create Task
+                      Create {aiCommand.createTasks ? `${aiCommand.createTasks.length} Tasks` : 'Task'}
                     </button>
                     <button
                       onClick={() => {
