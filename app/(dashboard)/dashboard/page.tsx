@@ -111,8 +111,6 @@ export default function DashboardPage() {
   })
   const [copied, setCopied] = useState(false)
   const [copiedText, setCopiedText] = useState("")
-  const [newTasksCount, setNewTasksCount] = useState(0)
-  const [lastTaskCount, setLastTaskCount] = useState(0)
   
   // Drawer states
   const [showEmailLogs, setShowEmailLogs] = useState(false)
@@ -474,16 +472,9 @@ export default function DashboardPage() {
           
           // Don't show individual notifications for email tasks
           // The email processing indicator already shows this
-          
-          // Update the count for the banner (if you still want it)
-          if (data.length > lastTaskCount) {
-            setNewTasksCount(data.length - lastTaskCount)
-            setTimeout(() => setNewTasksCount(0), 5000)
-          }
         }
         
         setTasks(data)
-        setLastTaskCount(data.length)
       }
     } catch (error) {
       console.error("Error fetching tasks:", error)
@@ -1060,14 +1051,6 @@ export default function DashboardPage() {
         }`}
       >
         <div className="mx-auto max-w-3xl px-6">
-          {/* New Tasks Notification */}
-          {newTasksCount > 0 && (
-            <div className="mb-4 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded text-center transition-all duration-300">
-              <p className="text-sm text-green-700 dark:text-green-400">
-                🎉 {newTasksCount} new {newTasksCount === 1 ? 'task' : 'tasks'} created from email!
-              </p>
-            </div>
-          )}
 
           {/* Monthly Usage Warning Banner */}
           {organization && organization.plan === 'free' && (
