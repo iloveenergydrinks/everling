@@ -99,8 +99,14 @@ export default function DashboardPage() {
   const [aiCommand, setAiCommand] = useState<{
     action: string
     createTask?: any
+    createTasks?: any[]
     bulkAction?: any
     confidence: number
+    metadata?: {
+      taskType: string
+      userRole: string
+      createdVia: string
+    }
   } | null>(null)
   const [isProcessingAI, setIsProcessingAI] = useState(false)
   const [searchFocused, setSearchFocused] = useState(false)
@@ -308,9 +314,9 @@ export default function DashboardPage() {
               tags: aiCommand.createTask.tags,
             }
           },
-          taskType: aiCommand.createTask.taskType,
-          userRole: aiCommand.createTask.userRole,
-          createdVia: 'chat'
+          taskType: aiCommand.metadata?.taskType || 'self',
+          userRole: aiCommand.metadata?.userRole || 'executor',
+          createdVia: aiCommand.metadata?.createdVia || 'chat'
         }
         
         const response = await fetch('/api/tasks', {
@@ -346,9 +352,9 @@ export default function DashboardPage() {
                 tags: task.tags,
               }
             },
-            taskType: task.taskType || 'self',
-            userRole: task.userRole || 'executor',
-            createdVia: 'chat'
+            taskType: aiCommand.metadata?.taskType || 'self',
+            userRole: aiCommand.metadata?.userRole || 'executor',
+            createdVia: aiCommand.metadata?.createdVia || 'chat'
           }
           
           const response = await fetch('/api/tasks', {

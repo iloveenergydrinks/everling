@@ -192,36 +192,22 @@ CRITICAL: This is primarily a SEARCH box. Default to "search" unless there's an 
 Remember: Extract ALL information mentioned. If they say a date/time, include it. If they don't mention any date/time, leave dueDate as null.`,
     });
 
-    // Add user context to the result
-    let command = {
+    // Build the response with user context and metadata
+    const response = {
       ...result.object,
       userEmail: session.user.email,
       timestamp: new Date().toISOString(),
+      // Add metadata for task creation
+      ...(result.object.action === 'create' && {
+        metadata: {
+          taskType: 'self',
+          userRole: 'executor',
+          createdVia: 'chat'
+        }
+      })
     };
 
-    // For chat commands, we already have the extraction from the first AI call
-    // Skip the heavy smart extraction to keep it fast
-    if (command.action === 'create') {
-      if (command.createTask) {
-        // Single task - add default values
-        command.createTask = {
-          ...command.createTask,
-          taskType: 'self',
-          userRole: 'executor',
-          createdVia: 'chat'
-        };
-      } else if (command.createTasks) {
-        // Multiple tasks - add default values to each
-        command.createTasks = command.createTasks.map(task => ({
-          ...task,
-          taskType: 'self',
-          userRole: 'executor',
-          createdVia: 'chat'
-        }));
-      }
-    }
-
-    return NextResponse.json(command);
+    return NextResponse.json(response);
 
   } catch (error) {
     console.error('AI Command error:', error);
