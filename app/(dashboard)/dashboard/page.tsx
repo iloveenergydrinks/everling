@@ -15,7 +15,7 @@ import {
   Inbox, ChevronUp, Mail, CheckCircle, RefreshCw,
   Plus, X, Search, ChevronDown, UserCheck, ArrowDownToLine,
   Share2, Eye, Info, Users, UserX, GitBranch, User, AlertTriangle,
-  MapPin
+  MapPin, Pencil
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { showAlert, showConfirm, showPrompt } from "@/components/global-modal"
@@ -1007,10 +1007,10 @@ export default function DashboardPage() {
               return taskDateStr >= todayStr && taskDateStr <= weekFromNowStr
             case 'no-date':
               return false // Already handled above
-            default:
-              return true
-          }
-        })
+      default:
+        return true
+    }
+  })
       })
     }
 
@@ -1119,7 +1119,7 @@ export default function DashboardPage() {
                     >
                       Upgrade to Pro
                     </button>
-                  </div>
+            </div>
                 </div>
               ) : organization.monthlyTasksUsed >= organization.taskLimit * 0.95 ? (
                 <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded transition-all duration-300">
@@ -1318,7 +1318,7 @@ export default function DashboardPage() {
                   <CheckCircle className="h-3 w-3 mr-1" />
                   complete today
                 </button>
-              </div>
+            </div>
             )}
             
             {/* AI Task Creation Preview */}
@@ -1335,12 +1335,12 @@ export default function DashboardPage() {
                       <div className="space-y-1">
                         <label className="text-xs text-muted-foreground">Title</label>
                         <div className="text-sm font-medium">{aiCommand.createTask.title}</div>
-                      </div>
+            </div>
                       {aiCommand.createTask.description && (
                         <div className="space-y-1">
                           <label className="text-xs text-muted-foreground">Description</label>
                           <div className="text-sm text-muted-foreground">{aiCommand.createTask.description}</div>
-                        </div>
+          </div>
                       )}
                       <div className="flex flex-wrap items-center gap-3">
                         {aiCommand.createTask.priority && (
@@ -1409,13 +1409,13 @@ export default function DashboardPage() {
                   )}
                   
                   <div className="flex gap-2 pt-1">
-                    <button
+              <button
                       onClick={() => executeAICommand()}
                       className="px-3 py-1.5 text-xs border rounded hover:bg-muted transition-colors"
                     >
                       Create {aiCommand.createTasks ? `${aiCommand.createTasks.length} Tasks` : 'Task'}
-                    </button>
-                    <button
+              </button>
+              <button
                       onClick={() => {
                         setAiCommand(null)
                         setSearchQuery('')
@@ -1423,7 +1423,7 @@ export default function DashboardPage() {
                       className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                       Cancel
-                    </button>
+              </button>
                   </div>
                   {aiCommand.confidence < 0.9 && (
                     <p className="text-xs text-muted-foreground/60">
@@ -1453,7 +1453,7 @@ export default function DashboardPage() {
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <button
+              <button
                     onClick={() => executeCommand()}
                     className="px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 rounded transition-colors"
                   >
@@ -1596,7 +1596,7 @@ export default function DashboardPage() {
                     "No tasks to show"
                   )}
                 </p>
-                <p className="text-xs text-muted-foreground mt-2">
+                  <p className="text-xs text-muted-foreground mt-2">
                   {searchQuery ? (
                     "Try a different search or clear the search to see all tasks"
                   ) : (
@@ -1611,11 +1611,11 @@ export default function DashboardPage() {
                   if (age.isHidden) return null
                   
                   return (
-                    <div 
-                      key={task.id}
+                <div
+                  key={task.id}
                       className={`p-4 border rounded hover:bg-muted/30 transition-all duration-300 ${getTaskFadeClass(task)}`}
-                    >
-                    <div className="flex items-start justify-between">
+                >
+                  <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
                         {/* Task Relationship Indicators - Minimal UI */}
                         {(task.assignedByEmail || task.taskType === 'tracking' || task.taskType === 'delegation' || 
@@ -1690,7 +1690,7 @@ export default function DashboardPage() {
                             </span>
                           )}
                         </div>
-                        {task.description && (
+                      {task.description && (
                           <div className="text-xs text-muted-foreground mb-2 overflow-hidden" style={{ 
                             wordBreak: 'break-word', 
                             overflowWrap: 'anywhere',
@@ -1698,11 +1698,11 @@ export default function DashboardPage() {
                             WebkitLineClamp: 3,
                             WebkitBoxOrient: 'vertical' 
                           }}>
-                            {task.description}
+                          {task.description}
                           </div>
-                        )}
+                      )}
                         {/* Meta line (reason/priority) */}
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
                           {task.relevanceReason && (
                             <span className="font-medium">{task.relevanceReason}</span>
                           )}
@@ -1730,24 +1730,22 @@ export default function DashboardPage() {
                             {/* Due date pill - click to edit date/time */}
                             {task.dueDate && (
                               <span
-                                className="px-2 py-0.5 border rounded bg-transparent cursor-pointer hover:bg-muted"
+                                className="px-2 py-0.5 border rounded bg-transparent cursor-pointer hover:bg-muted group inline-flex items-center gap-1"
                                 title="Click to edit due date"
                                 onClick={async () => {
                                   try {
-                                    const input = await showPrompt(
-                                      'Edit due date',
-                                      'Enter new date/time (e.g., 2025-09-19 09:00):'
-                                    )
-                                    if (!input) return
-                                    const d = new Date(input)
-                                    if (isNaN(d.getTime())) {
-                                      toast({ title: 'Invalid date', description: 'Could not parse date/time', variant: 'error' })
-                                      return
-                                    }
+                                    const dateStr = await showPrompt('Edit due date', 'YYYY-MM-DD (e.g., 2025-09-19):')
+                                    if (!dateStr) return
+                                    const timeStr = await showPrompt('Time (optional)', 'HH:MM (24h, e.g., 09:00):')
+                                    const iso = timeStr && /\d{1,2}:\d{2}/.test(timeStr)
+                                      ? `${dateStr}T${timeStr}:00`
+                                      : `${dateStr}T09:00:00`
+                                    const d = new Date(iso)
+                                    if (isNaN(d.getTime())) { toast({ title: 'Invalid date/time', variant: 'error' }); return }
                                     const res = await fetch(`/api/tasks/${task.id}`, {
                                       method: 'PATCH',
                                       headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ dueDate: d.toISOString() })
+                                      body: JSON.stringify({ dueDate: d.toISOString(), reminderDate: d.toISOString() })
                                     })
                                     if (res.ok) {
                                       toast({ title: 'Due date updated', variant: 'success' })
@@ -1757,12 +1755,13 @@ export default function DashboardPage() {
                                 }}
                               >
                                 {formatDate(task.dueDate)}
-                              </span>
+                                <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60 transition-opacity" />
+                        </span>
                             )}
                             {/* Where tag */}
                             {task.emailMetadata.smartAnalysis.tags.where && (
                               <span
-                                className="px-2 py-0.5 border rounded cursor-pointer hover:bg-muted"
+                                className="px-2 py-0.5 border rounded cursor-pointer hover:bg-muted group inline-flex items-center gap-1"
                                 title="Click to edit where"
                                 onClick={async () => {
                                   const value = await showPrompt('Edit where', 'Enter a new place:')
@@ -1776,12 +1775,13 @@ export default function DashboardPage() {
                                 }}
                               >
                                 {task.emailMetadata.smartAnalysis.tags.where}
+                                <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60 transition-opacity" />
                               </span>
                             )}
                             {/* Who tag */}
                             {task.emailMetadata.smartAnalysis.tags.who && (
                               <span
-                                className="px-2 py-0.5 border rounded cursor-pointer hover:bg-muted"
+                                className="px-2 py-0.5 border rounded cursor-pointer hover:bg-muted group inline-flex items-center gap-1"
                                 title="Click to edit who"
                                 onClick={async () => {
                                   const value = await showPrompt('Edit who', 'Enter a new person:')
@@ -1795,12 +1795,13 @@ export default function DashboardPage() {
                                 }}
                               >
                                 {task.emailMetadata.smartAnalysis.tags.who}
+                                <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60 transition-opacity" />
                               </span>
                             )}
                             {/* What tag */}
                             {task.emailMetadata.smartAnalysis.tags.what && (
                               <span
-                                className="px-2 py-0.5 border rounded cursor-pointer hover:bg-muted"
+                                className="px-2 py-0.5 border rounded cursor-pointer hover:bg-muted group inline-flex items-center gap-1"
                                 title="Click to edit what"
                                 onClick={async () => {
                                   const value = await showPrompt('Edit what', 'Enter a new topic:')
@@ -1814,6 +1815,7 @@ export default function DashboardPage() {
                                 }}
                               >
                                 {task.emailMetadata.smartAnalysis.tags.what}
+                                <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60 transition-opacity" />
                               </span>
                             )}
                             {/* Extras tags (first two shown) */}
@@ -1821,7 +1823,7 @@ export default function DashboardPage() {
                               task.emailMetadata.smartAnalysis.tags.extras.slice(0, 2).map((ex: string, idx: number) => (
                                 <span
                                   key={idx}
-                                  className="px-2 py-0.5 border rounded max-w-[200px] truncate cursor-pointer hover:bg-muted"
+                                  className="px-2 py-0.5 border rounded max-w-[200px] truncate cursor-pointer hover:bg-muted group inline-flex items-center gap-1"
                                   title="Click to edit tag"
                                   onClick={async () => {
                                     const value = await showPrompt('Edit tag', 'Update value:')
@@ -1838,11 +1840,12 @@ export default function DashboardPage() {
                                   }}
                                 >
                                   {ex}
+                                  <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60 transition-opacity" />
                                 </span>
                               ))}
-                          </div>
-                        )}
                       </div>
+                        )}
+                    </div>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => {
@@ -1853,14 +1856,14 @@ export default function DashboardPage() {
                         >
                           Complete
                         </button>
-                        <button
-                          onClick={() => deleteTask(task.id)}
+                    <button
+                      onClick={() => deleteTask(task.id)}
                           className="text-xs text-muted-foreground hover:text-destructive px-2 py-1"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
                   </div>
                   )
                 })}
@@ -2162,8 +2165,8 @@ export default function DashboardPage() {
                       className="w-full text-center text-sm px-3 py-1.5 bg-primary text-primary-foreground rounded hover:bg-primary/90"
                     >
                       Configure Digest
-                    </button>
-                  </div>
+                      </button>
+                    </div>
 
                   {/* Allowed Emails */}
                   <div className="border rounded p-4">
