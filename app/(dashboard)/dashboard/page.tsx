@@ -71,7 +71,7 @@ interface ApiKey {
 }
 
 // Filter types
-type TimeFilter = 'today' | 'tomorrow' | 'week' | 'no-date' | 'expired'
+type TimeFilter = 'today' | 'tomorrow' | 'week' | 'no-date' | 'expired' | 'completed'
 type OwnershipFilter = 'my-tasks' | 'waiting-on' | 'observing'
 
 interface FilterState {
@@ -128,7 +128,7 @@ export default function DashboardPage() {
   const [showSettings, setShowSettings] = useState(false)
   const [showApi, setShowApi] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
-  const [showCompleted, setShowCompleted] = useState(false)
+  const [showIntegrations, setShowIntegrations] = useState(false)
   const [selectedRawData, setSelectedRawData] = useState<any>(null)
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null)
   const [showApiKeyModal, setShowApiKeyModal] = useState(false)
@@ -986,21 +986,31 @@ export default function DashboardPage() {
     const weekFromNow = new Date(today)
     weekFromNow.setDate(weekFromNow.getDate() + 7)
 
-    // Time filters
-    if (filters.time.length > 0) {
+    // Handle completed filter first
+    if (filters.time.includes('completed')) {
+      result = result.filter(task => task.status === 'done')
+      // Skip other time filters if only showing completed tasks
+      return result
+    } else {
+      result = result.filter(task => task.status !== 'done')
+    }
+
+    // Time filters (for non-completed tasks only)
+    const nonCompletedTimeFilters = filters.time.filter(f => f !== 'completed')
+    if (nonCompletedTimeFilters.length > 0) {
       result = result.filter(task => {
-        if (!task.dueDate) return filters.time.includes('no-date')
-        
+        if (!task.dueDate) return nonCompletedTimeFilters.includes('no-date')
+
         // Parse the task due date and get local date string
         const dueDate = new Date(task.dueDate)
         const taskDateStr = dueDate.toLocaleDateString('en-CA') // Returns YYYY-MM-DD format in local time
-        
+
         // Get today and tomorrow as local date strings
         const todayStr = today.toLocaleDateString('en-CA')
         const tomorrowStr = tomorrow.toLocaleDateString('en-CA')
         const weekFromNowStr = weekFromNow.toLocaleDateString('en-CA')
-        
-        return filters.time.some(filter => {
+
+        return nonCompletedTimeFilters.some(filter => {
           switch (filter) {
             case 'today':
               return taskDateStr === todayStr
@@ -1013,10 +1023,10 @@ export default function DashboardPage() {
               return false // Already handled above
             case 'expired':
               return dueDate < now
-      default:
-        return true
-    }
-  })
+            default:
+              return true
+          }
+        })
       })
     }
 
@@ -1038,8 +1048,6 @@ export default function DashboardPage() {
       })
     }
 
-    // Always filter out completed tasks (they'll be shown in the Completed drawer)
-    result = result.filter(task => task.status !== 'done')
 
     // Auto-hide expired tasks (>48h overdue) unless the Expired filter is active
     if (!filters.time.includes('expired')) {
@@ -1249,7 +1257,7 @@ export default function DashboardPage() {
     )
   }
 
-  const isDrawerOpen = showEmailLogs || showSettings || showApi || showNotifications || showCompleted
+  const isDrawerOpen = showEmailLogs || showSettings || showApi || showNotifications || showIntegrations
   const isWideDrawer = showEmailLogs && selectedRawData
 
   return (
@@ -1686,6 +1694,18 @@ export default function DashboardPage() {
               >
                 Expired
               </button>
+              {/* Completed filter chip */}
+              <button
+                onClick={() => toggleFilter('time', 'completed')}
+                className={`inline-flex items-center px-2 py-0.5 text-xs rounded transition-colors ${
+                  filters.time.includes('completed')
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                    : 'bg-muted/50 hover:bg-muted text-muted-foreground'
+                }`}
+                title="Show completed tasks"
+              >
+                Completed
+              </button>
               
               <div className="w-px h-6 bg-border mx-1" /> {/* Separator */}
               
@@ -1920,7 +1940,7 @@ export default function DashboardPage() {
                                   >
                                     {formatDateTime(task.dueDate)}
                                     <Pencil className="h-3 w-3 opacity-60" />
-                                  </span>
+                        </span>
                                 )}
                               </>
                             )}
@@ -1952,12 +1972,13 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => {
-                            updateTaskStatus(task.id, 'done')
-                            recordInteraction(task.id, 'complete')
+                            const newStatus = task.status === 'done' ? 'pending' : 'done'
+                            updateTaskStatus(task.id, newStatus)
+                            recordInteraction(task.id, task.status === 'done' ? 'reopen' : 'complete')
                           }}
                           className="text-xs px-2 py-1 border rounded hover:bg-muted"
                         >
-                          Complete
+                          {task.status === 'done' ? 'Reopen' : 'Complete'}
                         </button>
                     <button
                       onClick={() => deleteTask(task.id)}
@@ -2005,12 +2026,6 @@ export default function DashboardPage() {
           {/* Footer */}
           <div className="mt-12 pt-8 border-t text-center">
             <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
-            <button
-                onClick={() => setShowCompleted(true)}
-                className="hover:text-foreground"
-              >
-                Completed Tasks
-              </button>
               <button
                 onClick={() => {
                   setShowNotifications(true)
@@ -2025,6 +2040,12 @@ export default function DashboardPage() {
                 className="hover:text-foreground"
               >
                 Settings
+              </button>
+              <button
+                onClick={() => setShowIntegrations(true)}
+                className="hover:text-foreground"
+              >
+                Integrations
               </button>
               <button
                 onClick={openEmailLogs}
@@ -2060,7 +2081,7 @@ export default function DashboardPage() {
             setShowSettings(false)
             setShowApi(false)
             setShowNotifications(false)
-            setShowCompleted(false)
+            setShowIntegrations(false)
             setSelectedRawData(null)
             setSelectedEmailId(null)
           }}
@@ -2415,6 +2436,56 @@ export default function DashboardPage() {
                       Delete All Tasks
                     </button>
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+      )}
+
+      {/* Integrations Drawer */}
+      {showIntegrations && (
+        <div className="fixed right-0 top-0 h-full w-[640px] bg-background border-l shadow-xl z-50 overflow-y-auto">
+          <div className="flex items-center justify-between p-6 border-b">
+            <h2 className="text-lg font-semibold">Integrations</h2>
+            <button onClick={() => setShowIntegrations(false)} className="text-sm px-3 py-1 rounded border hover:bg-muted">Close</button>
+          </div>
+          <div className="p-6 space-y-6">
+            <div className="border rounded p-4">
+              <h3 className="text-sm font-medium mb-2">Google Calendar</h3>
+              <p className="text-xs text-muted-foreground mb-3">Automatically add tasks with dates to your Google Calendar.</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      window.open('/api/integrations/google/start', 'google-oauth', 'width=600,height=700,menubar=no,toolbar=no,location=no,status=no')
+                    } catch {}
+                  }}
+                  className="px-3 py-1.5 text-xs border rounded hover:bg-muted"
+                >
+                  Connect Google
+                </button>
+                <select className="text-xs border rounded px-2 py-1">
+                  <option>Default calendar</option>
+                </select>
+                <label className="text-xs flex items-center gap-1">
+                  <input type="checkbox" className="accent-black" />
+                  Auto-add tasks
+                </label>
+              </div>
+            </div>
+            <div className="border rounded p-4">
+              <h3 className="text-sm font-medium mb-2">Outlook / Microsoft 365</h3>
+              <p className="text-xs text-muted-foreground mb-3">Automatically add tasks with dates to your Outlook calendar.</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <button className="px-3 py-1.5 text-xs border rounded hover:bg-muted">Connect Outlook</button>
+                <select className="text-xs border rounded px-2 py-1">
+                  <option>Default calendar</option>
+                </select>
+                <label className="text-xs flex items-center gap-1">
+                  <input type="checkbox" className="accent-black" />
+                  Auto-add tasks
+                </label>
                 </div>
               </div>
             </div>
@@ -2904,93 +2975,6 @@ Body: {
         </div>
       )}
 
-      {/* Completed Tasks Drawer */}
-      {showCompleted && (
-        <div className="fixed right-0 top-0 h-full w-[640px] bg-background border-l shadow-xl z-50 transition-all duration-300 ease-out">
-          <div className="flex flex-col h-full">
-            <div className="flex items-center justify-between p-6 border-b">
-              <div>
-                <h2 className="text-lg font-semibold">Completed Tasks</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  View and manage completed tasks
-                </p>
-              </div>
-              <button
-                onClick={() => setShowCompleted(false)}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Scrollable content area */}
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="space-y-3">
-              {tasks.filter(t => t.status === 'done').length === 0 ? (
-                <div className="text-center py-12 border rounded">
-                  <CheckCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
-                  <p className="text-sm text-muted-foreground">
-                    No completed tasks yet
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Tasks marked as done will appear here
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="text-sm text-muted-foreground mb-4">
-                    {tasks.filter(t => t.status === 'done').length} completed {tasks.filter(t => t.status === 'done').length === 1 ? 'task' : 'tasks'}
-                  </div>
-                  {tasks
-                    .filter(t => t.status === 'done')
-                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                    .map((task) => (
-                      <div 
-                        key={task.id}
-                        className="group border rounded p-3 hover:bg-muted/50 transition-colors"
-                      >
-                        <div className="flex items-start gap-3">
-                          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1">
-                                <p className="text-sm line-through text-muted-foreground">
-                                  {task.title}
-                                </p>
-                                {task.description && (
-                                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                                    {task.description}
-                                  </p>
-                                )}
-                                <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                                  <span>Completed {formatDate(task.createdAt)}</span>
-                                  {task.dueDate && (
-                                    <>
-                                      <span>•</span>
-                                      <span>Was due {formatDate(task.dueDate)}</span>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => deleteTask(task.id)}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
-                                title="Delete task"
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                </>
-              )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
     </>
   )

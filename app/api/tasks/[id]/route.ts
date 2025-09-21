@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { authenticateRequest } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
+import { upsertGoogleCalendarEvent } from "@/lib/google-calendar"
 
 export async function GET(
   request: NextRequest,
@@ -138,6 +139,13 @@ export async function PATCH(
         }
       }
     })
+
+    // Background push to Google Calendar if due/reminder changed
+    if (dueDate !== undefined || reminderDate !== undefined) {
+      ;(async () => {
+        try { await upsertGoogleCalendarEvent(auth.userId as string, params.id) } catch {}
+      })()
+    }
 
     return NextResponse.json(task)
 

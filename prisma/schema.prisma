@@ -51,6 +51,13 @@ model User {
   emailDigestEnabled   Boolean   @default(true) @map("email_digest_enabled")
   smsDigestEnabled     Boolean   @default(false) @map("sms_digest_enabled")
   
+  // Calendar integrations
+  calendarProvider     String?   @map("calendar_provider")
+  calendarDefaultId    String?   @map("calendar_default_id")
+  calendarAutoPush     Boolean   @default(false) @map("calendar_auto_push")
+  googleRefreshToken   String?   @map("google_refresh_token")
+  microsoftRefreshToken String?  @map("microsoft_refresh_token")
+  
   createdAt            DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime  @updatedAt @map("updated_at")
 
@@ -105,6 +112,12 @@ model Task {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
+  // External calendar linkage (one-way push)
+  externalProvider   String?  @map("external_provider")
+  externalCalendarId String?  @map("external_calendar_id")
+  externalEventId    String?  @map("external_event_id")
+  lastCalendarSyncAt DateTime? @map("last_calendar_sync_at")
+
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdBy    User? @relation("CreatedBy", fields: [createdById], references: [id])
   assignedTo   User? @relation("AssignedTo", fields: [assignedToId], references: [id])
@@ -121,6 +134,8 @@ model Task {
   @@index([emailThreadId])
   @@index([reminderDate])
   @@index([dueDate])
+  @@index([externalProvider])
+  @@index([externalEventId])
   @@map("tasks")
 }
 
