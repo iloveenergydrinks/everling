@@ -163,6 +163,11 @@ export default async function HomePage() {
 
         {/* Footer */}
         <div className="mt-16 pt-8 border-t text-center">
+          <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground mb-2">
+            <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
+            <span>•</span>
+            <Link href="/terms" className="hover:text-foreground">Terms</Link>
+          </div>
           <p className="text-xs text-muted-foreground">
             © 2025 Everling.io • Built for minimalists
           </p>

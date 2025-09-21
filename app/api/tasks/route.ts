@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { authenticateRequest } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { getSmartTaskList, interpretCommand } from "@/lib/tasks"
+import { upsertGoogleCalendarEvent } from "@/lib/google-calendar"
 
 export const dynamic = 'force-dynamic'
 
@@ -179,6 +180,13 @@ export async function POST(request: NextRequest) {
 
     // Update organization task count (both total and monthly)
     await incrementMonthlyTaskCount(auth.organizationId)
+
+  // Fire-and-forget push to Google Calendar if enabled
+  if (task.dueDate) {
+    ;(async () => {
+      try { await upsertGoogleCalendarEvent(auth.userId as string, task.id) } catch {}
+    })()
+  }
 
     return NextResponse.json(task)
 

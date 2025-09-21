@@ -91,13 +91,10 @@ function LoginForm() {
     <div className="min-h-screen py-12">
       <div className="mx-auto max-w-md px-6">
         {/* Header */}
-        <div className="mb-8 text-center">
-          <Link href="/" className="text-2xl font-medium hover:text-muted-foreground transition-colors">
-            ← Everling.io
+        <div className="mb-6">
+          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
+            Back to home
           </Link>
-          <p className="text-sm text-muted-foreground mt-2">
-            Welcome back
-          </p>
         </div>
 
         {/* Login Form */}
