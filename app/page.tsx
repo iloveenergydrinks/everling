@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import Link from "next/link"
+import Image from "next/image"
 
 export default async function HomePage() {
   const session = await getServerSession(authOptions)
@@ -39,6 +40,9 @@ export default async function HomePage() {
 
         {/* Hero Section - Minimal */}
         <div className="mb-16 text-center">
+          <div className="mb-6 flex items-center justify-center">
+            <Image src="/everling_logo.png" alt="Everling logo" width={64} height={64} />
+          </div>
           <h2 className="text-4xl font-light mb-6 tracking-tight">
             Minimalism meets<br />
             intelligence.
@@ -59,11 +63,11 @@ export default async function HomePage() {
               </svg>
             </div>
             <div className="w-full pl-10 pr-4 py-3 border rounded-md bg-background/50 text-center text-muted-foreground">
-              urgent tasks from john...
+              Forward emails or messages. AI turns them into tasks.
             </div>
           </div>
           <p className="text-xs text-muted-foreground mt-2 text-center">
-            AI-powered search understands natural language
+            No setup. Just forward → AI extracts tasks, reminders, and tags.
           </p>
         </div>
 
@@ -80,7 +84,7 @@ export default async function HomePage() {
               </div>
               <h4 className="font-medium mb-2">Minimal Interface</h4>
               <p className="text-sm text-muted-foreground">
-                One search box. No buttons, filters, or complexity. Just type what you need.
+                Just forward emails or messages. No labels, no lists to curate.
               </p>
             </div>
             
@@ -92,7 +96,7 @@ export default async function HomePage() {
               </div>
               <h4 className="font-medium mb-2">Know Before It Matters</h4>
               <p className="text-sm text-muted-foreground">
-                AI learns your patterns. Important tasks surface automatically when you need them.
+                AI learns your patterns and timing. The right tasks surface when you need them.
               </p>
             </div>
             
@@ -105,7 +109,7 @@ export default async function HomePage() {
               </div>
               <h4 className="font-medium mb-2">Zero Friction</h4>
               <p className="text-sm text-muted-foreground">
-                Forward emails, get morning digests, reply to complete. Never leave your workflow.
+                Forward → Morning digest → Reply to complete. Stay in your inbox.
               </p>
             </div>
           </div>
