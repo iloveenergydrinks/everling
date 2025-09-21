@@ -16,9 +16,9 @@ export const metadata: Metadata = {
   description: "The most minimal task manager that learns what matters to you. AI-powered relevance, daily digests, zero friction.",
   keywords: ["task manager", "minimal", "AI", "productivity", "email", "SMS"],
   icons: {
-    icon: "/everling_logo.png",
-    shortcut: "/everling_logo.png",
-    apple: "/everling_logo.png",
+    icon: "/everling_logo_wb.png",
+    shortcut: "/everling_logo_wb.png",
+    apple: "/everling_logo_wb.png",
   },
   openGraph: {
     title: "Everling.io - Know before it matters",
