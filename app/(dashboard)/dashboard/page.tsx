@@ -1974,7 +1974,7 @@ export default function DashboardPage() {
                           onClick={() => {
                             const newStatus = task.status === 'done' ? 'pending' : 'done'
                             updateTaskStatus(task.id, newStatus)
-                            recordInteraction(task.id, task.status === 'done' ? 'reopen' : 'complete')
+                            recordInteraction(task.id, newStatus === 'done' ? 'complete' : 'click')
                           }}
                           className="text-xs px-2 py-1 border rounded hover:bg-muted"
                         >
