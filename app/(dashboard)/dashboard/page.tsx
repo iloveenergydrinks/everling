@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { useSession, signOut } from "next-auth/react"
 import { formatDate, formatDateTime, generateApiKey } from "@/lib/utils"
 import { getSmartTaskList, interpretCommand, recordInteraction } from "@/lib/tasks"
@@ -17,6 +17,7 @@ import {
   Share2, Eye, Info, Users, UserX, GitBranch, User, AlertTriangle,
   MapPin, Pencil
 } from "lucide-react"
+import { addMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameDay, isSameMonth, format } from 'date-fns'
 import { toast } from "@/hooks/use-toast"
 import { showAlert, showConfirm, showPrompt } from "@/components/global-modal"
 
@@ -70,7 +71,7 @@ interface ApiKey {
 }
 
 // Filter types
-type TimeFilter = 'today' | 'tomorrow' | 'week' | 'no-date'
+type TimeFilter = 'today' | 'tomorrow' | 'week' | 'no-date' | 'expired'
 type OwnershipFilter = 'my-tasks' | 'waiting-on' | 'observing'
 
 interface FilterState {
@@ -112,6 +113,7 @@ export default function DashboardPage() {
   const [searchFocused, setSearchFocused] = useState(false)
   const [editingDueId, setEditingDueId] = useState<string | null>(null)
   const [editingDueValue, setEditingDueValue] = useState<string>("")
+  const [calendarMonth, setCalendarMonth] = useState<Date>(new Date())
   
   // New filter state
   const [filters, setFilters] = useState<FilterState>({
@@ -1009,6 +1011,8 @@ export default function DashboardPage() {
               return taskDateStr >= todayStr && taskDateStr <= weekFromNowStr
             case 'no-date':
               return false // Already handled above
+            case 'expired':
+              return dueDate < now
       default:
         return true
     }
@@ -1037,6 +1041,18 @@ export default function DashboardPage() {
     // Always filter out completed tasks (they'll be shown in the Completed drawer)
     result = result.filter(task => task.status !== 'done')
 
+    // Auto-hide expired tasks (>48h overdue) unless the Expired filter is active
+    if (!filters.time.includes('expired')) {
+      result = result.filter(task => {
+        if (!task.dueDate) return true
+        const due = new Date(task.dueDate)
+        if (isNaN(due.getTime())) return true
+        const diffMs = now.getTime() - due.getTime()
+        const hours = diffMs / (1000 * 60 * 60)
+        return !(diffMs > 0 && hours > 48)
+      })
+    }
+
     // Apply smart ordering to filtered results
     return getSmartTaskList(result, showAllTasks ? 100 : 50) as Task[]
   }, [tasks, filters, showAllTasks])
@@ -1063,6 +1079,8 @@ export default function DashboardPage() {
     const age = getTaskAge(task)
     return age.isHidden && task.status !== 'done'
   }).length
+
+  // Removed summary-bar expired controls; Expired visibility is controlled by the filter chip
 
   const agentEmail = session?.user?.organizationSlug 
     ? `${session.user.organizationSlug}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN || "everling.io"}`
@@ -1129,6 +1147,98 @@ export default function DashboardPage() {
     } catch (e) {
       console.error('Update date error:', e)
     }
+  }
+
+  const CalendarPopup = ({
+    value,
+    onChange,
+    onSave,
+    onCancel
+  }: {
+    value: string
+    onChange: (val: string) => void
+    onSave: () => void
+    onCancel: () => void
+  }) => {
+    const containerRef = useRef<HTMLDivElement | null>(null)
+    useEffect(() => {
+      const handleOutside = (e: MouseEvent | TouchEvent) => {
+        const el = containerRef.current
+        if (!el) return
+        if (e.target instanceof Node && !el.contains(e.target)) {
+          onSave()
+        }
+      }
+      document.addEventListener('mousedown', handleOutside)
+      document.addEventListener('touchstart', handleOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleOutside)
+        document.removeEventListener('touchstart', handleOutside)
+      }
+    }, [onSave])
+    const base = value ? new Date(value) : new Date()
+    const month = calendarMonth
+    const start = startOfWeek(startOfMonth(month), { weekStartsOn: 1 })
+    const end = endOfWeek(endOfMonth(month), { weekStartsOn: 1 })
+    const days: Date[] = []
+    for (let d = start; d <= end; d = addDays(d, 1)) days.push(d)
+    const hours = [8, 9, 10, 11, 14, 15, 16, 17]
+
+    const setDay = (day: Date) => {
+      const newDate = new Date(base)
+      newDate.setFullYear(day.getFullYear(), day.getMonth(), day.getDate())
+      const iso = toLocalInputValue(newDate.toISOString())
+      onChange(iso)
+    }
+    const setHour = (h: number) => {
+      const newDate = value ? new Date(value) : new Date()
+      newDate.setHours(h, 0, 0, 0)
+      const iso = toLocalInputValue(newDate.toISOString())
+      onChange(iso)
+    }
+
+    return (
+      <div ref={containerRef} className="mt-1 p-3 border rounded bg-background shadow-sm text-xs">
+        <div className="flex items-center justify-between mb-2">
+          <button className="px-2 py-1 border rounded" onClick={() => setCalendarMonth(addMonths(month, -1))}>←</button>
+          <div className="font-medium">{format(month, 'MMMM yyyy')}</div>
+          <button className="px-2 py-1 border rounded" onClick={() => setCalendarMonth(addMonths(month, 1))}>→</button>
+        </div>
+        <div className="grid grid-cols-7 gap-1 mb-2">
+          {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
+            <div key={d} className="text-center text-muted-foreground">{d}</div>
+          ))}
+          {days.map((day, idx) => {
+            const selected = value ? isSameDay(day, new Date(value)) : false
+            const outside = !isSameMonth(day, month)
+            return (
+              <button
+                key={idx}
+                className={`h-7 rounded border ${selected ? 'bg-black text-white' : outside ? 'text-muted-foreground/50' : 'hover:bg-muted'}`}
+                onClick={() => setDay(day)}
+              >
+                {format(day, 'd')}
+              </button>
+            )
+          })}
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {hours.map(h => (
+            <button
+              key={h}
+              onClick={() => setHour(h)}
+              className="px-2 py-1 border rounded hover:bg-muted"
+            >
+              {String(h).padStart(2,'0')}:00
+            </button>
+          ))}
+        </div>
+        <div className="mt-3 flex items-center justify-end gap-2">
+          <button onClick={onCancel} className="px-2 py-1 text-xs border rounded hover:bg-muted">Cancel</button>
+          <button onClick={onSave} className="px-2 py-1 text-xs rounded bg-black text-white hover:bg-black/90">Save</button>
+        </div>
+      </div>
+    )
   }
 
   if (loading) {
@@ -1564,6 +1674,18 @@ export default function DashboardPage() {
               >
                 No Date
               </button>
+              {/* Expired filter chip (adds to filters.time) */}
+              <button
+                onClick={() => toggleFilter('time', 'expired')}
+                className={`inline-flex items-center px-2 py-0.5 text-xs rounded transition-colors ${
+                  filters.time.includes('expired')
+                    ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                    : 'bg-muted/50 hover:bg-muted text-muted-foreground'
+                }`}
+                title="Show tasks past due by more than 48 hours"
+              >
+                Expired
+              </button>
               
               <div className="w-px h-6 bg-border mx-1" /> {/* Separator */}
               
@@ -1600,22 +1722,21 @@ export default function DashboardPage() {
               </button>
             </div>
             
-            {/* Active filter summary and clear button */}
-            {(filters.time.length > 0 || filters.ownership.length > 0) && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>
-                  Showing {visibleTasks.length} {visibleTasks.length === 1 ? 'task' : 'tasks'}
-                  {filters.time.length > 0 && ` • ${filters.time.join(', ')}`}
-                  {filters.ownership.length > 0 && ` • ${filters.ownership.join(', ')}`}
-                </span>
-                <button
-                  onClick={() => setFilters({ time: [], ownership: [] })}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Clear filters
-                </button>
-              </div>
-            )}
+            {/* Active filter summary and clear button + expired toggle */}
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span>
+                Showing {visibleTasks.length} {visibleTasks.length === 1 ? 'task' : 'tasks'}
+                {filters.time.length > 0 && ` • ${filters.time.join(', ')}`}
+                {filters.ownership.length > 0 && ` • ${filters.ownership.join(', ')}`}
+              </span>
+              <button
+                onClick={() => setFilters({ time: [], ownership: [] })}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Clear filters
+              </button>
+              {/* Expired visibility controlled by the Expired chip above */}
+            </div>
           </div>
 
           {/* Notification Onboarding - Show for new users or if not configured */}
@@ -1771,27 +1892,37 @@ export default function DashboardPage() {
                           </div>
                         )}
 
-                        {/* Tags line (editable on click) */}
+                        {/* Tags line (editable date, others read-only) */}
                         {task.emailMetadata?.smartAnalysis?.tags && (
                           <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                            {/* Expired pill */}
+                            {task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done' && (
+                              <span className="px-2 py-0.5 rounded bg-red-100 text-red-700 border border-red-200">Expired</span>
+                            )}
                             {/* Due date pill - click to edit date/time */}
                             {task.dueDate && (
-                              <div className="inline-flex items-center gap-2">
-                                <span className="px-2 py-0.5 border rounded bg-transparent">
-                                  {formatDate(task.dueDate)}
-                                </span>
-                                <input
-                                  type="datetime-local"
-                                  className="text-xs border rounded px-1 py-0.5"
-                                  value={editingDueId === task.id ? editingDueValue : toLocalInputValue(task.dueDate)}
-                                  onChange={(e) => {
-                                    setEditingDueId(task.id)
-                                    setEditingDueValue(e.target.value)
-                                  }}
-                                  onBlur={() => submitDueEditor(task.id)}
-                                  onKeyDown={(e) => { if (e.key === 'Enter') submitDueEditor(task.id) }}
-                                />
-                              </div>
+                              <>
+                                {editingDueId === task.id ? (
+                                  <div>
+                                    <CalendarPopup
+                                      value={editingDueValue}
+                                      onChange={(v) => setEditingDueValue(v)}
+                                      onSave={() => submitDueEditor(task.id)}
+                                      onCancel={() => { setEditingDueId(null); setEditingDueValue('') }}
+                                    />
+                                  </div>
+                                ) : (
+                                  <span
+                                    className="px-2 py-0.5 border border-dashed rounded bg-transparent cursor-pointer hover:bg-muted inline-flex items-center gap-1"
+                                    title="Click to edit date and time"
+                                    aria-label="Edit date and time"
+                                    onClick={() => openDueEditor(task)}
+                                  >
+                                    {formatDateTime(task.dueDate)}
+                                    <Pencil className="h-3 w-3 opacity-60" />
+                                  </span>
+                                )}
+                              </>
                             )}
                             {/* Non-date tags rendered read-only */}
                             {task.emailMetadata.smartAnalysis.tags.where && (
