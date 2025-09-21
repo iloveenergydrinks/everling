@@ -19,6 +19,6 @@ npx prisma db push --accept-data-loss || echo "Prisma db push failed"
 # Log database URL for debugging (without password)
 echo "Database connected to: ${DATABASE_URL%%:*}..."
 
-# Start the Next.js server
-echo "Starting Next.js server..."
-npm start
+# Start the Next.js server (standalone output)
+echo "Starting Next.js server (standalone)..."
+node .next/standalone/server.js
