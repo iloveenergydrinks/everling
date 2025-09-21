@@ -124,10 +124,18 @@ export async function interpretSearchIntelligently(
     })
   }
 
-  // Status filters
+  // Status filters (normalize AI terms to DB values)
   if (filters.status && filters.status.length > 0) {
+    const normalizedNeedles = filters.status.map((s: any) => {
+      const v = String(s).toLowerCase()
+      if (v === 'pending' || v === 'todo') return 'todo'
+      if (v === 'in-progress' || v === 'in_progress') return 'in_progress'
+      if (v === 'completed') return 'done'
+      return v
+    })
     filteredTasks = filteredTasks.filter(task => {
-      return filters.status!.includes(task.status as any)
+      const taskStatus = String(task.status || '').toLowerCase()
+      return normalizedNeedles.includes(taskStatus as any)
     })
   }
 

@@ -20,6 +20,8 @@ function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [magicLinkMode, setMagicLinkMode] = useState(false)
   const [magicLinkSent, setMagicLinkSent] = useState(false)
+  const [resending, setResending] = useState(false)
+  const [resent, setResent] = useState(false)
 
   useEffect(() => {
     // Handle verification success
@@ -146,6 +148,33 @@ function LoginForm() {
               {error && (
                 <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
                   {error}
+                </div>
+              )}
+              {/* Resend verification link */}
+              {error && error.toLowerCase().includes('verify') && (
+                <div className="flex items-center justify-center">
+                  <button
+                    type="button"
+                    disabled={resending || !email}
+                    onClick={async () => {
+                      setResending(true)
+                      setResent(false)
+                      try {
+                        await fetch('/api/auth/resend-verification', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ email })
+                        })
+                        setResent(true)
+                        setSuccess('Verification email sent. Check your inbox.')
+                        setError('')
+                      } catch {}
+                      setResending(false)
+                    }}
+                    className="text-xs text-primary hover:underline disabled:opacity-50"
+                  >
+                    {resending ? 'Sending…' : resent ? 'Sent' : 'Resend verification email'}
+                  </button>
                 </div>
               )}
               
