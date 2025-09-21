@@ -29,7 +29,7 @@ export default function Icon() {
           src={dataUrl}
           width={256}
           height={256}
-          style={{ objectFit: 'contain', transform: 'scale(1.35)', transformOrigin: 'center' }}
+          style={{ objectFit: 'contain', transform: 'scale(3)', transformOrigin: 'center' }}
         />
       </div>
     ),
