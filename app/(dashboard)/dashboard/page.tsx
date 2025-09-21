@@ -1773,6 +1773,64 @@ export default function DashboardPage() {
                         >
                           Delete
                         </button>
+                        {/* Edit reminder and when tag */}
+                        <button
+                          onClick={async () => {
+                            try {
+                              const newDateStr = await showPrompt(
+                                'Change reminder',
+                                'Enter new reminder date/time (e.g., 2025-09-21 16:00):'
+                              )
+                              if (!newDateStr) return
+                              const parsed = new Date(newDateStr)
+                              if (isNaN(parsed.getTime())) {
+                                toast({ title: 'Invalid date', description: 'Could not parse date/time', variant: 'error' })
+                                return
+                              }
+                              const res = await fetch(`/api/tasks/${task.id}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ reminderDate: parsed.toISOString() })
+                              })
+                              if (res.ok) {
+                                toast({ title: 'Reminder updated', variant: 'success' })
+                                fetchTasks()
+                              }
+                            } catch (e) {}
+                          }}
+                          className="text-xs px-2 py-1 border rounded hover:bg-muted"
+                        >
+                          Set reminder
+                        </button>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const newWhen = await showPrompt(
+                                'Edit when tag',
+                                'Describe when (e.g., "tomorrow 15:00" or "next Thursday"):'
+                              )
+                              if (!newWhen) return
+                              // Optionally also update dueDate if user enters ISO-like date
+                              let duePatch: any = {}
+                              const maybeDate = new Date(newWhen)
+                              if (!isNaN(maybeDate.getTime()) && maybeDate.getFullYear() > 2020) {
+                                duePatch.dueDate = maybeDate.toISOString()
+                              }
+                              const res = await fetch(`/api/tasks/${task.id}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ tags: { when: newWhen }, ...duePatch })
+                              })
+                              if (res.ok) {
+                                toast({ title: 'Tag updated', description: 'when tag saved', variant: 'success' })
+                                fetchTasks()
+                              }
+                            } catch (e) {}
+                          }}
+                          className="text-xs px-2 py-1 border rounded hover:bg-muted"
+                        >
+                          Edit when
+                        </button>
                       </div>
                     </div>
                   </div>

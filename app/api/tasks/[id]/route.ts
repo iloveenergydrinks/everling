@@ -72,7 +72,7 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { title, description, status, priority, dueDate, assignedToId } = body
+    const { title, description, status, priority, dueDate, reminderDate, assignedToId, tags } = body
 
     // Verify the task belongs to the user's organization
     const existingTask = await prisma.task.findFirst({
@@ -89,6 +89,22 @@ export async function PATCH(
       )
     }
 
+    // Prepare optional emailMetadata update if tags provided
+    let emailMetadataUpdate: any | undefined = undefined
+    if (tags && typeof tags === 'object') {
+      const currentMeta = (existingTask as any).emailMetadata || {}
+      const currentSmart = currentMeta.smartAnalysis || {}
+      const currentTags = currentSmart.tags || {}
+      const nextTags = { ...currentTags, ...tags }
+      emailMetadataUpdate = {
+        ...currentMeta,
+        smartAnalysis: {
+          ...currentSmart,
+          tags: nextTags
+        }
+      }
+    }
+
     const task = await prisma.task.update({
       where: { id: params.id },
       data: {
@@ -97,7 +113,13 @@ export async function PATCH(
         ...(status !== undefined && { status }),
         ...(priority !== undefined && { priority }),
         ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
+        ...(reminderDate !== undefined && { 
+          reminderDate: reminderDate ? new Date(reminderDate) : null,
+          // Reset reminderSent so new reminders can be delivered
+          reminderSent: false 
+        }),
         ...(assignedToId !== undefined && { assignedToId })
+        ,...(emailMetadataUpdate !== undefined && { emailMetadata: emailMetadataUpdate })
       },
       include: {
         createdBy: {
