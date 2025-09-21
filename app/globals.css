@@ -68,3 +68,21 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  @keyframes floatY {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+  .animate-float-slow {
+    animation: floatY 3.5s ease-in-out infinite;
+  }
+
+  @keyframes shadowPulse {
+    0%, 100% { transform: scale(1); opacity: 0.35; }
+    50% { transform: scale(0.9); opacity: 0.25; }
+  }
+  .animate-shadow-pulse {
+    animation: shadowPulse 3.5s ease-in-out infinite;
+  }
+}

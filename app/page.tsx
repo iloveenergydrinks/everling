@@ -41,7 +41,10 @@ export default async function HomePage() {
         {/* Hero Section - Minimal */}
         <div className="mb-16 text-center">
           <div className="mb-6 flex items-center justify-center">
-            <Image src="/everling_logo.png" alt="Everling logo" width={64} height={64} />
+            <div className="relative">
+              <Image src="/everling_logo.png" alt="Everling logo" width={80} height={80} className="animate-float-slow" />
+              <div className="absolute left-1/2 top-[86px] -translate-x-1/2 h-2 w-16 rounded-full bg-black/10 blur-[2px] animate-shadow-pulse"></div>
+            </div>
           </div>
           <h2 className="text-4xl font-light mb-6 tracking-tight">
             Minimalism meets<br />
