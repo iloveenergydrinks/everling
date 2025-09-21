@@ -110,6 +110,8 @@ export default function DashboardPage() {
   } | null>(null)
   const [isProcessingAI, setIsProcessingAI] = useState(false)
   const [searchFocused, setSearchFocused] = useState(false)
+  const [editingDueId, setEditingDueId] = useState<string | null>(null)
+  const [editingDueValue, setEditingDueValue] = useState<string>("")
   
   // New filter state
   const [filters, setFilters] = useState<FilterState>({
@@ -1084,6 +1086,51 @@ export default function DashboardPage() {
     })
   }
 
+  const toLocalInputValue = (iso: string): string => {
+    try {
+      const d = new Date(iso)
+      const pad = (n: number) => String(n).padStart(2, '0')
+      const yyyy = d.getFullYear()
+      const mm = pad(d.getMonth() + 1)
+      const dd = pad(d.getDate())
+      const hh = pad(d.getHours())
+      const mi = pad(d.getMinutes())
+      return `${yyyy}-${mm}-${dd}T${hh}:${mi}`
+    } catch {
+      return ''
+    }
+  }
+
+  const openDueEditor = (task: Task) => {
+    if (!task.dueDate) return
+    setEditingDueId(task.id)
+    setEditingDueValue(toLocalInputValue(task.dueDate))
+  }
+
+  const submitDueEditor = async (taskId: string) => {
+    try {
+      if (!editingDueValue) return
+      const d = new Date(editingDueValue)
+      if (isNaN(d.getTime())) {
+        toast({ title: 'Invalid date/time', variant: 'error' })
+        return
+      }
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dueDate: d.toISOString(), reminderDate: d.toISOString() })
+      })
+      if (res.ok) {
+        toast({ title: 'Date updated', description: 'Due and reminder updated', variant: 'success' })
+        setEditingDueId(null)
+        setEditingDueValue("")
+        fetchTasks()
+      }
+    } catch (e) {
+      console.error('Update date error:', e)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -1729,118 +1776,43 @@ export default function DashboardPage() {
                           <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
                             {/* Due date pill - click to edit date/time */}
                             {task.dueDate && (
-                              <span
-                                className="px-2 py-0.5 border rounded bg-transparent cursor-pointer hover:bg-muted group inline-flex items-center gap-1"
-                                title="Click to edit due date"
-                                onClick={async () => {
-                                  try {
-                                    const dateStr = await showPrompt('Edit due date', 'YYYY-MM-DD (e.g., 2025-09-19):')
-                                    if (!dateStr) return
-                                    const timeStr = await showPrompt('Time (optional)', 'HH:MM (24h, e.g., 09:00):')
-                                    const iso = timeStr && /\d{1,2}:\d{2}/.test(timeStr)
-                                      ? `${dateStr}T${timeStr}:00`
-                                      : `${dateStr}T09:00:00`
-                                    const d = new Date(iso)
-                                    if (isNaN(d.getTime())) { toast({ title: 'Invalid date/time', variant: 'error' }); return }
-                                    const res = await fetch(`/api/tasks/${task.id}`, {
-                                      method: 'PATCH',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ dueDate: d.toISOString(), reminderDate: d.toISOString() })
-                                    })
-                                    if (res.ok) {
-                                      toast({ title: 'Due date updated', variant: 'success' })
-                                      fetchTasks()
-                                    }
-                                  } catch {}
-                                }}
-                              >
-                                {formatDate(task.dueDate)}
-                                <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60 transition-opacity" />
-                        </span>
+                              <div className="inline-flex items-center gap-2">
+                                <span className="px-2 py-0.5 border rounded bg-transparent">
+                                  {formatDate(task.dueDate)}
+                                </span>
+                                <input
+                                  type="datetime-local"
+                                  className="text-xs border rounded px-1 py-0.5"
+                                  value={editingDueId === task.id ? editingDueValue : toLocalInputValue(task.dueDate)}
+                                  onChange={(e) => {
+                                    setEditingDueId(task.id)
+                                    setEditingDueValue(e.target.value)
+                                  }}
+                                  onBlur={() => submitDueEditor(task.id)}
+                                  onKeyDown={(e) => { if (e.key === 'Enter') submitDueEditor(task.id) }}
+                                />
+                              </div>
                             )}
-                            {/* Where tag */}
+                            {/* Non-date tags rendered read-only */}
                             {task.emailMetadata.smartAnalysis.tags.where && (
-                              <span
-                                className="px-2 py-0.5 border rounded cursor-pointer hover:bg-muted group inline-flex items-center gap-1"
-                                title="Click to edit where"
-                                onClick={async () => {
-                                  const value = await showPrompt('Edit where', 'Enter a new place:')
-                                  if (!value) return
-                                  const res = await fetch(`/api/tasks/${task.id}`, {
-                                    method: 'PATCH',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ tags: { where: value } })
-                                  })
-                                  if (res.ok) fetchTasks()
-                                }}
-                              >
+                              <span className="px-2 py-0.5 border rounded">
                                 {task.emailMetadata.smartAnalysis.tags.where}
-                                <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60 transition-opacity" />
                               </span>
                             )}
-                            {/* Who tag */}
                             {task.emailMetadata.smartAnalysis.tags.who && (
-                              <span
-                                className="px-2 py-0.5 border rounded cursor-pointer hover:bg-muted group inline-flex items-center gap-1"
-                                title="Click to edit who"
-                                onClick={async () => {
-                                  const value = await showPrompt('Edit who', 'Enter a new person:')
-                                  if (!value) return
-                                  const res = await fetch(`/api/tasks/${task.id}`, {
-                                    method: 'PATCH',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ tags: { who: value } })
-                                  })
-                                  if (res.ok) fetchTasks()
-                                }}
-                              >
+                              <span className="px-2 py-0.5 border rounded">
                                 {task.emailMetadata.smartAnalysis.tags.who}
-                                <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60 transition-opacity" />
                               </span>
                             )}
-                            {/* What tag */}
                             {task.emailMetadata.smartAnalysis.tags.what && (
-                              <span
-                                className="px-2 py-0.5 border rounded cursor-pointer hover:bg-muted group inline-flex items-center gap-1"
-                                title="Click to edit what"
-                                onClick={async () => {
-                                  const value = await showPrompt('Edit what', 'Enter a new topic:')
-                                  if (!value) return
-                                  const res = await fetch(`/api/tasks/${task.id}`, {
-                                    method: 'PATCH',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ tags: { what: value } })
-                                  })
-                                  if (res.ok) fetchTasks()
-                                }}
-                              >
+                              <span className="px-2 py-0.5 border rounded">
                                 {task.emailMetadata.smartAnalysis.tags.what}
-                                <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60 transition-opacity" />
                               </span>
                             )}
-                            {/* Extras tags (first two shown) */}
                             {Array.isArray(task.emailMetadata.smartAnalysis.tags.extras) &&
                               task.emailMetadata.smartAnalysis.tags.extras.slice(0, 2).map((ex: string, idx: number) => (
-                                <span
-                                  key={idx}
-                                  className="px-2 py-0.5 border rounded max-w-[200px] truncate cursor-pointer hover:bg-muted group inline-flex items-center gap-1"
-                                  title="Click to edit tag"
-                                  onClick={async () => {
-                                    const value = await showPrompt('Edit tag', 'Update value:')
-                                    if (!value) return
-                                    const current = task.emailMetadata.smartAnalysis.tags.extras as string[]
-                                    const next = [...current]
-                                    next[idx] = value
-                                    const res = await fetch(`/api/tasks/${task.id}`, {
-                                      method: 'PATCH',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ tags: { extras: next } })
-                                    })
-                                    if (res.ok) fetchTasks()
-                                  }}
-                                >
+                                <span key={idx} className="px-2 py-0.5 border rounded max-w-[200px] truncate">
                                   {ex}
-                                  <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60 transition-opacity" />
                                 </span>
                               ))}
                       </div>
