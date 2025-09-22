@@ -139,6 +139,7 @@ export default function DashboardPage() {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
   const [organization, setOrganization] = useState<any>(null)
   const [allowedEmails, setAllowedEmails] = useState<any[]>([])
+  const [loadingAllowedEmails, setLoadingAllowedEmails] = useState(false)
   const [showAddEmailForm, setShowAddEmailForm] = useState(false)
   const [newEmailAddress, setNewEmailAddress] = useState("")
   const [newEmailNote, setNewEmailNote] = useState("")
@@ -661,6 +662,7 @@ export default function DashboardPage() {
 
   const fetchAllowedEmails = async () => {
     try {
+      setLoadingAllowedEmails(true)
       const response = await fetch("/api/allowed-emails")
       if (response.ok) {
         const data = await response.json()
@@ -675,6 +677,8 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error("Error fetching allowed emails:", error)
+    } finally {
+      setLoadingAllowedEmails(false)
     }
   }
 
@@ -2363,7 +2367,13 @@ export default function DashboardPage() {
                       Only emails from these addresses can create tasks. Thread replies are automatically allowed.
                     </p>
                     
-                    {allowedEmails.length === 0 ? (
+                    {loadingAllowedEmails ? (
+                      <div className="space-y-2">
+                        <div className="h-4 w-1/2 rounded bg-muted animate-pulse" />
+                        <div className="h-9 w-full rounded bg-muted animate-pulse" />
+                        <div className="h-9 w-5/6 rounded bg-muted animate-pulse" />
+                      </div>
+                    ) : allowedEmails.length === 0 ? (
                       <div className="space-y-2">
                         <p className="text-xs text-muted-foreground">Loading allowed emails...</p>
                         {session?.user?.email && (
