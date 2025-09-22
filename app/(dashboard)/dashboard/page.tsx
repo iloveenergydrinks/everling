@@ -160,6 +160,7 @@ export default function DashboardPage() {
   const [smsDigestEnabled, setSmsDigestEnabled] = useState(false)
   const [showNotificationOnboarding, setShowNotificationOnboarding] = useState(false)
   const [isNewUser, setIsNewUser] = useState(false)
+  const [timezoneLoading, setTimezoneLoading] = useState(false)
 
   useEffect(() => {
     fetchTasks()
@@ -773,6 +774,7 @@ export default function DashboardPage() {
     
     // Fetch user's current timezone
     try {
+      setTimezoneLoading(true)
       const response = await fetch("/api/user/timezone")
       if (response.ok) {
         const data = await response.json()
@@ -782,6 +784,8 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error("Error fetching timezone:", error)
+    } finally {
+      setTimezoneLoading(false)
     }
   }
   
@@ -1027,10 +1031,10 @@ export default function DashboardPage() {
               return false // Already handled above
             case 'expired':
               return dueDate < now
-            default:
-              return true
-          }
-        })
+      default:
+        return true
+    }
+  })
       })
     }
 
@@ -2226,6 +2230,13 @@ export default function DashboardPage() {
                       Set your local timezone for accurate task scheduling
                     </p>
                     <div className="space-y-3">
+                      {timezoneLoading ? (
+                        <>
+                          <div className="h-9 w-full rounded bg-muted animate-pulse" />
+                          <div className="h-4 w-2/3 rounded bg-muted animate-pulse" />
+                        </>
+                      ) : (
+                        <>
                       <select
                         value={timezone}
                         onChange={async (e) => {
@@ -2276,6 +2287,8 @@ export default function DashboardPage() {
                         })}</p>
                         <p>This affects when tasks are due and when you receive notifications</p>
                       </div>
+                        </>
+                      )}
                     </div>
                   </div>
 
