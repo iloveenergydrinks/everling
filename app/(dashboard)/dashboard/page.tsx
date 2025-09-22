@@ -576,9 +576,13 @@ export default function DashboardPage() {
       const response = await fetch("/api/user/timezone")
       if (response.ok) {
         const data = await response.json()
-        
-        // If timezone is different or not set, update it
-        if (data.timezone !== browserTimezone) {
+        // If the user manually selected a timezone, never auto-overwrite
+        const manualSet = (() => {
+          try { return localStorage.getItem('everling.tz_manual') === '1' } catch { return false }
+        })()
+
+        // Only auto-capture if no timezone is stored yet and user hasn't set it manually
+        if (!manualSet && !data.timezone) {
           const updateResponse = await fetch("/api/user/timezone", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -2242,6 +2246,7 @@ export default function DashboardPage() {
                                 description: `Timezone updated successfully`,
                                 variant: "success"
                               })
+                              try { localStorage.setItem('everling.tz_manual', '1') } catch {}
                             }
                           } catch (error) {
                             toast({
