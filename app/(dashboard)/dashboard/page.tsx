@@ -1906,8 +1906,7 @@ export default function DashboardPage() {
                               const raw = String(task.emailMetadata.from)
                               const match = raw.match(/<(.+?)>/)
                               const addr = (match ? match[1] : raw).toLowerCase()
-                              const label = addr.includes('@') ? addr.split('@')[0] : addr
-                              return <span>via email from {label}</span>
+                              return <span>via email from {addr}</span>
                             })()}
                           </div>
                         )}
