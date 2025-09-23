@@ -3,7 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   experimental: {
-    serverComponentsExternalPackages: ['discord.js', '@discordjs/ws', 'zlib-sync', 'bufferutil', 'utf-8-validate']
+    serverComponentsExternalPackages: ['discord.js', '@discordjs/ws', 'bufferutil', 'utf-8-validate']
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {
@@ -22,8 +22,7 @@ const nextConfig = {
       // Ignore native modules on client side
       config.externals.push({
         'utf-8-validate': 'commonjs utf-8-validate',
-        'bufferutil': 'commonjs bufferutil',
-        'zlib-sync': 'commonjs zlib-sync'
+        'bufferutil': 'commonjs bufferutil'
       })
     }
     

@@ -51,7 +51,6 @@
     "tailwindcss-animate": "^1.0.7",
     "twilio": "^5.9.0",
     "utf-8-validate": "^6.0.5",
-    "zlib-sync": "^0.1.10",
     "zod": "^3.25.76"
   },
   "devDependencies": {
