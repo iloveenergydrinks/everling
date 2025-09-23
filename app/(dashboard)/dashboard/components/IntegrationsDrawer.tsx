@@ -87,12 +87,14 @@ export function IntegrationsDrawer({
   }
   
   const deleteApiKey = async (id: string) => {
-    const confirmed = await showConfirm({
-      title: "Delete API Key",
-      description: "This action cannot be undone. Are you sure you want to delete this API key?",
-      confirmText: "Delete",
-      variant: "danger"
-    })
+    const confirmed = await showConfirm(
+      "Delete API Key",
+      "This action cannot be undone. Are you sure you want to delete this API key?",
+      {
+        confirmText: "Delete",
+        variant: "destructive"
+      }
+    )
     
     if (!confirmed) return
     
@@ -136,12 +138,14 @@ export function IntegrationsDrawer({
 
   const handleDiscordAction = async () => {
     if (discordConnected) {
-      const confirmed = await showConfirm({
-        title: "Disconnect Discord",
-        description: "Are you sure you want to disconnect your Discord account? You'll need to reconnect to use Discord features.",
-        confirmText: "Disconnect",
-        variant: "danger"
-      })
+      const confirmed = await showConfirm(
+        "Disconnect Discord",
+        "Are you sure you want to disconnect your Discord account? You'll need to reconnect to use Discord features.",
+        {
+          confirmText: "Disconnect",
+          variant: "destructive"
+        }
+      )
       
       if (confirmed) {
         onDiscordDisconnect()
@@ -250,12 +254,14 @@ export function IntegrationsDrawer({
                     <p className="text-xs text-muted-foreground">API Keys</p>
                     <button
                       onClick={async () => {
-                        const name = await showPrompt({
-                          title: "Create API Key",
-                          description: "Enter a name for this API key",
-                          placeholder: "e.g., Production App",
-                          confirmText: "Create"
-                        })
+                        const name = await showPrompt(
+                          "Create API Key",
+                          "Enter a name for this API key",
+                          {
+                            confirmText: "Create",
+                            defaultValue: ""
+                          }
+                        )
                         if (name) {
                           createApiKey(name)
                         }

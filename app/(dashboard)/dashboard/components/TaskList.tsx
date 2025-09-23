@@ -83,12 +83,14 @@ export function TaskList({
   }
 
   const deleteTask = async (taskId: string) => {
-    const confirmed = await showConfirm({
-      title: "Delete Task",
-      description: "Are you sure you want to delete this task?",
-      confirmText: "Delete",
-      variant: "danger"
-    })
+    const confirmed = await showConfirm(
+      "Delete Task",
+      "Are you sure you want to delete this task?",
+      {
+        confirmText: "Delete",
+        variant: "destructive"
+      }
+    )
     
     if (!confirmed) return
 

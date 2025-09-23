@@ -156,12 +156,14 @@ export function SettingsDrawer({
   }
 
   const deleteAllowedEmail = async (id: string, email: string) => {
-    const confirmed = await showConfirm({
-      title: "Remove Allowed Email",
-      description: `Are you sure you want to remove ${email} from the allowed list?`,
-      confirmText: "Remove",
-      variant: "danger"
-    })
+    const confirmed = await showConfirm(
+      "Remove Allowed Email",
+      `Are you sure you want to remove ${email} from the allowed list?`,
+      {
+        confirmText: "Remove",
+        variant: "destructive"
+      }
+    )
 
     if (!confirmed) return
 
