@@ -54,7 +54,7 @@ export default function DashboardPage() {
   
   const [isProcessingAI, setIsProcessingAI] = useState(false)
   const [searchFocused, setSearchFocused] = useState(false)
-
+  
   // Filter state
   const [filters, setFilters] = useState<FilterState>({
     time: [],
@@ -395,7 +395,7 @@ export default function DashboardPage() {
       setSearchCompleted(false)
     }
   }, [searchQuery])
-
+  
   // Update search results when tasks change
   useEffect(() => {
     if (searchQuery.trim() && searchResults.length > 0 && !isSearching) {
@@ -478,8 +478,8 @@ export default function DashboardPage() {
 
         if (!manualSet && !data.timezone) {
           const updateResponse = await fetch("/api/user/timezone", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ timezone: browserTimezone })
           })
           
@@ -585,10 +585,10 @@ export default function DashboardPage() {
               return false
             case 'expired':
               return dueDate < now
-            default:
-              return true
-          }
-        })
+      default:
+        return true
+    }
+  })
       })
     }
 
@@ -636,7 +636,7 @@ export default function DashboardPage() {
     }
     return filteredTasks
   }
-
+  
   const visibleTasks = getVisibleTasks()
 
   const agentEmail = session?.user?.organizationSlug 
@@ -691,11 +691,11 @@ export default function DashboardPage() {
   return (
     <>
       <div 
-        className={`min-h-screen py-12 transition-all duration-300 ease-out ${
-          isDrawerOpen ? 'mr-[640px]' : ''
+        className={`min-h-screen py-8 md:py-12 transition-all duration-300 ease-out ${
+          isDrawerOpen ? 'md:mr-[480px] lg:mr-[640px]' : ''
         }`}
       >
-        <div className="mx-auto max-w-3xl px-6">
+        <div className="mx-auto max-w-3xl px-4 md:px-6">
 
           {/* Monthly Usage Warning Banner */}
           {organization && organization.plan === 'free' && (
@@ -712,7 +712,7 @@ export default function DashboardPage() {
                     >
                       Upgrade to Pro
                     </button>
-                  </div>
+            </div>
                 </div>
               ) : organization.monthlyTasksUsed >= organization.taskLimit * 0.95 ? (
                 <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded transition-all duration-300">
@@ -731,7 +731,7 @@ export default function DashboardPage() {
           )}
           
           {/* Header with Agent Email */}
-          <div className="mb-12 p-8 border rounded-md relative overflow-hidden">
+          <div className="mb-8 md:mb-12 p-4 md:p-8 border rounded-md relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-purple-50/30 to-pink-50/50 dark:from-blue-950/20 dark:via-purple-950/10 dark:to-pink-950/20" />
             
             <div className="relative">
@@ -802,13 +802,13 @@ export default function DashboardPage() {
               )}
               {searchQuery && (
                 <button
-                  onClick={() => {
-                    setSearchQuery('')
-                    setSearchResults([])
-                    setSearchCompleted(false)
-                    setCommandMode(null)
-                    setAiCommand(null)
-                  }}
+                onClick={() => {
+                  setSearchQuery('')
+                  setSearchResults([])
+                  setSearchCompleted(false)
+                  setCommandMode(null)
+                  setAiCommand(null)
+                }}
                   className="absolute right-10 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
                   title="Clear"
                 >
@@ -825,7 +825,7 @@ export default function DashboardPage() {
                     ? 'bg-orange-500 text-white hover:bg-orange-600'
                     : aiCommand
                     ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-                    : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  : 'bg-primary text-primary-foreground hover:bg-primary/90'
                 }`}
                 title={isSearching || isProcessingAI ? "Processing..." : "Send"}
               >
@@ -901,7 +901,7 @@ export default function DashboardPage() {
                   <CheckCircle className="h-3 w-3 mr-1" />
                   complete today
                 </button>
-              </div>
+            </div>
             )}
             
             {/* AI Task Creation Preview */}
@@ -918,12 +918,12 @@ export default function DashboardPage() {
                       <div className="space-y-1">
                         <label className="text-xs text-muted-foreground">Title</label>
                         <div className="text-sm font-medium">{aiCommand.createTask.title}</div>
-                      </div>
+            </div>
                       {aiCommand.createTask.description && (
                         <div className="space-y-1">
                           <label className="text-xs text-muted-foreground">Description</label>
                           <div className="text-sm text-muted-foreground">{aiCommand.createTask.description}</div>
-                        </div>
+          </div>
                       )}
                       <div className="flex flex-wrap items-center gap-3">
                         {aiCommand.createTask.priority && (
@@ -967,13 +967,13 @@ export default function DashboardPage() {
                   )}
                   
                   <div className="flex gap-2 pt-1">
-                    <button
+              <button
                       onClick={() => executeAICommand()}
                       className="px-3 py-1.5 text-xs border rounded hover:bg-muted transition-colors"
                     >
                       Create {aiCommand.createTasks ? `${aiCommand.createTasks.length} Tasks` : 'Task'}
-                    </button>
-                    <button
+              </button>
+              <button
                       onClick={() => {
                         setAiCommand(null)
                         setSearchQuery('')
@@ -981,7 +981,7 @@ export default function DashboardPage() {
                       className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                       Cancel
-                    </button>
+              </button>
                   </div>
                 </div>
               </div>
@@ -1006,7 +1006,7 @@ export default function DashboardPage() {
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <button
+              <button
                     onClick={() => executeCommand()}
                     className="px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 rounded transition-colors"
                   >
@@ -1167,8 +1167,8 @@ export default function DashboardPage() {
           />
 
           {/* Footer */}
-          <div className="mt-12 pt-8 border-t text-center">
-            <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
+          <div className="mt-8 md:mt-12 pt-6 md:pt-8 border-t text-center">
+            <div className="flex items-center justify-center gap-3 md:gap-6 text-xs text-muted-foreground">
               <button
                 onClick={() => {
                   setShowNotifications(true)
@@ -1201,10 +1201,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Overlay for drawers */}
+      {/* Overlay for desktop drawers */}
       {isDrawerOpen && (
         <div 
-          className={`fixed inset-0 bg-black/10 z-40 transition-all duration-300 ease-out mr-[640px]`}
+          className={`hidden md:block fixed inset-0 bg-black/10 z-40 transition-all duration-300 ease-out md:mr-[480px] lg:mr-[640px]`}
           onClick={() => {
             setShowSettings(false)
             setShowNotifications(false)
@@ -1223,9 +1223,9 @@ export default function DashboardPage() {
         onTimezoneChange={setTimezone}
         timezoneLoading={timezoneLoading}
         onShowNotifications={() => {
-          setShowNotifications(true)
-          fetchWhatsAppSettings()
-        }}
+                        setShowNotifications(true)
+                        fetchWhatsAppSettings()
+                      }}
       />
 
       <IntegrationsDrawer
@@ -1252,10 +1252,10 @@ export default function DashboardPage() {
         <ApiKeyModal
           apiKey={newApiKey}
           onClose={() => {
-            setShowApiKeyModal(false)
-            setNewApiKey("")
-          }}
-        />
+              setShowApiKeyModal(false)
+              setNewApiKey("")
+            }}
+          />
       )}
     </>
   )
