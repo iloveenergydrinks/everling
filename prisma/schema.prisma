@@ -335,3 +335,26 @@ model ShortLink {
   @@index([expiresAt])
   @@map("short_links")
 }
+
+model DiscordJob {
+  messageId      String   @id @map("message_id")
+  organizationId String   @map("organization_id")
+  status         String   @default("processing")
+  meta           Json     @default("{}")
+  createdAt      DateTime @default(now()) @map("created_at")
+  finishedAt     DateTime? @map("finished_at")
+  
+  @@index([organizationId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([finishedAt])
+  @@map("discord_jobs")
+}
+
+model DiscordProcessedMessage {
+  messageId  String   @id @map("message_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  
+  @@index([createdAt])
+  @@map("discord_processed_messages")
+}
