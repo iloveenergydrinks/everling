@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useRef } from "react"
+import { useState, useEffect, useMemo, useRef, Fragment } from "react"
 import { useSession, signOut } from "next-auth/react"
 import { formatDate, formatDateTime, generateApiKey } from "@/lib/utils"
 import { getSmartTaskList, interpretCommand, recordInteraction } from "@/lib/tasks"
@@ -277,6 +277,52 @@ export default function DashboardPage() {
 
   // (deduped) Discord connection UI state handled above
   
+  // Helper function for date conversion
+  const toLocalInputValue = (iso: string): string => {
+    try {
+      const d = new Date(iso)
+      const pad = (n: number) => String(n).padStart(2, '0')
+      const yyyy = d.getFullYear()
+      const mm = pad(d.getMonth() + 1)
+      const dd = pad(d.getDate())
+      const hh = pad(d.getHours())
+      const mi = pad(d.getMinutes())
+      return `${yyyy}-${mm}-${dd}T${hh}:${mi}`
+    } catch {
+      return ''
+    }
+  }
+
+  const openDueEditor = (task: Task) => {
+    if (!task.dueDate) return
+    setEditingDueId(task.id)
+    setEditingDueValue(toLocalInputValue(task.dueDate))
+  }
+
+  const submitDueEditor = async (taskId: string) => {
+    try {
+      if (!editingDueValue) return
+      const d = new Date(editingDueValue)
+      if (isNaN(d.getTime())) {
+        toast({ title: 'Invalid date/time', variant: 'error' })
+        return
+      }
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dueDate: d.toISOString(), reminderDate: d.toISOString() })
+      })
+      if (res.ok) {
+        toast({ title: 'Date updated', description: 'Due and reminder updated', variant: 'success' })
+        setEditingDueId(null)
+        setEditingDueValue("")
+        fetchTasks()
+      }
+    } catch (e) {
+      console.error('Update date error:', e)
+    }
+  }
+  
   // Drawer states
   const [showEmailLogs, setShowEmailLogs] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -316,6 +362,15 @@ export default function DashboardPage() {
   const [showNotificationOnboarding, setShowNotificationOnboarding] = useState(false)
   const [isNewUser, setIsNewUser] = useState(false)
   const [timezoneLoading, setTimezoneLoading] = useState(false)
+
+  // Early loading check
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      </div>
+    )
+  }
 
   useEffect(() => {
     fetchTasks()
@@ -1289,80 +1344,11 @@ export default function DashboardPage() {
     })
   }
 
-  const toLocalInputValue = (iso: string): string => {
-    try {
-      const d = new Date(iso)
-      const pad = (n: number) => String(n).padStart(2, '0')
-      const yyyy = d.getFullYear()
-      const mm = pad(d.getMonth() + 1)
-      const dd = pad(d.getDate())
-      const hh = pad(d.getHours())
-      const mi = pad(d.getMinutes())
-      return `${yyyy}-${mm}-${dd}T${hh}:${mi}`
-    } catch {
-      return ''
-    }
-  }
-
-  const toLocalInputValue = (iso: string): string => {
-    try {
-      const d = new Date(iso)
-      const pad = (n: number) => String(n).padStart(2, '0')
-      const yyyy = d.getFullYear()
-      const mm = pad(d.getMonth() + 1)
-      const dd = pad(d.getDate())
-      const hh = pad(d.getHours())
-      const mi = pad(d.getMinutes())
-      return `${yyyy}-${mm}-${dd}T${hh}:${mi}`
-    } catch {
-      return ''
-    }
-  }
-
-  const openDueEditor = (task: Task) => {
-    if (!task.dueDate) return
-    setEditingDueId(task.id)
-    setEditingDueValue(toLocalInputValue(task.dueDate))
-  }
-
-  const submitDueEditor = async (taskId: string) => {
-    try {
-      if (!editingDueValue) return
-      const d = new Date(editingDueValue)
-      if (isNaN(d.getTime())) {
-        toast({ title: 'Invalid date/time', variant: 'error' })
-        return
-      }
-      const res = await fetch(`/api/tasks/${taskId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dueDate: d.toISOString(), reminderDate: d.toISOString() })
-      })
-      if (res.ok) {
-        toast({ title: 'Date updated', description: 'Due and reminder updated', variant: 'success' })
-        setEditingDueId(null)
-        setEditingDueValue("")
-        fetchTasks()
-      }
-    } catch (e) {
-      console.error('Update date error:', e)
-    }
-  }
-
-  // Main DashboardPage function continues here
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-sm text-muted-foreground">Loading...</p>
-      </div>
-    )
-  }
-
-  const isDrawerOpen = showEmailLogs || showSettings || showApi || showNotifications || showIntegrations
-  const isWideDrawer = showEmailLogs && selectedRawData
+  const isDrawerOpen = showEmailLogs || showSettings || showApi || showNotifications || showIntegrations;
+  const isWideDrawer = showEmailLogs && selectedRawData;
 
   return (
-    <>
+    <div className="flex flex-col min-h-screen">
       <div 
         className={`min-h-screen py-12 transition-all duration-300 ease-out ${
           isWideDrawer ? 'mr-[1280px]' : isDrawerOpen ? 'mr-[640px]' : ''
@@ -2410,7 +2396,7 @@ export default function DashboardPage() {
                         Integrations
                       </button>
                     </div>
-                    </div>
+                  </div>
 
                   {/* Email Logs */}
                   <div className="border rounded p-4">
@@ -2788,8 +2774,8 @@ export default function DashboardPage() {
                 Manage API Keys
               </button>
             </div>
-            </div>
           </div>
+        </div>
       )}
 
       {/* API Drawer */}
@@ -3275,6 +3261,6 @@ Body: {
         </div>
       )}
 
-    </>
+    </div>
   )
 }
