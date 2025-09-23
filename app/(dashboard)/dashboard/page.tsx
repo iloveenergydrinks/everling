@@ -2367,15 +2367,26 @@ export default function DashboardPage() {
                     <p className="text-xs text-muted-foreground mb-3">
                       Get your tasks delivered via email or SMS every morning
                     </p>
-                    <button 
-                      onClick={() => {
-                        setShowNotifications(true)
-                        fetchWhatsAppSettings()
-                      }}
-                      className="w-full text-center text-sm px-3 py-1.5 bg-primary text-primary-foreground rounded hover:bg-primary/90"
-                    >
-                      Configure Digest
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => {
+                          setShowNotifications(true)
+                          fetchWhatsAppSettings()
+                        }}
+                        className="flex-1 text-center text-sm px-3 py-1.5 bg-primary text-primary-foreground rounded hover:bg-primary/90"
+                      >
+                        Configure Digest
                       </button>
+                      <button 
+                        onClick={() => {
+                          setShowSettings(false)
+                          setShowIntegrations(true)
+                        }}
+                        className="text-sm px-3 py-1.5 border rounded hover:bg-muted transition-colors"
+                      >
+                        Integrations
+                      </button>
+                    </div>
                     </div>
 
                   {/* Allowed Emails */}
