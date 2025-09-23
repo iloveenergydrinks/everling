@@ -87,6 +87,21 @@ interface ApiKey {
   }
 }
 
+interface AllowedEmail {
+  id: string
+  email: string
+  note: string | null
+  createdAt: string
+  organization: {
+    id: string
+    name: string
+    slug: string
+  }
+  addedBy?: {
+    email: string
+  }
+}
+
 // Admin emails that have access to this dashboard
 const ADMIN_EMAILS = [
   "martino.fabbro@gmail.com",
@@ -105,7 +120,14 @@ export default function AdminDashboard() {
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([])
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
+  const [allowedEmails, setAllowedEmails] = useState<AllowedEmail[]>([])
   const [stats, setStats] = useState<any>(null)
+  
+  // Allowed emails management state
+  const [selectedOrgForAllowed, setSelectedOrgForAllowed] = useState<string>('')
+  const [newAllowedEmail, setNewAllowedEmail] = useState('')
+  const [newAllowedNote, setNewAllowedNote] = useState('')
+  const [addingAllowed, setAddingAllowed] = useState(false)
 
   // Check if user is admin
   useEffect(() => {
@@ -125,12 +147,13 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      const [usersRes, orgsRes, emailsRes, keysRes, statsRes] = await Promise.all([
+      const [usersRes, orgsRes, emailsRes, keysRes, statsRes, allowedRes] = await Promise.all([
         fetch("/api/admin/users"),
         fetch("/api/admin/organizations"),
         fetch("/api/admin/emails"),
         fetch("/api/admin/keys"),
-        fetch("/api/admin/stats")
+        fetch("/api/admin/stats"),
+        fetch("/api/allowed-emails")
       ])
 
       if (usersRes.ok) setUsers(await usersRes.json())
@@ -138,6 +161,18 @@ export default function AdminDashboard() {
       if (emailsRes.ok) setEmailLogs(await emailsRes.json())
       if (keysRes.ok) setApiKeys(await keysRes.json())
       if (statsRes.ok) setStats(await statsRes.json())
+      if (allowedRes.ok) {
+        const allowedData = await allowedRes.json()
+        // Transform data to include organization info
+        const transformedAllowed = allowedData.map((item: any) => {
+          const org = organizations.find(o => o.id === item.organizationId)
+          return {
+            ...item,
+            organization: org || { id: item.organizationId, name: 'Unknown', slug: 'unknown' }
+          }
+        })
+        setAllowedEmails(transformedAllowed)
+      }
     } catch (error) {
       console.error("Error fetching admin data:", error)
       toast({
@@ -311,6 +346,83 @@ export default function AdminDashboard() {
     }
   }
 
+  // Add allowed email
+  const addAllowedEmail = async () => {
+    if (!selectedOrgForAllowed || !newAllowedEmail) {
+      toast({
+        title: "Missing information",
+        description: "Please select an organization and enter an email address",
+        variant: "error"
+      })
+      return
+    }
+
+    setAddingAllowed(true)
+    try {
+      const res = await fetch(`/api/allowed-emails`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          organizationId: selectedOrgForAllowed,
+          email: newAllowedEmail,
+          note: newAllowedNote || `Added by admin ${session?.user?.email}`
+        })
+      })
+
+      if (res.ok) {
+        toast({
+          title: "Email added",
+          description: `${newAllowedEmail} has been added to the allowed list`,
+          variant: "success"
+        })
+        setNewAllowedEmail('')
+        setNewAllowedNote('')
+        fetchData()
+      } else {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to add email")
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to add allowed email",
+        variant: "error"
+      })
+    } finally {
+      setAddingAllowed(false)
+    }
+  }
+
+  // Delete allowed email
+  const deleteAllowedEmail = async (allowedId: string, email: string) => {
+    if (!confirm(`Remove ${email} from allowed list?`)) {
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/allowed-emails/${allowedId}`, {
+        method: "DELETE"
+      })
+
+      if (res.ok) {
+        toast({
+          title: "Email removed",
+          description: `${email} has been removed from the allowed list`,
+          variant: "success"
+        })
+        fetchData()
+      } else {
+        throw new Error("Failed to remove email")
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to remove allowed email",
+        variant: "error"
+      })
+    }
+  }
+
   // Filter data based on search - now includes organization names for users
   const filteredUsers = users.filter(user => {
     const searchLower = searchTerm.toLowerCase()
@@ -455,6 +567,7 @@ export default function AdminDashboard() {
         <TabsList>
           <TabsTrigger value="users">Users ({users.length})</TabsTrigger>
           <TabsTrigger value="organizations">Organizations ({organizations.length})</TabsTrigger>
+          <TabsTrigger value="allowed">Allowed Emails ({allowedEmails.length})</TabsTrigger>
           <TabsTrigger value="emails">Email Logs ({emailLogs.length})</TabsTrigger>
           <TabsTrigger value="keys">API Keys ({apiKeys.length})</TabsTrigger>
         </TabsList>
@@ -656,6 +769,144 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Allowed Emails Tab */}
+        <TabsContent value="allowed">
+          <Card>
+            <CardHeader>
+              <CardTitle>Allowed Email Management</CardTitle>
+              <CardDescription>Manage allowed email senders for all organizations</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {/* Add new allowed email form */}
+              <div className="border rounded-lg p-4 mb-6">
+                <h3 className="font-medium text-sm mb-3">Add Allowed Email</h3>
+                <div className="space-y-3">
+                  {/* Organization selector */}
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Select Organization</label>
+                    <select
+                      value={selectedOrgForAllowed}
+                      onChange={(e) => setSelectedOrgForAllowed(e.target.value)}
+                      className="w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      <option value="">-- Select Organization --</option>
+                      {organizations.map(org => (
+                        <option key={org.id} value={org.id}>
+                          {org.name} ({org.slug}@everling.io)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Quick fill for Laura */}
+                  {selectedOrgForAllowed && organizations.find(o => o.id === selectedOrgForAllowed)?.slug === 'antoniacomilaura' && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
+                      <p className="text-xs text-yellow-800 font-medium mb-2">Quick Add for Laura Antoniacomi</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setNewAllowedEmail('antoniacomi.laura@gmail.com')
+                          setNewAllowedNote('Laura - organization owner')
+                        }}
+                        className="text-xs"
+                      >
+                        <Mail className="h-3 w-3 mr-1" />
+                        Fill: antoniacomi.laura@gmail.com
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Email input */}
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Email Address</label>
+                    <Input
+                      type="email"
+                      value={newAllowedEmail}
+                      onChange={(e) => setNewAllowedEmail(e.target.value)}
+                      placeholder="email@example.com"
+                      className="text-sm"
+                    />
+                  </div>
+
+                  {/* Note input */}
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Note (optional)</label>
+                    <Input
+                      value={newAllowedNote}
+                      onChange={(e) => setNewAllowedNote(e.target.value)}
+                      placeholder="e.g., Team member, Client, etc."
+                      className="text-sm"
+                    />
+                  </div>
+
+                  {/* Add button */}
+                  <Button
+                    onClick={addAllowedEmail}
+                    disabled={!selectedOrgForAllowed || !newAllowedEmail || addingAllowed}
+                    className="w-full"
+                  >
+                    {addingAllowed ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Adding...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Add to Allowed List
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Allowed emails list */}
+              <div className="space-y-2">
+                {allowedEmails.map((allowed) => (
+                  <div key={allowed.id} className="p-4 border rounded hover:bg-muted/50">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{allowed.email}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Organization: <span className="font-medium">{allowed.organization.name}</span> ({allowed.organization.slug})
+                        </p>
+                        {allowed.note && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Note: {allowed.note}
+                          </p>
+                        )}
+                        {allowed.addedBy && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Added by: {allowed.addedBy.email}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Added: {new Date(allowed.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => deleteAllowedEmail(allowed.id, allowed.email)}
+                        className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {allowedEmails.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    No allowed emails configured yet
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>

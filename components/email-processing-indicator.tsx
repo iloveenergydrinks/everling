@@ -17,16 +17,23 @@ export function EmailProcessingIndicator() {
         const response = await fetch('/api/processing-status')
         if (response.ok) {
           const data = await response.json()
-          setIsProcessing(data.isProcessing)
-          setProcessingCount(data.processingCount)
+          // Use email-specific status if available, otherwise fall back to combined status
+          const emailStatus = data.emailProcessing || {
+            isProcessing: data.isProcessing,
+            count: data.processingCount,
+            recentlyProcessed: data.recentlyProcessed?.filter((r: any) => r.fromEmail !== 'discord') || []
+          }
+          
+          setIsProcessing(emailStatus.isProcessing)
+          setProcessingCount(emailStatus.count)
           
           // Show success animation when processing completes
-          if (!data.isProcessing && recentlyProcessed.length < data.recentlyProcessed.length) {
+          if (!emailStatus.isProcessing && recentlyProcessed.length < emailStatus.recentlyProcessed.length) {
             setShowSuccess(true)
             setTimeout(() => setShowSuccess(false), 3000)
           }
           
-          setRecentlyProcessed(data.recentlyProcessed)
+          setRecentlyProcessed(emailStatus.recentlyProcessed)
         }
       } catch (error) {
         console.error('Failed to check processing status:', error)

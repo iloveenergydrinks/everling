@@ -62,9 +62,45 @@ export async function GET(request: NextRequest) {
       session.user.organizationId
     )
 
+    // Calculate Discord processing status
+    const discordProcessingCount = Math.max(discord.processingCount, Math.max(activeDiscordJobs.length, recentDiscordStarted.length))
+    const discordIsProcessing = discord.isProcessing || activeDiscordJobs.length > 0 || recentDiscordStarted.length > 0
+    
     return NextResponse.json({
-      isProcessing: processingEmails > 0 || discord.isProcessing || activeDiscordJobs.length > 0 || recentDiscordStarted.length > 0,
-      processingCount: processingEmails + Math.max(discord.processingCount, Math.max(activeDiscordJobs.length, recentDiscordStarted.length)),
+      // Combined status (for backward compatibility)
+      isProcessing: processingEmails > 0 || discordIsProcessing,
+      processingCount: processingEmails + discordProcessingCount,
+      
+      // Separate email processing status
+      emailProcessing: {
+        isProcessing: processingEmails > 0,
+        count: processingEmails,
+        recentlyProcessed: recentlyProcessed
+      },
+      
+      // Separate Discord processing status
+      discordProcessing: {
+        isProcessing: discordIsProcessing,
+        count: discordProcessingCount,
+        recentlyProcessed: [
+          ...discord.recentlyProcessed.map((r: any) => ({
+            id: r.id,
+            subject: r.title || 'Discord task(s)',
+            fromEmail: 'discord',
+            taskId: null,
+            createdAt: r.at
+          })),
+          ...recentDiscordFinished.map((r: any) => ({
+            id: r.message_id,
+            subject: 'Discord task(s)',
+            fromEmail: 'discord',
+            taskId: null,
+            createdAt: r.finished_at
+          }))
+        ]
+      },
+      
+      // Combined recently processed (for backward compatibility)
       recentlyProcessed: [
         ...recentlyProcessed,
         ...discord.recentlyProcessed.map((r: any) => ({

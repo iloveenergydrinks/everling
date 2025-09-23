@@ -24,15 +24,19 @@ export function DiscordProcessingIndicator() {
         const res = await fetch('/api/processing-status')
         if (res.ok) {
           const data = await res.json()
-          const discordOnly = data // merged already; we just surface a unified indicator
-          const nowProcessing = Boolean(discordOnly.isProcessing)
+          // Use Discord-specific status if available, otherwise fall back to combined status
+          const discordStatus = data.discordProcessing || { 
+            isProcessing: false, 
+            count: 0 
+          }
+          const nowProcessing = Boolean(discordStatus.isProcessing)
           setIsProcessing(nowProcessing)
-          setCount(discordOnly.processingCount || 0)
+          setCount(discordStatus.count || 0)
           if (!nowProcessing && prev > 0) {
             setJustFinished(true)
             setTimeout(() => setJustFinished(false), 1500)
           }
-          prev = discordOnly.processingCount || 0
+          prev = discordStatus.count || 0
         }
       } catch {}
     }
