@@ -389,8 +389,14 @@ export function SettingsDrawer({
               disabled={timezoneLoading}
               className="w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-primary"
             >
-              {timezones.map((tz) => (
-                <option key={tz} value={tz}>{tz}</option>
+              {timezones.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.options.map((tz) => (
+                    <option key={tz.value} value={tz.value}>
+                      {tz.label} ({tz.offset})
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
             {timezoneLoading && (
