@@ -256,7 +256,7 @@ export function SettingsDrawer({
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Role</p>
-                <p className="text-sm capitalize">{session?.user?.role || 'member'}</p>
+                <p className="text-sm capitalize">{session?.user?.organizationRole || 'member'}</p>
               </div>
             </div>
           </div>
