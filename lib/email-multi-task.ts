@@ -223,6 +223,17 @@ export async function createMultipleTasksFromEmail(
       continue // Skip creating this duplicate task
     }
 
+    // DEBUG: Log what we're about to create
+    console.log('📧 DEBUG: Creating task with relationships:', {
+      title: extractedTask.title,
+      assignedToEmail: relationships.assignedToEmail,
+      assignedByEmail: relationships.assignedByEmail,
+      taskType: relationships.taskType,
+      userRole: relationships.userRole,
+      from: emailData.From,
+      createdVia: 'email'
+    })
+    
     // Create the task
     const task = await prisma.task.create({
       data: {

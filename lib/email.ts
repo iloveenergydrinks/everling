@@ -460,7 +460,25 @@ export async function processInboundEmail(emailData: EmailData) {
       console.log('📧 Step 3a: Reply detection check:', { inReplyTo, hasInReplyTo: !!inReplyTo, isForward })
 
       // First, check if we've already processed this exact MessageID
+      console.log('📧 DEBUG: Checking for duplicate with MessageID:', emailData.MessageID)
+      console.log('📧 DEBUG: Organization ID:', organization.id)
+      
       if (emailData.MessageID) {
+        // First, let's see ALL email logs with this MessageID
+        const allEmailLogsWithMessageId = await prisma.emailLog.findMany({
+          where: {
+            organizationId: organization.id,
+            messageId: emailData.MessageID
+          },
+          select: {
+            id: true,
+            taskId: true,
+            createdAt: true,
+            processed: true
+          }
+        })
+        console.log('📧 DEBUG: Found email logs with this MessageID:', allEmailLogsWithMessageId.length, allEmailLogsWithMessageId)
+        
         const duplicateEmail = await prisma.emailLog.findFirst({
           where: {
             organizationId: organization.id,
@@ -470,6 +488,13 @@ export async function processInboundEmail(emailData: EmailData) {
           include: {
             task: true
           }
+        })
+        
+        console.log('📧 DEBUG: Duplicate check result:', {
+          found: !!duplicateEmail,
+          taskId: duplicateEmail?.taskId,
+          emailLogId: duplicateEmail?.id,
+          taskTitle: duplicateEmail?.task?.title
         })
 
         if (duplicateEmail?.task) {
@@ -500,6 +525,10 @@ export async function processInboundEmail(emailData: EmailData) {
       }
 
       // Check for recent similar tasks (same subject + sender within last hour)
+      console.log('📧 DEBUG: Checking for similar recent tasks...')
+      console.log('📧 DEBUG: Subject to match:', emailData.Subject)
+      console.log('📧 DEBUG: Sender to match:', emailData.From)
+      
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
       const recentSimilarTask = await prisma.task.findFirst({
         where: {
@@ -512,6 +541,13 @@ export async function processInboundEmail(emailData: EmailData) {
             equals: emailData.From
           }
         }
+      })
+      
+      console.log('📧 DEBUG: Similar task check result:', {
+        found: !!recentSimilarTask,
+        taskId: recentSimilarTask?.id,
+        taskTitle: recentSimilarTask?.title,
+        createdAt: recentSimilarTask?.createdAt
       })
 
       if (recentSimilarTask) {
@@ -791,6 +827,14 @@ export async function processInboundEmail(emailData: EmailData) {
       })
       
       // Create multiple tasks using the dedicated handler
+      console.log('📧 DEBUG: About to create multiple tasks:', {
+        taskCount: smartTask.length,
+        from: emailData.From,
+        to: emailData.To,
+        subject: emailData.Subject,
+        messageId: emailData.MessageID
+      })
+      
       const createdTasks = await createMultipleTasksFromEmail(
         smartTask,
         emailData,

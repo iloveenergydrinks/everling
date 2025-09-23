@@ -132,11 +132,11 @@ export default function DashboardPage() {
       })
       .catch(err => console.error('Discord bot init failed:', err))
     
-    // Set up polling for real-time updates
+    // Set up polling for real-time updates (more frequent)
     const interval = setInterval(() => {
       fetchTasks()
       fetchReminders()
-    }, 3000)
+    }, 1500) // Reduced from 3000ms to 1500ms for faster updates
     
     return () => clearInterval(interval)
   }, [])

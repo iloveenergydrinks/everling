@@ -339,6 +339,14 @@ export async function extractTaskRelationships(
   userRole: 'executor' | 'delegator' | 'observer' | 'coordinator'
   stakeholders: Array<{ name?: string; email: string; role: string }>
 }> {
+  console.log('🤖 DEBUG: extractTaskRelationships input:', {
+    from: emailData.from,
+    to: emailData.to,
+    subject: emailData.subject,
+    organizationEmail,
+    forwardedContext
+  })
+  
   try {
     const message = await anthropic.messages.create({
       model: 'claude-3-5-haiku-20241022',
@@ -437,6 +445,7 @@ Who should do this task? What's the recipient's role?`
           ? relationships.stakeholders 
           : []
         
+        console.log('🤖 DEBUG: AI extracted relationships:', relationships)
         return relationships
       }
     }
@@ -470,13 +479,15 @@ Who should do this task? What's the recipient's role?`
   } catch (error) {
     console.error('Failed to extract task relationships:', error)
     // Default assumption: sender assigns to recipient
-    return {
+    const fallbackRelationships = {
       assignedToEmail: emailData.to,
       assignedByEmail: emailData.from,
-      taskType: 'assigned',
-      userRole: 'executor',
+      taskType: 'assigned' as const,
+      userRole: 'executor' as const,
       stakeholders: []
     }
+    console.log('🤖 DEBUG: Using fallback relationships (AI failed):', fallbackRelationships)
+    return fallbackRelationships
   }
 }
 
