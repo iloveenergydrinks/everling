@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import crypto from "crypto"
 import prisma from "@/lib/prisma"
-import { smartAgent } from "@/lib/smart-agent"
+import { smartAgent } from "@/lib/discord-agent"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 
