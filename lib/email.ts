@@ -376,15 +376,26 @@ export async function processInboundEmail(emailData: EmailData) {
     })
 
     // Check if sender is in allowed list
-    const isAllowed = organization.allowedEmails.some(
+    const isInAllowedList = organization.allowedEmails.some(
       (allowed: { email: string }) => allowed.email === senderEmail
     )
     
+    // Check if sender is a member of the organization
+    const isOrganizationMember = organization.members.some(
+      (member: any) => member.user.email === senderEmail
+    )
+    
+    // Sender is allowed if they're in the allowed list OR they're an organization member
+    const isAllowed = isInAllowedList || isOrganizationMember
+    
     console.log('📧 Sender authorization check:', {
       senderEmail,
+      isInAllowedList,
+      isOrganizationMember,
       isAllowed,
       allowedEmailsCount: organization.allowedEmails.length,
-      allowedEmails: organization.allowedEmails.map((ae: { email: string }) => ae.email)
+      allowedEmails: organization.allowedEmails.map((ae: { email: string }) => ae.email),
+      organizationMembers: organization.members.map((m: any) => m.user.email)
     })
     
     console.log('📧 Step 1: Checking for existing thread...')
@@ -420,17 +431,20 @@ export async function processInboundEmail(emailData: EmailData) {
         where: { id: emailLog.id },
         data: { 
           processed: true,
-          error: `Sender not in allowed list: ${senderEmail}`
+          error: `Sender not authorized: ${senderEmail} (not an organization member or in allowed list)`
         }
       })
       
-      console.log(`📧 Email rejected: Sender not in allowed list: ${senderEmail} for org: ${organization.name}`)
-      console.log(`📧 To allow this sender, they need to be added to the allowed emails list in Settings`)
+      console.log(`📧 Email rejected: Sender ${senderEmail} is not authorized for org: ${organization.name}`)
+      console.log(`📧 Sender is NOT an organization member and NOT in the allowed emails list`)
+      console.log(`📧 To allow this sender, either:`)
+      console.log(`   1. Add them as a member of the organization`)
+      console.log(`   2. Add their email to the allowed emails list in Settings`)
       
       return {
         status: 'rejected',
         reason: 'unauthorized_sender',
-        message: `Sender not in allowed list: ${senderEmail}`,
+        message: `Sender not authorized: ${senderEmail} (not an organization member or in allowed list)`,
         organizationId: organization.id,
         senderEmail
       }
