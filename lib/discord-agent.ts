@@ -151,8 +151,8 @@ export async function smartAgent(params: {
           dueDate: taskData.dueDate,
           reminderDate: taskData.reminderDate,
           createdVia: 'discord',
-          createdById: user.id,
-          assignedToId: user.id,
+          createdById: user?.id || null,
+          assignedToId: user?.id || null,
           organizationId: organizationId,
           emailMetadata: {
             ...params.metadata,
@@ -169,8 +169,8 @@ export async function smartAgent(params: {
             taskIndex: index,
             totalTasks: tasksArray.length
           },
-          assignedByEmail: user.email,  // Self-assigned
-          assignedToEmail: user.email,  // To themselves
+          assignedByEmail: user?.email || params.from,  // Self-assigned or Discord username
+          assignedToEmail: user?.email || params.from,  // To themselves or Discord username
           taskType: 'self',
           userRole: 'executor'
         }

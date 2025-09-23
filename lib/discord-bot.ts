@@ -183,7 +183,14 @@ class DiscordBot {
       
       // Send response back to Discord
       await this.sendResponse(message, result)
-      const titles = result?.tasks?.map((t: any) => t.title) || (result?.task ? [result.task.title] : [])
+      let titles: string[] = []
+      if (result.success) {
+        if ('tasks' in result && result.tasks) {
+          titles = result.tasks.map((t: any) => t.title)
+        } else if ('task' in result && result.task) {
+          titles = [result.task.title]
+        }
+      }
       finishDiscordProcessing(message.id, titles)
       try {
         await prisma.$executeRawUnsafe(
@@ -250,7 +257,7 @@ class DiscordBot {
       messages: contextMessages,
       channel: {
         id: channel.id,
-        name: 'name' in channel ? channel.name : 'DM',
+        name: 'name' in channel ? (channel.name || 'Unknown') : 'DM',
         type: channel.isThread() ? 'thread' : 'text'
       },
       guild: message.guild ? {
@@ -313,7 +320,7 @@ class DiscordBot {
     // Get recent tasks created from Discord for this channel
     const tasks = await prisma.task.findMany({
       where: {
-        userId: userId,
+        createdById: userId,
         createdVia: 'discord',
         emailMetadata: {
           path: ['channelId'],

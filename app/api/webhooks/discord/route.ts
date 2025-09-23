@@ -143,17 +143,18 @@ async function handleTaskCommand(interaction: any, user: any) {
   }
   
   // Use smart agent to process the task
+  // Include priority and due date in the content so they're processed
+  const enrichedContent = `${description}${priority === 'high' ? ' [high priority]' : ''}${due ? ` [due ${due}]` : ''}`
+  
   const result = await smartAgent({
-    content: description,
+    content: enrichedContent,
     subject: `Quick task from Discord`,
     from: interaction.member?.user?.username || interaction.user?.username || 'Discord User',
     metadata: {
       source: 'discord',
       channelId: interaction.channel_id,
       guildId: interaction.guild_id,
-      interactionId: interaction.id,
-      priority: priority,
-      dueDate: due
+      messageId: interaction.id // Use messageId instead of interactionId
     },
     userId: user.id
   })
@@ -181,7 +182,7 @@ async function handleTasksListCommand(interaction: any, user: any) {
   // Get recent tasks for this user
   const tasks = await prisma.task.findMany({
     where: {
-      userId: user.id,
+      createdById: user.id,
       status: 'pending'
     },
     orderBy: { createdAt: 'desc' },
