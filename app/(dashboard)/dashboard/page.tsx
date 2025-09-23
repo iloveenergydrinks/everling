@@ -79,6 +79,117 @@ interface FilterState {
   ownership: OwnershipFilter[]
 }
 
+// Calendar popup component (moved outside to fix syntax)
+const CalendarPopup = ({
+  value,
+  onChange,
+  onSave,
+  onCancel
+}: {
+  value: string
+  onChange: (val: string) => void
+  onSave: () => void
+  onCancel: () => void
+}) => {
+  const [calendarMonth, setCalendarMonth] = useState<Date>(new Date())
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  
+  // Helper function to convert ISO to local input value
+  const toLocalInputValue = (isoString: string): string => {
+    try {
+      const date = new Date(isoString)
+      const yyyy = date.getFullYear()
+      const mm = String(date.getMonth() + 1).padStart(2, '0')
+      const dd = String(date.getDate()).padStart(2, '0')
+      const hh = String(date.getHours()).padStart(2, '0')
+      const mi = String(date.getMinutes()).padStart(2, '0')
+      return `${yyyy}-${mm}-${dd}T${hh}:${mi}`
+    } catch {
+      return ''
+    }
+  }
+  
+  useEffect(() => {
+    const handleOutside = (e: MouseEvent | TouchEvent) => {
+      const el = containerRef.current
+      if (!el) return
+      if (e.target instanceof Node && !el.contains(e.target)) {
+        onSave()
+      }
+    }
+    document.addEventListener('mousedown', handleOutside)
+    document.addEventListener('touchstart', handleOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleOutside)
+      document.removeEventListener('touchstart', handleOutside)
+    }
+  }, [onSave])
+  
+  const base = value ? new Date(value) : new Date()
+  const month = calendarMonth
+  const start = startOfWeek(startOfMonth(month), { weekStartsOn: 1 })
+  const end = endOfWeek(endOfMonth(month), { weekStartsOn: 1 })
+  const days: Date[] = []
+  for (let d = start; d <= end; d = addDays(d, 1)) days.push(d)
+  const hours = [8, 9, 10, 11, 14, 15, 16, 17]
+
+  const setDay = (day: Date) => {
+    const newDate = new Date(base)
+    newDate.setFullYear(day.getFullYear(), day.getMonth(), day.getDate())
+    const iso = toLocalInputValue(newDate.toISOString())
+    onChange(iso)
+  }
+  const setHour = (h: number) => {
+    const newDate = value ? new Date(value) : new Date()
+    newDate.setHours(h, 0, 0, 0)
+    const iso = toLocalInputValue(newDate.toISOString())
+    onChange(iso)
+  }
+
+  return (
+    <div ref={containerRef} className="mt-1 p-3 border rounded bg-background shadow-sm text-xs">
+      <div className="flex items-center justify-between mb-2">
+        <button className="px-2 py-1 border rounded" onClick={() => setCalendarMonth(addMonths(month, -1))}>←</button>
+        <div className="font-medium">{format(month, 'MMMM yyyy')}</div>
+        <button className="px-2 py-1 border rounded" onClick={() => setCalendarMonth(addMonths(month, 1))}>→</button>
+      </div>
+      <div className="grid grid-cols-7 gap-1 mb-2">
+        {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
+          <div key={d} className="text-center text-muted-foreground">{d}</div>
+        ))}
+        {days.map((day, idx) => {
+          const selected = value ? isSameDay(day, new Date(value)) : false
+          const outside = !isSameMonth(day, month)
+          return (
+            <button
+              key={idx}
+              className={`h-7 rounded border ${selected ? 'bg-black text-white' : outside ? 'text-muted-foreground/50' : 'hover:bg-muted'}`}
+              onClick={() => setDay(day)}
+            >
+              {format(day, 'd')}
+            </button>
+          )
+        })}
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {hours.map(h => (
+          <button
+            key={h}
+            onClick={() => setHour(h)}
+            className="px-2 py-1 border rounded hover:bg-muted"
+          >
+            {String(h).padStart(2,'0')}:00
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center justify-end gap-2">
+        <button onClick={onCancel} className="px-2 py-1 text-xs border rounded hover:bg-muted">Cancel</button>
+        <button onClick={onSave} className="px-2 py-1 text-xs rounded bg-black text-white hover:bg-black/90">Save</button>
+      </div>
+    </div>
+  )
+}
+
 export default function DashboardPage() {
   const { data: session } = useSession()
   const router = useRouter()
@@ -1193,6 +1304,21 @@ export default function DashboardPage() {
     }
   }
 
+  const toLocalInputValue = (iso: string): string => {
+    try {
+      const d = new Date(iso)
+      const pad = (n: number) => String(n).padStart(2, '0')
+      const yyyy = d.getFullYear()
+      const mm = pad(d.getMonth() + 1)
+      const dd = pad(d.getDate())
+      const hh = pad(d.getHours())
+      const mi = pad(d.getMinutes())
+      return `${yyyy}-${mm}-${dd}T${hh}:${mi}`
+    } catch {
+      return ''
+    }
+  }
+
   const openDueEditor = (task: Task) => {
     if (!task.dueDate) return
     setEditingDueId(task.id)
@@ -1223,98 +1349,7 @@ export default function DashboardPage() {
     }
   }
 
-  const CalendarPopup = ({
-    value,
-    onChange,
-    onSave,
-    onCancel
-  }: {
-    value: string
-    onChange: (val: string) => void
-    onSave: () => void
-    onCancel: () => void
-  }) => {
-    const containerRef = useRef<HTMLDivElement | null>(null)
-    useEffect(() => {
-      const handleOutside = (e: MouseEvent | TouchEvent) => {
-        const el = containerRef.current
-        if (!el) return
-        if (e.target instanceof Node && !el.contains(e.target)) {
-          onSave()
-        }
-      }
-      document.addEventListener('mousedown', handleOutside)
-      document.addEventListener('touchstart', handleOutside)
-      return () => {
-        document.removeEventListener('mousedown', handleOutside)
-        document.removeEventListener('touchstart', handleOutside)
-      }
-    }, [onSave])
-    const base = value ? new Date(value) : new Date()
-    const month = calendarMonth
-    const start = startOfWeek(startOfMonth(month), { weekStartsOn: 1 })
-    const end = endOfWeek(endOfMonth(month), { weekStartsOn: 1 })
-    const days: Date[] = []
-    for (let d = start; d <= end; d = addDays(d, 1)) days.push(d)
-    const hours = [8, 9, 10, 11, 14, 15, 16, 17]
-
-    const setDay = (day: Date) => {
-      const newDate = new Date(base)
-      newDate.setFullYear(day.getFullYear(), day.getMonth(), day.getDate())
-      const iso = toLocalInputValue(newDate.toISOString())
-      onChange(iso)
-    }
-    const setHour = (h: number) => {
-      const newDate = value ? new Date(value) : new Date()
-      newDate.setHours(h, 0, 0, 0)
-      const iso = toLocalInputValue(newDate.toISOString())
-      onChange(iso)
-    }
-
-    return (
-      <div ref={containerRef} className="mt-1 p-3 border rounded bg-background shadow-sm text-xs">
-        <div className="flex items-center justify-between mb-2">
-          <button className="px-2 py-1 border rounded" onClick={() => setCalendarMonth(addMonths(month, -1))}>←</button>
-          <div className="font-medium">{format(month, 'MMMM yyyy')}</div>
-          <button className="px-2 py-1 border rounded" onClick={() => setCalendarMonth(addMonths(month, 1))}>→</button>
-        </div>
-        <div className="grid grid-cols-7 gap-1 mb-2">
-          {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
-            <div key={d} className="text-center text-muted-foreground">{d}</div>
-          ))}
-          {days.map((day, idx) => {
-            const selected = value ? isSameDay(day, new Date(value)) : false
-            const outside = !isSameMonth(day, month)
-            return (
-              <button
-                key={idx}
-                className={`h-7 rounded border ${selected ? 'bg-black text-white' : outside ? 'text-muted-foreground/50' : 'hover:bg-muted'}`}
-                onClick={() => setDay(day)}
-              >
-                {format(day, 'd')}
-              </button>
-            )
-          })}
-        </div>
-        <div className="flex flex-wrap gap-1">
-          {hours.map(h => (
-            <button
-              key={h}
-              onClick={() => setHour(h)}
-              className="px-2 py-1 border rounded hover:bg-muted"
-            >
-              {String(h).padStart(2,'0')}:00
-            </button>
-          ))}
-        </div>
-        <div className="mt-3 flex items-center justify-end gap-2">
-          <button onClick={onCancel} className="px-2 py-1 text-xs border rounded hover:bg-muted">Cancel</button>
-          <button onClick={onSave} className="px-2 py-1 text-xs rounded bg-black text-white hover:bg-black/90">Save</button>
-        </div>
-      </div>
-    )
-  } // End CalendarPopup component
-
+  // Main DashboardPage function continues here
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
