@@ -387,8 +387,6 @@ export async function processInboundEmail(emailData: EmailData) {
       allowedEmails: organization.allowedEmails.map((ae: { email: string }) => ae.email)
     })
     
-    console.log('📧 Proceeding with email processing - sender is authorized')
-    
     console.log('📧 Step 1: Checking for existing thread...')
     
     // Check if this is part of an existing thread
@@ -426,7 +424,8 @@ export async function processInboundEmail(emailData: EmailData) {
         }
       })
       
-      console.log(`Email rejected: Sender not in allowed list: ${senderEmail} for org: ${organization.name}`)
+      console.log(`📧 Email rejected: Sender not in allowed list: ${senderEmail} for org: ${organization.name}`)
+      console.log(`📧 To allow this sender, they need to be added to the allowed emails list in Settings`)
       
       return {
         status: 'rejected',
@@ -437,7 +436,7 @@ export async function processInboundEmail(emailData: EmailData) {
       }
     }
     
-    console.log('📧 Step 2: Authorization passed, proceeding to task processing...')
+    console.log('📧 Step 2: Authorization passed (sender is allowed or replying to existing thread), proceeding to task processing...')
 
     console.log('📧 Step 3: Looking for existing tasks in thread...')
 
