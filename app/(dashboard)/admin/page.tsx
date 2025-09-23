@@ -153,7 +153,7 @@ export default function AdminDashboard() {
         fetch("/api/admin/emails"),
         fetch("/api/admin/keys"),
         fetch("/api/admin/stats"),
-        fetch("/api/allowed-emails")
+        fetch("/api/admin/allowed-emails")
       ])
 
       if (usersRes.ok) setUsers(await usersRes.json())
@@ -163,15 +163,8 @@ export default function AdminDashboard() {
       if (statsRes.ok) setStats(await statsRes.json())
       if (allowedRes.ok) {
         const allowedData = await allowedRes.json()
-        // Transform data to include organization info
-        const transformedAllowed = allowedData.map((item: any) => {
-          const org = organizations.find(o => o.id === item.organizationId)
-          return {
-            ...item,
-            organization: org || { id: item.organizationId, name: 'Unknown', slug: 'unknown' }
-          }
-        })
-        setAllowedEmails(transformedAllowed)
+        // The admin endpoint already includes organization info
+        setAllowedEmails(allowedData)
       }
     } catch (error) {
       console.error("Error fetching admin data:", error)
@@ -359,7 +352,7 @@ export default function AdminDashboard() {
 
     setAddingAllowed(true)
     try {
-      const res = await fetch(`/api/allowed-emails`, {
+      const res = await fetch(`/api/admin/add-allowed-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

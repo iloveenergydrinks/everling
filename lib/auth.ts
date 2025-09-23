@@ -233,6 +233,19 @@ export const authOptions: NextAuthOptions = {
               }
             })
             
+            // Auto-add the user's email to allowed emails (just like email registration)
+            await prisma.allowedEmail.create({
+              data: {
+                organizationId: org.id,
+                email: dbUser.email.toLowerCase(),
+                addedById: dbUser.id,
+                note: 'Registration email (auto-added via Google)',
+              }
+            }).catch(err => {
+              console.error('Failed to add email to allowed list:', err)
+              // Don't fail the login if this fails
+            })
+            
             token.organizationId = org.id
             token.organizationRole = 'admin'
             token.organizationSlug = org.slug
