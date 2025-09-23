@@ -33,9 +33,11 @@
     "@radix-ui/react-toast": "^1.2.1",
     "ai": "^5.0.45",
     "bcryptjs": "^2.4.3",
+    "bufferutil": "^4.0.9",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
+    "discord.js": "^14.22.1",
     "dotenv": "^17.2.2",
     "lucide-react": "^0.436.0",
     "nanoid": "^5.1.5",
@@ -48,6 +50,8 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "twilio": "^5.9.0",
+    "utf-8-validate": "^6.0.5",
+    "zlib-sync": "^0.1.10",
     "zod": "^3.25.76"
   },
   "devDependencies": {
@@ -58,6 +62,7 @@
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.7",
+    "node-loader": "^2.1.0",
     "postcss": "^8.4.41",
     "prisma": "^5.18.0",
     "tailwindcss": "^3.4.10",

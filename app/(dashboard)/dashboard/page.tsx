@@ -90,6 +90,19 @@ export default function DashboardPage() {
   const [searchResults, setSearchResults] = useState<Task[]>([]) 
   const [isSearching, setIsSearching] = useState(false)
   const [searchCompleted, setSearchCompleted] = useState(false)
+  const [showSearchNudge, setShowSearchNudge] = useState(false)
+  const [showSearchNudgeDelayed, setShowSearchNudgeDelayed] = useState(false)
+
+  // Show hint/pulse 1s after user stops typing
+  useEffect(() => {
+    // Hide while processing or if empty
+    if (!searchQuery.trim() || isSearching || isProcessingAI) {
+      setShowSearchNudgeDelayed(false)
+      return
+    }
+    const t = setTimeout(() => setShowSearchNudgeDelayed(true), 1000)
+    return () => clearTimeout(t)
+  }, [searchQuery, isSearching])
   const [showHiddenTasks, setShowHiddenTasks] = useState(false)
   const [commandMode, setCommandMode] = useState<{
     active: boolean
@@ -122,6 +135,36 @@ export default function DashboardPage() {
   })
   const [copied, setCopied] = useState(false)
   const [copiedText, setCopiedText] = useState("")
+  // Discord connection UI state (so disconnect doesn't hard refresh page)
+  const [discordConnectedUI, setDiscordConnectedUI] = useState<boolean>(Boolean(session?.user?.discordConnected))
+  const [discordUsernameUI, setDiscordUsernameUI] = useState<string>(session?.user?.discordUsername || "")
+
+  useEffect(() => {
+    // Only set initial state, don't sync back to session to avoid refresh loops
+    if (session?.user?.discordConnected !== undefined) {
+      setDiscordConnectedUI(Boolean(session.user.discordConnected))
+      setDiscordUsernameUI(session.user.discordUsername || "")
+    }
+  }, []) // Only run once on mount
+
+  // Listen for Discord connection messages from OAuth popup
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'DISCORD_CONNECTED') {
+        setDiscordConnectedUI(true)
+        setDiscordUsernameUI(event.data.username)
+        toast({
+          title: "Discord connected",
+          description: `Connected as ${event.data.username}`,
+        })
+      }
+    }
+    
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
+
+  // (deduped) Discord connection UI state handled above
   
   // Drawer states
   const [showEmailLogs, setShowEmailLogs] = useState(false)
@@ -170,6 +213,16 @@ export default function DashboardPage() {
     
     // Capture and save user's timezone on first load
     captureUserTimezone()
+    
+    // Initialize Discord bot if configured
+    fetch('/api/discord/init')
+      .then(res => res.json())
+      .then(data => {
+        if (data.online) {
+          console.log('Discord bot is online')
+        }
+      })
+      .catch(err => console.error('Discord bot init failed:', err))
     
     // Request notification permission on mount
     if ('Notification' in window && Notification.permission === 'default') {
@@ -440,6 +493,7 @@ export default function DashboardPage() {
   // Handle search/command execution on Enter key
   const handleSearchSubmit = async () => {
     if (!searchQuery.trim()) return
+    setShowSearchNudge(false)
 
     // Always try AI first for ANY input
     const aiHandled = await processAICommand(searchQuery)
@@ -1363,7 +1417,10 @@ export default function DashboardPage() {
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  setShowSearchNudge(Boolean(e.target.value.trim()))
+                }}
                 placeholder="Ask anything or describe a task..."
                 disabled={commandMode !== null || aiCommand !== null || isSearching || isProcessingAI}
                 className={`h-12 w-full rounded-lg border ${
@@ -1387,6 +1444,12 @@ export default function DashboardPage() {
                   }
                 }}
               />
+              {searchQuery.trim() && !isSearching && !isProcessingAI && showSearchNudgeDelayed && (
+                <div className="absolute right-24 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-1 text-[11px] text-muted-foreground select-none pointer-events-none animate-in fade-in duration-500">
+                  <kbd className="px-1.5 py-0.5 rounded border bg-muted">Enter</kbd>
+                  <span>to run</span>
+                </div>
+              )}
               {searchQuery && (
                 <button
                 onClick={() => {
@@ -1395,6 +1458,7 @@ export default function DashboardPage() {
                   setSearchCompleted(false)
                   setCommandMode(null)
                   setAiCommand(null)
+                  setShowSearchNudge(false)
                 }}
                   className="absolute right-10 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
                   title="Clear"
@@ -1412,7 +1476,7 @@ export default function DashboardPage() {
                     ? 'bg-orange-500 text-white hover:bg-orange-600'
                     : aiCommand
                     ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-                    : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  : 'bg-primary text-primary-foreground hover:bg-primary/90'
                 }`}
                 title={isSearching || isProcessingAI ? "Processing..." : "Send"}
               >
@@ -1423,6 +1487,7 @@ export default function DashboardPage() {
                 )}
               </button>
             </div>
+            {/* Removed below-hint to prevent layout shift; absolute hint is shown inside the input container */}
             
             {/* Command suggestions when focused */}
             {searchFocused && !searchQuery && !commandMode && (
@@ -2477,44 +2542,176 @@ export default function DashboardPage() {
             <button onClick={() => setShowIntegrations(false)} className="text-sm px-3 py-1 rounded border hover:bg-muted">Close</button>
           </div>
           <div className="p-6 space-y-6">
-            <div className="border rounded p-4">
+            <div className="border rounded p-4 relative opacity-60">
+              <div className="absolute top-2 right-2">
+                <span className="px-2 py-1 text-xs bg-muted rounded font-medium">Coming Soon</span>
+              </div>
               <h3 className="text-sm font-medium mb-2">Google Calendar</h3>
               <p className="text-xs text-muted-foreground mb-3">Automatically add tasks with dates to your Google Calendar.</p>
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    try {
-                      window.open('/api/integrations/google/start', 'google-oauth', 'width=600,height=700,menubar=no,toolbar=no,location=no,status=no')
-                    } catch {}
-                  }}
-                  className="px-3 py-1.5 text-xs border rounded hover:bg-muted"
+                  disabled
+                  className="px-3 py-1.5 text-xs border rounded opacity-50 cursor-not-allowed"
                 >
                   Connect Google
                 </button>
-                <select className="text-xs border rounded px-2 py-1">
+                <select disabled className="text-xs border rounded px-2 py-1 opacity-50 cursor-not-allowed">
                   <option>Default calendar</option>
                 </select>
-                <label className="text-xs flex items-center gap-1">
-                  <input type="checkbox" className="accent-black" />
+                <label className="text-xs flex items-center gap-1 opacity-50">
+                  <input type="checkbox" disabled className="accent-black cursor-not-allowed" />
                   Auto-add tasks
                 </label>
               </div>
             </div>
-            <div className="border rounded p-4">
+            <div className="border rounded p-4 relative opacity-60">
+              <div className="absolute top-2 right-2">
+                <span className="px-2 py-1 text-xs bg-muted rounded font-medium">Coming Soon</span>
+              </div>
               <h3 className="text-sm font-medium mb-2">Outlook / Microsoft 365</h3>
               <p className="text-xs text-muted-foreground mb-3">Automatically add tasks with dates to your Outlook calendar.</p>
               <div className="flex flex-wrap items-center gap-2">
-                <button className="px-3 py-1.5 text-xs border rounded hover:bg-muted">Connect Outlook</button>
-                <select className="text-xs border rounded px-2 py-1">
+                <button disabled className="px-3 py-1.5 text-xs border rounded opacity-50 cursor-not-allowed">Connect Outlook</button>
+                <select disabled className="text-xs border rounded px-2 py-1 opacity-50 cursor-not-allowed">
                   <option>Default calendar</option>
                 </select>
-                <label className="text-xs flex items-center gap-1">
-                  <input type="checkbox" className="accent-black" />
+                <label className="text-xs flex items-center gap-1 opacity-50">
+                  <input type="checkbox" disabled className="accent-black cursor-not-allowed" />
                   Auto-add tasks
                 </label>
                 </div>
               </div>
+            
+            {/* Discord Integration */}
+            <div className="border rounded p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="h-4 w-4 text-[#5865F2]" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z"/>
+                </svg>
+                <h3 className="text-sm font-medium">Discord</h3>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Connect Discord to extract tasks from conversations. Tag @Everling to process threads like email forwarding.
+              </p>
+              {discordConnectedUI ? (
+                <div className="space-y-3">
+                  <div className="rounded-md border p-3 bg-muted/30">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">Discord Connected</p>
+                          <p className="text-xs text-muted-foreground">{discordUsernameUI}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await fetch('/api/integrations/discord/disconnect', {
+                              method: 'POST'
+                            })
+                            if (res.ok) {
+                              toast({
+                                title: "Discord disconnected",
+                                description: "Your Discord account has been unlinked.",
+                              })
+                              setDiscordConnectedUI(false)
+                              setDiscordUsernameUI("")
+                            }
+                          } catch (error) {
+                            toast({
+                              title: "Error",
+                              description: "Failed to disconnect Discord"
+                            })
+                          }
+                        }}
+                        className="text-xs px-2 py-1 rounded border hover:bg-muted transition-colors"
+                      >
+                        Disconnect
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="grid gap-3 text-xs">
+                    <div className="rounded-md border p-3 bg-muted/20">
+                      <p className="font-medium mb-2">How to use</p>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="font-mono text-[10px] bg-muted px-1.5 py-0.5 rounded">@Everling</span>
+                        <span className="text-muted-foreground">+ your instruction</span>
+                      </div>
+                      <div className="text-muted-foreground text-[10px]">
+                        Examples: "Call plumber tomorrow 9am" • "Buy flowers for mom" • "Review document by Friday"
+                      </div>
+                    </div>
+                    
+                    <div className="rounded-md border p-3">
+                      <p className="font-medium mb-2">Add to another server</p>
+                      <div className="relative">
+                        <input
+                          readOnly
+                          className="w-full text-xs font-mono border rounded px-2 py-1 pr-8 bg-background"
+                          value={`https://discord.com/api/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID || 'YOUR_CLIENT_ID'}&permissions=277025458240&scope=bot%20applications.commands`}
+                          onClick={(e) => (e.currentTarget as HTMLInputElement).select()}
+                        />
+                        <button
+                          onClick={() => copyToClipboard(`https://discord.com/api/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID || 'YOUR_CLIENT_ID'}&permissions=277025458240&scope=bot%20applications.commands`, 'discord-invite-connected')}
+                          className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          title={copied && copiedText === 'discord-invite-connected' ? 'Copied!' : 'Copy'}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <button
+                    onClick={() => {
+                      window.open('/api/integrations/discord/connect', 'discord-oauth', 'width=600,height=700')
+                    }}
+                    className="px-3 py-1.5 text-xs bg-[#5865F2] text-white rounded hover:bg-[#4752C4] transition-colors"
+                  >
+                    Connect Discord
+                  </button>
+                  
+                  <div className="grid gap-3 text-xs">
+                    <div className="rounded-md border p-3 bg-muted/20">
+                      <p className="font-medium mb-2">1. Add bot to your server</p>
+                      <div className="relative">
+                        <input
+                          readOnly
+                          className="w-full text-xs font-mono border rounded px-2 py-1 pr-8 bg-background"
+                          value={`https://discord.com/api/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID || 'YOUR_CLIENT_ID'}&permissions=277025458240&scope=bot%20applications.commands`}
+                          onClick={(e) => (e.currentTarget as HTMLInputElement).select()}
+                        />
+                        <button
+                          onClick={() => copyToClipboard(`https://discord.com/api/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID || 'YOUR_CLIENT_ID'}&permissions=277025458240&scope=bot%20applications.commands`, 'discord-invite-disconnected')}
+                          className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          title={copied && copiedText === 'discord-invite-disconnected' ? 'Copied!' : 'Copy'}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="rounded-md border p-3">
+                      <p className="font-medium mb-2">2. Start using</p>
+                      <div className="grid gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[10px] bg-muted px-1.5 py-0.5 rounded">@Everling</span>
+                          <span className="text-muted-foreground">+ your instruction</span>
+                        </div>
+                        <div className="text-muted-foreground text-[10px]">
+                          Examples: "Call plumber tomorrow 9am" • "Buy flowers for mom" • "Review document by Friday"
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
             </div>
           </div>
       )}

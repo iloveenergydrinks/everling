@@ -266,6 +266,24 @@ export const authOptions: NextAuthOptions = {
         session.user.organizationRole = token.organizationRole as string
         session.user.organizationSlug = token.organizationSlug as string
         
+        // Fetch Discord information
+        if (session.user.email) {
+          const dbUser = await prisma.user.findUnique({
+            where: { email: session.user.email },
+            select: {
+              discordId: true,
+              discordUsername: true,
+              discordConnected: true
+            }
+          })
+          
+          if (dbUser) {
+            session.user.discordId = dbUser.discordId
+            session.user.discordUsername = dbUser.discordUsername
+            session.user.discordConnected = dbUser.discordConnected
+          }
+        }
+        
         // Debug logging
         if (!session.user.organizationSlug) {
           console.log('Missing organizationSlug in session:', {

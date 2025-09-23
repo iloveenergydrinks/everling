@@ -7,6 +7,9 @@ declare module "next-auth" {
       organizationId?: string
       organizationRole?: string
       organizationSlug?: string
+      discordId?: string | null
+      discordUsername?: string | null
+      discordConnected?: Date | null
     } & DefaultSession["user"]
   }
 
@@ -14,6 +17,9 @@ declare module "next-auth" {
     id: string
     email: string
     name?: string | null
+    discordId?: string | null
+    discordUsername?: string | null
+    discordConnected?: Date | null
   }
 }
 

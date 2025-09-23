@@ -58,6 +58,11 @@ model User {
   googleRefreshToken   String?   @map("google_refresh_token")
   microsoftRefreshToken String?  @map("microsoft_refresh_token")
   
+  // Discord integration
+  discordId            String?   @unique @map("discord_id")
+  discordUsername      String?   @map("discord_username")
+  discordConnected     DateTime? @map("discord_connected")
+  
   createdAt            DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime  @updatedAt @map("updated_at")
 
