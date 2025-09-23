@@ -410,7 +410,7 @@ export function SettingsDrawer({
           <div className="border rounded-lg p-3 md:p-4">
             <button
               onClick={() => setShowEmailLogsSection(!showEmailLogsSection)}
-              className="w-full flex items-center justify-between mb-3 hover:opacity-80 transition-opacity"
+              className="w-full flex items-center justify-between hover:opacity-80 transition-opacity"
             >
               <h3 className="text-sm font-medium flex items-center gap-2">
                 Email Logs
