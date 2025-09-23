@@ -301,10 +301,46 @@ export function TaskList({
             return (
               <div
                 key={task.id}
-                className={`p-3 md:p-4 border rounded-lg hover:bg-muted/30 transition-all duration-300 ${getTaskFadeClass(task)}`}
+                className={`relative p-3 md:p-4 border rounded-lg hover:bg-muted/30 transition-all duration-300 ${getTaskFadeClass(task)}`}
               >
-                {/* Main content area */}
-                <div className="space-y-2">
+                {/* Mobile actions menu - positioned absolute top-right */}
+                <div className="md:hidden absolute top-2 right-2 z-10">
+                  <button
+                    onClick={() => setShowActionsFor(showActionsFor === task.id ? null : task.id)}
+                    className="p-1.5 hover:bg-muted rounded-md"
+                  >
+                    <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                  {showActionsFor === task.id && (
+                    <div className="absolute right-0 top-8 z-20 bg-background border rounded-lg shadow-lg p-1 min-w-[120px]">
+                      <button
+                        onClick={() => {
+                          const newStatus = task.status === 'done' ? 'pending' : 'done'
+                          updateTaskStatus(task.id, newStatus)
+                          recordInteraction(task.id, newStatus === 'done' ? 'complete' : 'click')
+                          setShowActionsFor(null)
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded flex items-center gap-2"
+                      >
+                        <CheckCircle className="h-3.5 w-3.5" />
+                        {task.status === 'done' ? 'Reopen' : 'Complete'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          deleteTask(task.id)
+                          setShowActionsFor(null)
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded text-destructive flex items-center gap-2"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Main content area - add padding-right on mobile to avoid overlap with menu */}
+                <div className="space-y-2 pr-8 md:pr-0">
                   {/* Task Relationship Indicators */}
                   {(task.assignedByEmail || task.taskType === 'tracking' || task.taskType === 'delegation' || 
                     task.taskType === 'assigned') && (
@@ -386,42 +422,6 @@ export function TaskList({
                           </span>
                         )}
                       </div>
-                    </div>
-                    
-                    {/* Mobile actions menu */}
-                    <div className="md:hidden relative">
-                      <button
-                        onClick={() => setShowActionsFor(showActionsFor === task.id ? null : task.id)}
-                        className="p-1.5 hover:bg-muted rounded-md"
-                      >
-                        <MoreVertical className="h-4 w-4 text-muted-foreground" />
-                      </button>
-                      {showActionsFor === task.id && (
-                        <div className="absolute right-0 top-8 z-20 bg-background border rounded-lg shadow-lg p-1 min-w-[120px]">
-                          <button
-                            onClick={() => {
-                              const newStatus = task.status === 'done' ? 'pending' : 'done'
-                              updateTaskStatus(task.id, newStatus)
-                              recordInteraction(task.id, newStatus === 'done' ? 'complete' : 'click')
-                              setShowActionsFor(null)
-                            }}
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded flex items-center gap-2"
-                          >
-                            <CheckCircle className="h-3.5 w-3.5" />
-                            {task.status === 'done' ? 'Reopen' : 'Complete'}
-                          </button>
-                          <button
-                            onClick={() => {
-                              deleteTask(task.id)
-                              setShowActionsFor(null)
-                            }}
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded text-destructive flex items-center gap-2"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            Delete
-                          </button>
-                        </div>
-                      )}
                     </div>
                     
                     {/* Desktop action buttons */}
