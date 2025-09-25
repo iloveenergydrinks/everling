@@ -365,7 +365,7 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
                 toast({
                   title: "Error",
                   description: "Failed to update timezone. Please try again.",
-                  variant: "destructive"
+                  variant: "error"
                 })
               }
             }}
