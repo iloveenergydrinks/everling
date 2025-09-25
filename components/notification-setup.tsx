@@ -330,13 +330,44 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
         {selectedChannels.length > 0 && (
           <TimezoneIndicator 
             selectedTimezone={timezone}
-            onTimezoneSync={() => {
+            onTimezoneSync={async () => {
               const browserTz = getUserTimezone()
               setTimezone(browserTz)
-              toast({
-                title: "Timezone Updated",
-                description: `Switched to your browser timezone: ${browserTz}`,
-              })
+              
+              // Save timezone to database immediately
+              try {
+                const response = await fetch('/api/user/preferences', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    timezone: browserTz,
+                    // Keep other preferences as they are
+                    notificationType: selectedChannels.includes('email') && selectedChannels.includes('sms') ? 'both' : 
+                                     selectedChannels.includes('email') ? 'email' : 
+                                     selectedChannels.includes('sms') ? 'sms' : 'none',
+                    digestTime,
+                    emailDigestEnabled: selectedChannels.includes('email'),
+                    smsDigestEnabled: selectedChannels.includes('sms'),
+                    discordDigestEnabled: selectedChannels.includes('discord')
+                  })
+                })
+                
+                if (response.ok) {
+                  toast({
+                    title: "Timezone Updated",
+                    description: `Switched to your browser timezone: ${browserTz}`,
+                    variant: "success"
+                  })
+                } else {
+                  throw new Error('Failed to update timezone')
+                }
+              } catch (error) {
+                toast({
+                  title: "Error",
+                  description: "Failed to update timezone. Please try again.",
+                  variant: "destructive"
+                })
+              }
             }}
           />
         )}

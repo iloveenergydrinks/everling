@@ -167,17 +167,6 @@ export function TimezoneIndicator({ selectedTimezone, onTimezoneSync }: Timezone
         </div>
       )}
 
-      {/* Perfect match indicator */}
-      {!timezoneMismatch && (
-        <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3">
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-            <p className="text-xs text-green-700 dark:text-green-300">
-              Your browser and profile timezones match - no confusion! 🎯
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

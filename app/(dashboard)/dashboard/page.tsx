@@ -782,7 +782,7 @@ export default function DashboardPage() {
                   <img 
                     src="/everling_logo.png" 
                     alt="Everling" 
-                    className="h-16 w-16 opacity-80 dark:opacity-60 animate-float drop-shadow-md"
+                    className="h-10 w-10 md:h-16 md:w-16 opacity-80 dark:opacity-60 animate-float drop-shadow-md"
                   />
                 </div>
               </div>
