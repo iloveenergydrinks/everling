@@ -334,21 +334,13 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
               const browserTz = getUserTimezone()
               setTimezone(browserTz)
               
-              // Save timezone to database immediately
+              // Only update timezone in database, not other preferences
               try {
-                const response = await fetch('/api/user/preferences', {
+                const response = await fetch('/api/user/timezone', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
-                    timezone: browserTz,
-                    // Keep other preferences as they are
-                    notificationType: selectedChannels.includes('email') && selectedChannels.includes('sms') ? 'both' : 
-                                     selectedChannels.includes('email') ? 'email' : 
-                                     selectedChannels.includes('sms') ? 'sms' : 'none',
-                    digestTime,
-                    emailDigestEnabled: selectedChannels.includes('email'),
-                    smsDigestEnabled: selectedChannels.includes('sms'),
-                    discordDigestEnabled: selectedChannels.includes('discord')
+                    timezone: browserTz
                   })
                 })
                 
