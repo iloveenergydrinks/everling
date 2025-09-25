@@ -69,7 +69,11 @@ export async function POST(request: NextRequest) {
     // Send digest to current user based on their preferences
     const { sendEmailDigest, sendDailyDigest, sendDiscordDigest } = await import('@/lib/daily-digest')
     
-    const results = {
+    const results: {
+      email: { success: boolean; sent: boolean };
+      sms: { success: boolean; sent: boolean };
+      discord: { success: boolean; sent: boolean; error?: string };
+    } = {
       email: { success: false, sent: false },
       sms: { success: false, sent: false },
       discord: { success: false, sent: false }
