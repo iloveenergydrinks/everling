@@ -371,6 +371,153 @@ export async function sendEmailDigest(userId: string, email: string) {
 }
 
 /**
+ * Send Discord digest with all tasks for today
+ */
+export async function sendDiscordDigest(userId: string, discordUserId: string) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+
+  // Get user's organization
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      organizations: {
+        include: {
+          organization: true
+        }
+      }
+    }
+  })
+  
+  // Get all tasks due today or with reminders today
+  const tasks = await prisma.task.findMany({
+    where: {
+      createdById: userId,
+      status: { not: 'done' },
+      OR: [
+        {
+          dueDate: {
+            gte: today,
+            lt: tomorrow
+          }
+        },
+        {
+          reminderDate: {
+            gte: today,
+            lt: tomorrow
+          }
+        }
+      ]
+    },
+    orderBy: [
+      { priority: 'desc' },
+      { dueDate: 'asc' },
+      { reminderDate: 'asc' }
+    ]
+  })
+  
+  // Build Discord message embed
+  let embed: any = {
+    color: 0x0066cc, // Blue color
+    title: '📋 Your Tasks for Today',
+    timestamp: new Date().toISOString(),
+    footer: {
+      text: 'Everling Task Manager'
+    }
+  }
+  
+  if (tasks.length === 0) {
+    embed.description = '🌅 Good morning! No tasks scheduled for today.\nEnjoy your day!'
+  } else {
+    embed.description = `You have **${tasks.length}** task${tasks.length === 1 ? '' : 's'} scheduled for today:`
+    
+    // Build fields for each task
+    embed.fields = tasks.slice(0, 10).map((task, index) => {
+      const time = task.dueDate || task.reminderDate
+      const timeStr = time ? formatTime(time) : ''
+      const priority = task.priority === 'high' ? '⚡' : ''
+      const status = task.status === 'in-progress' ? '🔄' : '⏳'
+      
+      return {
+        name: `${index + 1}. ${task.title} ${priority}`,
+        value: `${task.description || 'No description'}\n${timeStr ? `⏰ ${timeStr}` : ''} ${status}`,
+        inline: false
+      }
+    })
+    
+    if (tasks.length > 10) {
+      embed.fields.push({
+        name: `➕ ${tasks.length - 10} more tasks`,
+        value: `[View all in dashboard](${process.env.NEXT_PUBLIC_APP_URL}/dashboard)`,
+        inline: false
+      })
+    }
+  }
+  
+  // Send via Discord bot (DM only for privacy)
+  try {
+    // Import and initialize Discord bot if needed
+    const { discordBot } = await import('./discord-bot')
+    
+    // Initialize bot if not already initialized
+    if (!discordBot.isInitialized()) {
+      console.log('Initializing Discord bot for digest...')
+      await discordBot.initialize()
+      // Wait a bit for bot to be ready
+      await new Promise(resolve => setTimeout(resolve, 2000))
+    }
+    
+    const { sendDirectMessage } = await import('./discord-bot')
+    
+    // Send via DM (only method for privacy)
+    const dmResult = await sendDirectMessage(discordUserId, {
+      embeds: [embed],
+      content: tasks.length > 0 ? 
+        `Good morning! Here's your task digest for ${new Date().toLocaleDateString()}:` :
+        null
+    })
+    
+    if (dmResult.success) {
+      console.log('Discord digest sent successfully via DM to user:', discordUserId)
+      return { success: true, method: 'dm' }
+    }
+    
+    // DM failed - let's handle this gracefully
+    console.log('Failed to send Discord DM:', dmResult.error)
+    
+    // Check the error type and store status for user feedback
+    if (dmResult.error && dmResult.error.includes('Cannot send messages to this user')) {
+      // User has DMs disabled - update their status
+      try {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { 
+            discordDMEnabled: false,
+            discordDMError: 'DMs disabled - Enable "Allow direct messages from server members" in Discord'
+          }
+        })
+      } catch (e) {
+        console.error('Failed to update Discord DM status:', e)
+      }
+      
+      return { 
+        success: false, 
+        error: 'Discord DMs are disabled. To receive digests: Go to Discord → Server Settings → Privacy Settings → Enable "Allow direct messages from server members"',
+        errorType: 'dm_disabled'
+      }
+    }
+    
+    return { success: false, error: dmResult.error || 'Failed to send Discord digest' }
+  } catch (error: any) {
+    console.error('Error sending Discord digest:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
  * Send daily digests to all users based on their preferences and timezone
  * This should be called frequently (every hour) to catch all timezones
  */
@@ -383,7 +530,8 @@ export async function sendAllDailyDigests() {
       notificationType: { not: 'none' },
       OR: [
         { emailDigestEnabled: true },
-        { smsDigestEnabled: true }
+        { smsDigestEnabled: true },
+        { discordDigestEnabled: true } // Add Discord digest support
       ]
     }
   })
@@ -410,6 +558,7 @@ export async function sendAllDailyDigests() {
     try {
       const emailResult = { success: false }
       const smsResult = { success: false }
+      const discordResult = { success: false }
       
       // Send email digest if enabled
       if ((user.notificationType === 'email' || user.notificationType === 'both') && user.emailDigestEnabled) {
@@ -424,10 +573,17 @@ export async function sendAllDailyDigests() {
         smsResult.success = smsResponse.success
       }
       
+      // Send Discord digest if enabled
+      if (user.discordDigestEnabled && user.discordUserId) {
+        const discordResponse = await sendDiscordDigest(user.id, user.discordUserId)
+        discordResult.success = discordResponse.success
+      }
+      
       results.push({
         userId: user.id,
         email: emailResult.success ? 'sent' : 'skipped',
-        sms: smsResult.success ? 'sent' : 'skipped'
+        sms: smsResult.success ? 'sent' : 'skipped',
+        discord: discordResult.success ? 'sent' : 'skipped'
       })
     } catch (error) {
       results.push({

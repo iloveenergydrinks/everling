@@ -67,11 +67,12 @@ export async function POST(request: NextRequest) {
     }
     
     // Send digest to current user based on their preferences
-    const { sendEmailDigest, sendDailyDigest } = await import('@/lib/daily-digest')
+    const { sendEmailDigest, sendDailyDigest, sendDiscordDigest } = await import('@/lib/daily-digest')
     
     const results = {
       email: { success: false, sent: false },
-      sms: { success: false, sent: false }
+      sms: { success: false, sent: false },
+      discord: { success: false, sent: false }
     }
     
     // Send email digest if enabled
@@ -87,17 +88,28 @@ export async function POST(request: NextRequest) {
       results.sms = { success: smsResponse.success, sent: true }
     }
     
+    // Send Discord digest if enabled
+    if (user.discordDigestEnabled && user.discordUserId) {
+      const discordResponse = await sendDiscordDigest(user.id, user.discordUserId)
+      results.discord = { 
+        success: discordResponse.success, 
+        sent: true,
+        error: discordResponse.error 
+      }
+    }
+    
     // Build response message
     const sentChannels = []
     if (results.email.sent) sentChannels.push('email')
     if (results.sms.sent) sentChannels.push('SMS')
+    if (results.discord.sent) sentChannels.push('Discord')
     
     const message = sentChannels.length > 0 
-      ? `Test digest sent via ${sentChannels.join(' and ')}`
+      ? `Test digest sent via ${sentChannels.join(', ')}`
       : 'No digest sent - check your notification preferences'
     
     return NextResponse.json({
-      success: results.email.success || results.sms.success || sentChannels.length === 0,
+      success: results.email.success || results.sms.success || results.discord.success || sentChannels.length === 0,
       message,
       details: results
     })

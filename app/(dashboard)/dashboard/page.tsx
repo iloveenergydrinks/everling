@@ -62,8 +62,8 @@ export default function DashboardPage() {
   })
 
   // Discord connection state
-  const [discordConnectedUI, setDiscordConnectedUI] = useState<boolean>(Boolean(session?.user?.discordConnected))
-  const [discordUsernameUI, setDiscordUsernameUI] = useState<string>(session?.user?.discordUsername || "")
+  const [discordConnectedUI, setDiscordConnectedUI] = useState<boolean>(false)
+  const [discordUsernameUI, setDiscordUsernameUI] = useState<string>("")
 
   // Drawer states
   const [showSettings, setShowSettings] = useState(false)
@@ -92,11 +92,11 @@ export default function DashboardPage() {
 
   // Initialize Discord connection state
   useEffect(() => {
-    if (session?.user?.discordConnected !== undefined) {
+    if (session?.user) {
       setDiscordConnectedUI(Boolean(session.user.discordConnected))
       setDiscordUsernameUI(session.user.discordUsername || "")
     }
-  }, [])
+  }, [session])
 
   // Listen for Discord connection messages from OAuth popup
   useEffect(() => {
@@ -108,11 +108,25 @@ export default function DashboardPage() {
           title: "Discord connected",
           description: `Connected as ${event.data.username}`,
         })
+        // Fetch fresh Discord status after connection
+        setTimeout(() => fetchDiscordStatus(), 1000)
+      }
+    }
+    
+    // Listen for Discord status updates from IntegrationsDrawer
+    const handleDiscordStatusUpdate = (event: CustomEvent) => {
+      if (event.detail) {
+        setDiscordConnectedUI(event.detail.connected)
+        setDiscordUsernameUI(event.detail.username || "")
       }
     }
     
     window.addEventListener('message', handleMessage)
-    return () => window.removeEventListener('message', handleMessage)
+    window.addEventListener('discord-status-update', handleDiscordStatusUpdate as any)
+    return () => {
+      window.removeEventListener('message', handleMessage)
+      window.removeEventListener('discord-status-update', handleDiscordStatusUpdate as any)
+    }
   }, [])
 
   // Initial data fetching
@@ -121,6 +135,7 @@ export default function DashboardPage() {
     fetchOrganization()
     fetchReminders()
     captureUserTimezone()
+    fetchDiscordStatus() // Fetch Discord status on mount
     
     // Initialize Discord bot
     fetch('/api/discord/init')
@@ -173,9 +188,15 @@ export default function DashboardPage() {
               targetTasks = tasks.filter(t => t.status !== 'done')
             } else if (command.targetTasks?.filter === 'today') {
               const today = new Date().toLocaleDateString('en-CA')
-              targetTasks = tasks.filter(t => 
-                t.status !== 'done' && t.dueDate && 
+              targetTasks = tasks.filter(t =>
+                t.status !== 'done' && t.dueDate &&
                 new Date(t.dueDate).toLocaleDateString('en-CA') === today
+              )
+            } else if (command.targetTasks?.filter === 'overdue') {
+              const now = new Date()
+              targetTasks = tasks.filter(t =>
+                t.status !== 'done' && t.dueDate &&
+                new Date(t.dueDate) < now
               )
             } else if (command.targetTasks?.filter === 'completed') {
               targetTasks = tasks.filter(t => t.status === 'done')
@@ -429,6 +450,19 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error("Error fetching organization:", error)
+    }
+  }
+
+  const fetchDiscordStatus = async () => {
+    try {
+      const response = await fetch('/api/user/discord-status')
+      if (response.ok) {
+        const data = await response.json()
+        setDiscordConnectedUI(data.connected)
+        setDiscordUsernameUI(data.username || "")
+      }
+    } catch (error) {
+      console.error('Error fetching Discord status:', error)
     }
   }
 

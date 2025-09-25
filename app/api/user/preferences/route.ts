@@ -24,7 +24,13 @@ export async function GET(request: NextRequest) {
         smsDigestEnabled: true,
         phoneNumber: true,
         whatsappEnabled: true,
-        whatsappVerified: true
+        whatsappVerified: true,
+        discordConnected: true,
+        discordUserId: true,
+        discordUsername: true,
+        discordDigestEnabled: true,
+        discordDMEnabled: true,
+        discordDMError: true
       }
     })
     
@@ -43,7 +49,13 @@ export async function GET(request: NextRequest) {
       smsDigestEnabled: user.smsDigestEnabled ?? false,
       phoneNumber: user.phoneNumber,
       smsEnabled: user.whatsappEnabled,
-      smsVerified: user.whatsappVerified
+      smsVerified: user.whatsappVerified,
+      discordConnected: !!user.discordConnected,
+      discordUserId: user.discordUserId,
+      discordUsername: user.discordUsername,
+      discordDigestEnabled: user.discordDigestEnabled ?? false,
+      discordDMEnabled: user.discordDMEnabled ?? true,
+      discordDMError: user.discordDMError
     }
 
     console.log('Returning preferences:', preferences)
@@ -76,10 +88,11 @@ export async function POST(request: NextRequest) {
       digestTime,
       timezone,
       emailDigestEnabled,
-      smsDigestEnabled
+      smsDigestEnabled,
+      discordDigestEnabled
     } = body
     
-    // Validate inputs
+    // Validate inputs (Discord is handled via discordDigestEnabled, so we don't add it here)
     if (notificationType && !['email', 'sms', 'both', 'none'].includes(notificationType)) {
       return NextResponse.json(
         { error: 'Invalid notification type' },
@@ -99,7 +112,8 @@ export async function POST(request: NextRequest) {
       digestTime,
       timezone,
       emailDigestEnabled,
-      smsDigestEnabled
+      smsDigestEnabled,
+      discordDigestEnabled
     })
 
     // Update user preferences
@@ -110,7 +124,8 @@ export async function POST(request: NextRequest) {
         digestTime: digestTime || '08:00',
         timezone: timezone || 'America/New_York',
         emailDigestEnabled: emailDigestEnabled ?? true,
-        smsDigestEnabled: smsDigestEnabled ?? false
+        smsDigestEnabled: smsDigestEnabled ?? false,
+        discordDigestEnabled: discordDigestEnabled ?? false
       }
     })
 
@@ -124,7 +139,8 @@ export async function POST(request: NextRequest) {
         digestTime: updatedUser.digestTime,
         timezone: updatedUser.timezone,
         emailDigestEnabled: updatedUser.emailDigestEnabled,
-        smsDigestEnabled: updatedUser.smsDigestEnabled
+        smsDigestEnabled: updatedUser.smsDigestEnabled,
+        discordDigestEnabled: updatedUser.discordDigestEnabled
       }
     })
     

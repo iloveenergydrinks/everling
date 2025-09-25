@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import discordBot from '@/lib/discord-bot'
 
-// Initialize Discord bot on first API call
+// Track initialization status
 let initialized = false
-let discordBot: any = null
 
 export async function GET(req: NextRequest) {
   // Only run on server side
@@ -15,11 +15,10 @@ export async function GET(req: NextRequest) {
 
   // Support force re-initialization without restarting the dev server
   const force = req.nextUrl.searchParams.get('force')
-  if (force && initialized && discordBot) {
+  if (force && initialized) {
     try {
       await discordBot.shutdown()
       initialized = false
-      discordBot = null
       console.log('Discord bot shut down (force=true). Reinitializing...')
     } catch (err) {
       console.error('Failed to shutdown Discord bot on force refresh:', err)
@@ -28,9 +27,7 @@ export async function GET(req: NextRequest) {
 
   if (!initialized && process.env.DISCORD_BOT_TOKEN) {
     try {
-      // Dynamically import Discord bot to ensure it's only loaded on server
-      const { default: bot } = await import('@/lib/discord-bot')
-      discordBot = bot
+      // Use the singleton instance from discord-bot.ts
       await discordBot.initialize()
       initialized = true
       console.log('Discord bot initialized successfully')

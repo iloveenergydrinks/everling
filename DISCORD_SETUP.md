@@ -91,6 +91,12 @@ Create these slash commands in your Discord application:
   description: 'View your pending tasks'
 }
 
+// /digest - Get your daily task digest (ephemeral)
+{
+  name: 'digest',
+  description: 'Get your daily task digest (only you can see it)'
+}
+
 // /everling - Main bot commands
 {
   name: 'everling',
@@ -118,10 +124,17 @@ Generate bot invite link:
 3. Select bot permissions:
    - Read Messages/View Channels
    - Send Messages
+   - Send Messages in Threads
    - Read Message History
    - Add Reactions
    - Use Slash Commands
+   - **IMPORTANT for DMs**: The bot must share at least one server with users to send DMs
 4. Copy the generated URL and open it to add the bot to your server
+
+**Note about Discord DMs:**
+- Discord bots can only send DMs to users they share a server with
+- Users must have "Allow direct messages from server members" enabled in their privacy settings
+- The bot needs to be in the same server as the user to send morning digests via DM
 
 ### 7. Database Migration
 

@@ -97,99 +97,71 @@ export async function POST(request: NextRequest) {
     const result = await generateObject({
       model: anthropic('claude-3-5-haiku-20241022'),
       schema: TaskCommandSchema,
-      system: `You are an intelligent task management assistant that understands ALL languages and contexts.
-      
+      system: `You are an intelligent task management assistant with natural language understanding. Your job is to interpret user intent and classify it into one of these actions: create, delete, complete, search, or unknown.
+
 ${dateContext}
 
-Your job is to understand what the user wants to do, regardless of language or phrasing.
+INTENT CLASSIFICATION FRAMEWORK:
 
-CRITICAL DISTINCTION - Search vs Create:
+Think like a human: What does the user actually want to accomplish?
 
-For SEARCH/FILTER (DEFAULT ACTION - use this for queries about existing tasks):
-- This is the DEFAULT when intent is unclear
-- Looking for existing tasks: "task per domani", "tasks for tomorrow", "what's due today"
-- Filtering by time: "oggi", "domani", "tomorrow", "next week", "overdue"
-- Filtering by person: "bepi", "john's tasks", "assigned to me"
-- Filtering by status: "completed", "pending", "urgent tasks"
-- Questions about tasks: "what do I have", "show me", "list", "find"
-- Set action to "search" for ALL these cases
+**DELETION INTENT** - User wants to remove/eliminate tasks:
+- Destruction verbs: delete, remove, clear, clean, eliminate, get rid of, purge, erase
+- Cleanup language: "clean up", "organize", "tidy", "declutter"
+- Multilingual: elimina, cancella, rimuovi (IT), supprimer, effacer (FR), löschen, entfernen (DE), eliminar, borrar (ES)
 
-For CREATION (ONLY when explicitly asking to create NEW tasks):
-- MUST have EXPLICIT creation intent, not just mentioning time/date
-- Clear creation keywords: "ricordami di", "remind me to", "add task", "create", "nuovo task"
-- The intent is to ADD something new, not find something existing
-- Examples:
-  * "ricordami di chiamare bepi" → CREATE (explicit "ricordami di")
-  * "task per domani" → SEARCH (looking for tomorrow's tasks)
-  * "comprare latte domani" → SEARCH (no explicit creation keyword)
-  * "add task buy milk" → CREATE (explicit "add task")
+**COMPLETION INTENT** - User wants to mark tasks as finished:
+- Finish verbs: complete, finish, done, mark as done, close, wrap up
+- Achievement language: "mark complete", "set as finished", "accomplish"
+- Multilingual: completa, fatto, finito (IT), terminé, fini (FR), fertig, abschließen (DE), completo, terminado (ES)
 
-DETECT MULTIPLE TASKS:
-- Look for lists, commas, "and", "poi", "e", "y", "et", numbered items
-- Examples of multiple tasks:
-  * "remind me to call john and send email to mary"
-  * "ricordami di chiamare bepi, comprare latte e pagare bollette"
-  * "1. buy milk 2. call dentist 3. finish report"
-- If multiple tasks detected, use createTasks array
-- If single task, use createTask object
+**CREATION INTENT** - User wants to add new tasks:
+- Creation verbs: add, create, make, new, remind me, schedule
+- Future-oriented language: "need to", "have to", "should", "must"
+- Multilingual: ricordami, nuovo, aggiungi (IT), rappelle-moi, nouveau (FR), erinnere mich, neu (DE), recuérdame, nuevo (ES)
 
-Extract ALL details in ONE pass for EACH task:
-  - Title: Clear, action-oriented (e.g., "Call Bepi", "Meeting with Michelutti")
-  - Description: Any additional context
-  - Priority: Detect urgency (ASAP/urgent → high, normal → medium, whenever → low)
-  - Due date AND time: Parse completely
-    * "domani alle 4" → "2025-09-19T16:00:00"
-    * "tomorrow at 3pm" → "2025-09-19T15:00:00"
-    * "lunedì" → next Monday at midnight
-  - Extract WHO is mentioned (for tags)
-  - Extract WHERE if mentioned (for tags)
+**SEARCH INTENT** - User wants to find/view existing tasks:
+- Query verbs: show, find, list, display, what, which, where
+- Information seeking: "what do I have", "show me", "find my", "list all"
 
-For DELETION (only if explicitly asking to delete):
-- Must have clear delete intent: delete, cancella, elimina, supprimer, etc.
-- Set action to "delete"
+DYNAMIC REASONING:
+1. Analyze the VERB and its intent (destroy vs view vs create vs finish)
+2. Consider the CONTEXT (what follows the verb)
+3. Apply COMMON SENSE (cleanup = removal, questions = search)
+4. Use SEMANTIC UNDERSTANDING across all languages
 
-For COMPLETION (only if explicitly asking to complete):
-- Must have clear complete intent: complete, completa, done, fatto, etc.
-- Set action to "complete"
+TARGET IDENTIFICATION:
+- Past-due tasks: "expired", "overdue", "late", "past due", "scaduti", "vencidos", "expirés"
+- Completed tasks: "done", "complete", "finished", "fatto", "completo", "terminé"
+- Time-based: "today", "yesterday", "this week", "old"
+- All tasks: "all", "everything", "tutti", "todos", "tout"
+- Specific content: any specific words mentioned
 
-Examples:
-- "bepi" → action: "search", search: {query: "bepi"}, confidence: 0.9
-- "meeting" → action: "search", search: {query: "meeting"}, confidence: 0.9
-- "task per domani" → action: "search", search: {query: "tomorrow"}, confidence: 0.95
-- "tasks for today" → action: "search", search: {query: "today"}, confidence: 0.95
-- "cosa devo fare oggi" → action: "search", search: {query: "today"}, confidence: 0.9
-- "overdue tasks" → action: "search", search: {query: "overdue"}, confidence: 0.95
-- "ricordami di chiamare bepi domani alle 4" → action: "create", createTask: {
-    title: "Chiamare Bepi",
-    dueDate: "2025-09-19T16:00:00",
-    tags: {who: "Bepi", when: "Tomorrow at 4 PM", what: "call"}
-  }, confidence: 0.95
-- "add task buy milk" → action: "create", createTask: {title: "Buy milk"}, confidence: 0.95
-- "nuovo task: meeting con cliente" → action: "create", createTask: {title: "Meeting con cliente"}, confidence: 0.9
-- "remind me to call john and buy milk" → action: "create", createTasks: [
-    {title: "Call John", tags: {who: "John", what: "call"}},
-    {title: "Buy milk", tags: {what: "shopping"}}
-  ], confidence: 0.95
-- "cancella task fiori" → action: "delete", targetTasks: {searchTerms: "fiori", filter: "specific"}
+CONFIDENCE SCORING:
+- 0.9+: Clear intent with strong verbs
+- 0.7-0.9: Reasonably clear intent
+- 0.5-0.7: Ambiguous, use context clues
+- <0.5: Default to search
 
-CRITICAL RULES:
-1. DEFAULT TO "SEARCH" - it's primarily a search box!
-2. Only use "create" when there are EXPLICIT creation keywords (remind me, ricordami di, add task, create, nuovo)
-3. Just mentioning time/date is NOT enough for creation - "domani" alone means search for tomorrow's tasks
-4. Set action to "unknown" ONLY if the input makes no sense at all
+Let the AI model reason naturally about intent rather than following rigid patterns.`,
+      prompt: `Request: "${prompt}"
 
-IMPORTANT: If creating a task but no date/time is mentioned, set dueDate to null (don't make up dates).`,
-      prompt: `Understand this request and extract the appropriate action: "${prompt}"
-      
+Think step by step:
+
+1. What is the main VERB or ACTION the user wants?
+2. What TARGET are they referring to (which tasks)?
+3. What is their ultimate GOAL?
+
+For example:
+- "wipe out old tasks" → VERB: wipe out (destruction) → TARGET: old tasks → GOAL: remove them → DELETE
+- "show my overdue stuff" → VERB: show (display) → TARGET: overdue tasks → GOAL: view them → SEARCH
+- "remind me to call mom" → VERB: remind (future action) → TARGET: new task → GOAL: create reminder → CREATE
+- "finish expired tasks" → VERB: finish (complete) → TARGET: expired tasks → GOAL: mark done → COMPLETE
+
+Use natural language understanding to determine intent. The AI model is smart enough to understand context without rigid rules.
+
 User: ${session.user.email}
-${context ? `Context: ${JSON.stringify(context)}` : ''}
-
-CRITICAL: This is primarily a SEARCH box. Default to "search" unless there's an EXPLICIT creation request.
-- "task per domani" = SEARCH for tomorrow's tasks
-- "ricordami di X" = CREATE a new task
-- Just mentioning dates/times without creation keywords = SEARCH
-
-Remember: Extract ALL information mentioned. If they say a date/time, include it. If they don't mention any date/time, leave dueDate as null.`,
+${context ? `Context: ${JSON.stringify(context)}` : ''}`,
     });
 
     // Build the response with user context and metadata

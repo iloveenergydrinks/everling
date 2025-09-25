@@ -263,40 +263,66 @@ export function SettingsDrawer({
 
           {/* Email Forwarding */}
           <div className="border rounded-lg p-3 md:p-4">
-            <h3 className="text-sm font-medium mb-3">Email Forwarding</h3>
-            <div className="space-y-4">
-              {/* Agent Email */}
+            <div className="space-y-6">
+              {/* Header */}
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Forward emails to</p>
-                <div className="flex items-center gap-2">
-                  <code className="text-sm bg-muted px-2 py-1 rounded flex-1 truncate">
-                    {agentEmail}
-                  </code>
-                  <button
-                    onClick={() => copyToClipboard(agentEmail, 'Agent email')}
-                    className="p-1.5 hover:bg-muted rounded-md flex-shrink-0"
-                  >
-                    {copied && copiedText === 'Agent email' ? (
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <Copy className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Forward emails to this address to create tasks
+                <h3 className="text-sm font-medium text-foreground">Email Forwarding</h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Create tasks by forwarding emails to your personal task agent
                 </p>
               </div>
 
-              {/* Allowed Emails */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs text-muted-foreground">Allowed senders</p>
+              {/* Forwarding Address Section */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg p-4 border border-blue-200/50 dark:border-blue-800/50">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1">
+                    <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
+                      Your Task Agent Email
+                    </h4>
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      Forward emails to this address to automatically create tasks
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => copyToClipboard(agentEmail, 'Agent email')}
+                    className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-md transition-colors flex-shrink-0"
+                    title="Copy to clipboard"
+                  >
+                    {copied && copiedText === 'Agent email' ? (
+                      <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    ) : (
+                      <Copy className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    )}
+                  </button>
+                </div>
+                <div className="bg-white dark:bg-slate-900 rounded-md p-3 border border-blue-200/30 dark:border-blue-800/30">
+                  <code className="text-sm text-slate-800 dark:text-slate-200 font-mono break-all">
+                    {agentEmail}
+                  </code>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="flex items-center">
+                <div className="flex-1 border-t border-border"></div>
+                <span className="px-3 text-xs text-muted-foreground bg-background">Security</span>
+                <div className="flex-1 border-t border-border"></div>
+              </div>
+
+              {/* Allowed Senders Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-medium text-foreground">Authorized Senders</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Only emails from these addresses will create tasks
+                    </p>
+                  </div>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={fetchAllowedEmails}
                       disabled={loadingAllowedEmails}
-                      className="text-xs px-2 py-1 text-muted-foreground hover:text-foreground"
+                      className="text-xs px-3 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
                     >
                       {loadingAllowedEmails ? 'Refreshing...' : 'Refresh'}
                     </button>
@@ -306,7 +332,7 @@ export function SettingsDrawer({
                         setNewEmailAddress("")
                         setNewEmailNote("")
                       }}
-                      className="text-xs px-3 py-1.5 bg-foreground text-background rounded hover:bg-foreground/90"
+                      className="text-xs px-3 py-1.5 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
                     >
                       Add Email
                     </button>
@@ -315,64 +341,93 @@ export function SettingsDrawer({
 
                 {/* Add Email Form */}
                 {showAddEmailForm && (
-                  <div className="p-3 border rounded-lg mb-2 space-y-3">
-                    <input
-                      type="email"
-                      value={newEmailAddress}
-                      onChange={(e) => setNewEmailAddress(e.target.value)}
-                      placeholder="email@example.com"
-                      className="w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                    <input
-                      type="text"
-                      value={newEmailNote}
-                      onChange={(e) => setNewEmailNote(e.target.value)}
-                      placeholder="Note (optional)"
-                      className="w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        onClick={addAllowedEmail}
-                        className="flex-1 text-xs px-3 py-1.5 bg-foreground text-background rounded hover:bg-foreground/90"
-                      >
-                        Add
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowAddEmailForm(false)
-                          setNewEmailAddress("")
-                          setNewEmailNote("")
-                        }}
-                        className="flex-1 text-xs px-3 py-1.5 border rounded hover:bg-muted"
-                      >
-                        Cancel
-                      </button>
+                  <div className="bg-muted/30 border-2 border-dashed border-muted-foreground/30 rounded-lg p-4">
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs font-medium text-foreground block mb-1">
+                          Email Address *
+                        </label>
+                        <input
+                          type="email"
+                          value={newEmailAddress}
+                          onChange={(e) => setNewEmailAddress(e.target.value)}
+                          placeholder="colleague@company.com"
+                          className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary bg-background"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-foreground block mb-1">
+                          Note (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={newEmailNote}
+                          onChange={(e) => setNewEmailNote(e.target.value)}
+                          placeholder="e.g. Work colleague, Personal assistant"
+                          className="w-full px-3 py-2 text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary bg-background"
+                        />
+                      </div>
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={addAllowedEmail}
+                          className="flex-1 text-xs px-3 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+                        >
+                          Add Sender
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowAddEmailForm(false)
+                            setNewEmailAddress("")
+                            setNewEmailNote("")
+                          }}
+                          className="flex-1 text-xs px-3 py-2 border border-border rounded-md hover:bg-muted transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
 
                 {/* Allowed Emails List */}
-                <div className="space-y-1 max-h-[200px] overflow-y-auto">
-                  {allowedEmails.map((email) => (
-                    <div key={email.id} className="flex items-center justify-between p-2 hover:bg-muted rounded">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm truncate">{email.email}</p>
-                        {email.note && (
-                          <p className="text-xs text-muted-foreground truncate">{email.note}</p>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => deleteAllowedEmail(email.id, email.email)}
-                        className="p-1 hover:bg-background rounded ml-2 flex-shrink-0"
-                      >
-                        <X className="h-3 w-3 text-muted-foreground" />
-                      </button>
+                <div className="border rounded-lg bg-card">
+                  {allowedEmails.length > 0 ? (
+                    <div className="divide-y divide-border max-h-[220px] overflow-y-auto">
+                      {allowedEmails.map((email) => (
+                        <div key={email.id} className="flex items-center justify-between p-3 hover:bg-muted/50 transition-colors">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></div>
+                              <p className="text-sm font-medium truncate text-foreground">{email.email}</p>
+                            </div>
+                            {email.note && (
+                              <p className="text-xs text-muted-foreground truncate mt-0.5 ml-4">
+                                {email.note}
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => deleteAllowedEmail(email.id, email.email)}
+                            className="p-1.5 hover:bg-destructive/10 hover:text-destructive rounded-md ml-3 flex-shrink-0 transition-colors"
+                            title="Remove sender"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                  {allowedEmails.length === 0 && (
-                    <p className="text-xs text-muted-foreground text-center py-4">
-                      No allowed emails configured
-                    </p>
+                  ) : (
+                    <div className="p-6 text-center">
+                      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                        <svg className="h-6 w-6 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                      </div>
+                      <p className="text-sm font-medium text-foreground mb-1">No authorized senders</p>
+                      <p className="text-xs text-muted-foreground">
+                        Add email addresses that are allowed to create tasks by forwarding emails
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>

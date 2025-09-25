@@ -62,6 +62,10 @@ model User {
   discordId            String?   @unique @map("discord_id")
   discordUsername      String?   @map("discord_username")
   discordConnected     DateTime? @map("discord_connected")
+  discordUserId        String?   @map("discord_user_id")
+  discordDigestEnabled Boolean   @default(false) @map("discord_digest_enabled")
+  discordDMEnabled     Boolean   @default(true) @map("discord_dm_enabled")
+  discordDMError       String?   @map("discord_dm_error")
   
   createdAt            DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime  @updatedAt @map("updated_at")

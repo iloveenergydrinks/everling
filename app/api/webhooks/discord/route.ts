@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
-import crypto from "crypto"
+import nacl from "tweetnacl"
 import prisma from "@/lib/prisma"
 import { smartAgent } from "@/lib/discord-agent"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { handleDigestCommand } from "./digest-command"
 
-// Verify Discord webhook signature
+// Verify Discord webhook signature using Ed25519
 function verifyDiscordSignature(
   body: string,
   signature: string,
@@ -14,15 +15,17 @@ function verifyDiscordSignature(
 ): boolean {
   try {
     const message = timestamp + body
-    const verify = crypto.createVerify('RSA-SHA256')
-    verify.update(message)
-    verify.end()
-    return verify.verify(
-      `-----BEGIN PUBLIC KEY-----\n${publicKey}\n-----END PUBLIC KEY-----`,
-      signature,
-      'hex'
+    const messageBytes = Buffer.from(message)
+    const signatureBytes = Buffer.from(signature, 'hex')
+    const publicKeyBytes = Buffer.from(publicKey, 'hex')
+    
+    return nacl.sign.detached.verify(
+      messageBytes,
+      signatureBytes,
+      publicKeyBytes
     )
-  } catch {
+  } catch (error) {
+    console.error('Signature verification error:', error)
     return false
   }
 }
@@ -33,9 +36,19 @@ export async function POST(req: NextRequest) {
     const signature = req.headers.get('X-Signature-Ed25519')
     const timestamp = req.headers.get('X-Signature-Timestamp')
     
-    // Verify the request is from Discord
-    if (process.env.DISCORD_PUBLIC_KEY) {
+    // Parse the interaction
+    const interaction = JSON.parse(body)
+    
+    // Handle Discord ping (verification) - MUST respond immediately
+    if (interaction.type === 1) {
+      console.log('Discord verification ping received')
+      return NextResponse.json({ type: 1 })
+    }
+    
+    // For actual commands, verify signature if public key is set
+    if (process.env.DISCORD_PUBLIC_KEY && process.env.DISCORD_PUBLIC_KEY !== '') {
       if (!signature || !timestamp) {
+        console.log('Missing signature headers')
         return NextResponse.json({ error: 'Missing signature headers' }, { status: 401 })
       }
       
@@ -47,19 +60,15 @@ export async function POST(req: NextRequest) {
       )
       
       if (!isValid) {
+        console.log('Invalid signature for command:', interaction.data?.name)
+        console.log('Public key:', process.env.DISCORD_PUBLIC_KEY)
         return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
       }
     }
     
-    const interaction = JSON.parse(body)
-    
-    // Handle Discord ping (verification)
-    if (interaction.type === 1) {
-      return NextResponse.json({ type: 1 })
-    }
-    
     // Handle slash commands
     if (interaction.type === 2) {
+      console.log(`📌 Slash command received: ${interaction.data?.name}`)
       return await handleSlashCommand(interaction)
     }
     
@@ -82,6 +91,11 @@ async function handleSlashCommand(interaction: any) {
   const { data, member, user, channel_id, guild_id } = interaction
   const command = data.name
   const options = data.options || []
+  
+  // Handle digest command
+  if (command === 'digest') {
+    return await handleDigestCommand(interaction)
+  }
   
   // Get the Discord user
   const discordUser = member?.user || user

@@ -50,10 +50,35 @@ export function IntegrationsDrawer({
   const [showApiSection, setShowApiSection] = useState(false)
   
   useEffect(() => {
-    if (show && showApiSection) {
-      fetchApiKeys()
+    if (show) {
+      // Fetch Discord connection status when drawer opens
+      fetchDiscordStatus()
+      
+      if (showApiSection) {
+        fetchApiKeys()
+      }
     }
   }, [show, showApiSection])
+  
+  const fetchDiscordStatus = async () => {
+    try {
+      const response = await fetch('/api/user/discord-status')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.connected !== discordConnected || data.username !== discordUsername) {
+          // Update parent component if status changed
+          window.dispatchEvent(new CustomEvent('discord-status-update', {
+            detail: {
+              connected: data.connected,
+              username: data.username
+            }
+          }))
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching Discord status:', error)
+    }
+  }
   
   const fetchApiKeys = async () => {
     setLoadingApi(true)
@@ -184,9 +209,9 @@ export function IntegrationsDrawer({
                       Connected as @{discordUsername}
                     </p>
                   ) : (
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Create and manage tasks directly from Discord
-                    </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Create tasks and receive private DM digests
+                  </p>
                   )}
                 </div>
               </div>
@@ -210,16 +235,16 @@ export function IntegrationsDrawer({
                       <div className="flex items-start gap-3">
                         <MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5" />
                         <div className="flex-1">
-                          <p className="text-sm">Direct Message the Bot</p>
-                          <p className="text-xs text-muted-foreground">Send "meeting tomorrow at 3pm" to create tasks instantly</p>
+                          <p className="text-sm">Mention the Bot</p>
+                          <p className="text-xs text-muted-foreground">@Everling "meeting tomorrow at 3pm" - responds privately via DM</p>
                         </div>
                       </div>
                       
                       <div className="flex items-start gap-3">
                         <Command className="h-4 w-4 text-muted-foreground mt-0.5" />
                         <div className="flex-1">
-                          <p className="text-sm">Use Slash Commands</p>
-                          <p className="text-xs text-muted-foreground">Type /task in any server to create structured tasks</p>
+                          <p className="text-sm">Private Daily Digests</p>
+                          <p className="text-xs text-muted-foreground">Receive your tasks via DM every morning (enable DMs in Discord)</p>
                         </div>
                       </div>
                     </div>
@@ -232,7 +257,7 @@ export function IntegrationsDrawer({
                       <div className="flex-1">
                         <p className="text-sm font-medium">Add bot to your server</p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Invite Everling to your Discord servers to enable task creation from any channel
+                          Invite Everling to your Discord servers - all responses sent privately via DM
                         </p>
                         <a
                           href={`https://discord.com/api/oauth2/authorize?client_id=1419770476363907203&permissions=274877908992&scope=bot%20applications.commands`}
@@ -253,19 +278,19 @@ export function IntegrationsDrawer({
                     <ul className="space-y-1.5 text-xs text-muted-foreground">
                       <li className="flex items-start gap-2">
                         <span className="text-muted-foreground/60">•</span>
-                        <span>Say "remind me to..." for time-based tasks</span>
+                        <span>Enable "Allow DMs from server members" in Discord</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="text-muted-foreground/60">•</span>
-                        <span>Use "high priority" to mark urgent tasks</span>
+                        <span>Use /digest to get your tasks instantly</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="text-muted-foreground/60">•</span>
-                        <span>Mention dates like "tomorrow" or "next Monday"</span>
+                        <span>Daily digests sent automatically at your configured time</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="text-muted-foreground/60">•</span>
-                        <span>The bot works in DMs and any server channel</span>
+                        <span>All messages are private - only you see them</span>
                       </li>
                     </ul>
                   </div>
@@ -277,23 +302,23 @@ export function IntegrationsDrawer({
                       <MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5" />
                       <div className="flex-1">
                         <p className="text-sm">Natural Language Tasks</p>
-                        <p className="text-xs text-muted-foreground">Just message the bot like you'd text a friend</p>
+                        <p className="text-xs text-muted-foreground">Mention the bot - all responses sent privately via DM</p>
                       </div>
                     </div>
                     
                     <div className="flex items-start gap-3">
                       <Command className="h-4 w-4 text-muted-foreground mt-0.5" />
                       <div className="flex-1">
-                        <p className="text-sm">Slash Commands</p>
-                        <p className="text-xs text-muted-foreground">Quick task creation with /task command</p>
+                        <p className="text-sm">Private Daily Digests</p>
+                        <p className="text-xs text-muted-foreground">Get your tasks delivered via DM every morning</p>
                       </div>
                     </div>
                     
                     <div className="flex items-start gap-3">
                       <DiscordLogo className="h-4 w-4 text-muted-foreground mt-0.5" />
                       <div className="flex-1">
-                        <p className="text-sm">Smart Reminders</p>
-                        <p className="text-xs text-muted-foreground">Get task notifications right in Discord</p>
+                        <p className="text-sm">Complete Privacy</p>
+                        <p className="text-xs text-muted-foreground">Only you see your tasks - everything via DM</p>
                       </div>
                     </div>
                   </div>

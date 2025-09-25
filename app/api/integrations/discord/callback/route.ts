@@ -60,6 +60,7 @@ export async function GET(req: NextRequest) {
       where: { email: session.user.email },
       data: {
         discordId: discordUser.id,
+        discordUserId: discordUser.id, // Save the user ID for digest messages
         discordUsername: `${discordUser.username}#${discordUser.discriminator}`,
         discordConnected: new Date(),
       },

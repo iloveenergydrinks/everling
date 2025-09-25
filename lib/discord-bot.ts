@@ -34,9 +34,19 @@ class DiscordBot {
   private processingInFlight: Set<string> = new Set()
   private lastChannelProcessAt: Map<string, number> = new Map()
 
+  isInitialized() {
+    return !!this.client && this.client.isReady()
+  }
+
   async initialize() {
     if (!process.env.DISCORD_BOT_TOKEN) {
       console.log('Discord bot token not configured')
+      return
+    }
+
+    // Prevent multiple initializations
+    if (this.client) {
+      console.log('Discord bot already initialized, skipping...')
       return
     }
 
@@ -87,10 +97,15 @@ class DiscordBot {
       return
     }
     this.processingInFlight.add(message.id)
+    
+    // Ensure we clean up the in-flight set after processing
+    const cleanup = () => this.processingInFlight.delete(message.id)
+    
     try {
       // De-duplicate exact same Discord messages by ID
       if (this.processedMessageIds.has(message.id)) {
         console.log('🧹 Skipping already processed message:', message.id)
+        cleanup()
         return
       }
       this.processedMessageIds.add(message.id)
@@ -102,6 +117,7 @@ class DiscordBot {
       const lastAt = this.lastChannelProcessAt.get(message.channelId) || 0
       if (!contentStripped && now - lastAt < 5000) {
         console.log('⏱️ Cooldown: ignoring duplicate empty mention in channel')
+        cleanup()
         return
       }
       this.lastChannelProcessAt.set(message.channelId, now)
@@ -109,7 +125,10 @@ class DiscordBot {
       // Verify the user is authorized
       const authorizedUser = await prisma.user.findFirst({
         where: {
-          discordId: message.author.id
+          OR: [
+            { discordId: message.author.id },
+            { discordUserId: message.author.id }
+          ]
         },
         include: {
           organizations: true
@@ -117,7 +136,8 @@ class DiscordBot {
       })
 
       if (!authorizedUser) {
-        await message.reply('⚠️ Only authorized users can use this bot. Please connect your Discord account at everling.io')
+        await this.sendDMResponse(message, '⚠️ Only authorized users can use this bot. Please connect your Discord account at everling.io', true)
+        cleanup()
         return
       }
 
@@ -129,10 +149,12 @@ class DiscordBot {
         )
         if (Number(inserted) === 0) {
           console.log('🛑 Already processed message (DB ledger):', message.id)
+          cleanup()
           return
         }
+        console.log(`✅ Processing Discord message ${message.id}`)
       } catch (e) {
-        console.warn('Idempotency ledger not available, continuing without DB guard')
+        console.warn('Idempotency ledger not available, continuing without DB guard:', e)
       }
 
       const rawContent = (message.content || '')
@@ -201,7 +223,7 @@ class DiscordBot {
       } catch {}
     } catch (error) {
       console.error('Error processing Discord message:', error)
-      await message.reply('Sorry, I encountered an error processing this conversation.')
+      await this.sendDMResponse(message, '❌ Sorry, I encountered an error processing this conversation.', true)
       finishDiscordProcessing(message.id)
       try {
         await prisma.$executeRawUnsafe(
@@ -297,6 +319,10 @@ class DiscordBot {
       return this.getHelpMessage()
     }
     
+    if (command.toLowerCase() === 'digest') {
+      return await this.sendInstantDigest(userId)
+    }
+    
     // Default: Extract tasks from the conversation (pass thread-like context)
     const agentResult = await smartAgent({
       content: opts?.singleMessageMode ? (opts?.contentOnly || '') : conversationText,
@@ -342,43 +368,110 @@ class DiscordBot {
     return {
       success: true,
       message: `**Everling Discord Bot Commands:**
-• **@Everling** - Extract tasks from the conversation above
-• **@Everling summarize** - Show recent tasks from this channel
+• **@Everling** - Extract tasks from conversation (responds via DM)
+• **@Everling summarize** - Show recent tasks from this channel  
+• **@Everling digest** - Get your task digest now
 • **@Everling help** - Show this help message
 • **@Everling [task description]** - Quick create a task
 
-**How it works:**
-When you mention me, I read the conversation context and intelligently extract tasks, deadlines, and assignments - just like forwarding an email thread!`
+**Slash Commands:**
+• **/digest** - Get digest privately (only you see it)
+• **/task** - Create a quick task
+• **/tasks** - View your tasks
+
+**Privacy Features:**
+• All responses are sent via DM for privacy
+• Bot adds ✅📨 reactions to show it processed your message
+• Daily digests sent via DM only
+
+**Enable DMs:**
+To receive digests and responses, make sure:
+1. Go to Discord Server Settings
+2. Privacy Settings → Enable "Allow direct messages from server members"
+3. The bot will DM you privately`
+    }
+  }
+  
+  private async sendInstantDigest(userId: string) {
+    try {
+      const { sendDiscordDigest } = await import('./daily-digest')
+      const user = await prisma.user.findUnique({ 
+        where: { id: userId },
+        select: { discordUserId: true, discordId: true }
+      })
+      
+      if (!user || !user.discordUserId) {
+        return {
+          success: false,
+          message: '❌ Discord account not linked. Please connect in the dashboard.'
+        }
+      }
+      
+      const result = await sendDiscordDigest(userId, user.discordUserId)
+      
+      if (result.success) {
+        return {
+          success: true,
+          message: '✅ Digest sent! Check your DMs or configured channel.'
+        }
+      } else {
+        return {
+          success: false,
+          message: `❌ ${result.error || 'Failed to send digest'}`
+        }
+      }
+    } catch (error: any) {
+      console.error('Error sending instant digest:', error)
+      return {
+        success: false,
+        message: '❌ Failed to send digest. Please try again.'
+      }
+    }
+  }
+
+  private async sendDMResponse(message: Message, content: string, isError: boolean = false) {
+    try {
+      // Send DM to the user
+      const dmChannel = await message.author.createDM()
+      await dmChannel.send(content)
+      
+      // React to the original message to show it was processed
+      await message.react(isError ? '❌' : '✅')
+      
+      // Also add a mail emoji to indicate DM was sent
+      await message.react('📨')
+    } catch (error) {
+      console.error('Failed to send DM, falling back to channel reply:', error)
+      // Fallback to channel reply if DM fails
+      await message.reply(`${content}\n\n*📨 (Unable to DM - check your privacy settings)*`)
     }
   }
 
   private async sendResponse(message: Message, result: any) {
-    if (!result.success) {
-      await message.reply(result.message || 'Sorry, I couldn\'t process that.')
-      return
-    }
+    let responseContent = ''
+    let isError = !result.success
     
-    // Handle different response types
-    if (result.tasks && Array.isArray(result.tasks)) {
+    if (!result.success) {
+      responseContent = result.message || 'Sorry, I couldn\'t process that.'
+    } else if (result.tasks && Array.isArray(result.tasks)) {
       // Multiple tasks created
       const taskList = result.tasks
         .map((task: any) => `• ${task.title}${task.dueDate ? ` (due ${new Date(task.dueDate).toLocaleDateString()})` : ''}`)
         .join('\n')
       
-      await message.reply(`✅ Created ${result.tasks.length} task(s):\n${taskList}`)
+      responseContent = `✅ Created ${result.tasks.length} task(s):\n${taskList}`
     } else if (result.task) {
       // Single task created
-      await message.reply(`✅ Created task: "${result.task.title}"${result.task.dueDate ? ` (due ${new Date(result.task.dueDate).toLocaleDateString()})` : ''}`)
+      responseContent = `✅ Created task: "${result.task.title}"${result.task.dueDate ? ` (due ${new Date(result.task.dueDate).toLocaleDateString()})` : ''}`
     } else if (result.message) {
       // Custom message
-      await message.reply(result.message)
+      responseContent = result.message
     } else {
       // Generic success
-      await message.reply('✅ Done!')
+      responseContent = '✅ Done!'
     }
     
-    // Add a reaction to show we processed it
-    await message.react('✅')
+    await this.sendDMResponse(message, responseContent, isError)
   }
 
   async shutdown() {
@@ -386,8 +479,63 @@ When you mention me, I read the conversation context and intelligently extract t
       await this.client.destroy()
     }
   }
+  
+  /**
+   * Send a direct message to a user
+   */
+  async sendDirectMessage(userId: string, message: any): Promise<{ success: boolean; error?: string }> {
+    try {
+      if (!this.client) {
+        return { success: false, error: 'Bot not initialized' }
+      }
+      
+      const user = await this.client.users.fetch(userId)
+      if (!user) {
+        return { success: false, error: 'User not found' }
+      }
+      
+      // Create or get DM channel
+      const dmChannel = await user.createDM()
+      await dmChannel.send(message)
+      
+      return { success: true }
+    } catch (error: any) {
+      console.error('Error sending DM:', error)
+      return { success: false, error: error.message }
+    }
+  }
+  
+  /**
+   * Send a message to a specific channel
+   */
+  async sendChannelMessage(channelId: string, message: any): Promise<{ success: boolean; error?: string }> {
+    try {
+      if (!this.client) {
+        return { success: false, error: 'Bot not initialized' }
+      }
+      
+      const channel = await this.client.channels.fetch(channelId)
+      if (!channel || !channel.isTextBased()) {
+        return { success: false, error: 'Channel not found or not text-based' }
+      }
+      
+      await (channel as any).send(message)
+      
+      return { success: true }
+    } catch (error: any) {
+      console.error('Error sending channel message:', error)
+      return { success: false, error: error.message }
+    }
+  }
 }
 
 // Export singleton instance
 const discordBot = new DiscordBot()
+export { discordBot }
 export default discordBot
+
+// Export methods for use in other modules
+export const sendDirectMessage = (userId: string, message: any) => 
+  discordBot.sendDirectMessage(userId, message)
+export const sendChannelMessage = (channelId: string, message: any) => 
+  discordBot.sendChannelMessage(channelId, message)
