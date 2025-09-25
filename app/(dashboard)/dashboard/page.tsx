@@ -11,6 +11,7 @@ import {
   Plus, X, Search, RefreshCw, ArrowDownToLine,
   CheckCircle, User
 } from "lucide-react"
+import { CompactTimezoneIndicator } from "@/components/compact-timezone-indicator"
 
 // Import drawer components
 import { SettingsDrawer } from "./components/SettingsDrawer"
@@ -135,6 +136,7 @@ export default function DashboardPage() {
     fetchOrganization()
     fetchReminders()
     captureUserTimezone()
+    fetchWhatsAppSettings() // This also fetches the user's timezone
     fetchDiscordStatus() // Fetch Discord status on mount
     
     // Initialize Discord bot
@@ -765,33 +767,34 @@ export default function DashboardPage() {
           )}
           
           {/* Header with Agent Email */}
-          <div className="mb-8 md:mb-12 p-4 md:p-8 border rounded-md relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-purple-50/30 to-pink-50/50 dark:from-blue-950/20 dark:via-purple-950/10 dark:to-pink-950/20" />
-            
-            <div className="relative">
-              <p className="text-sm text-muted-foreground mb-4 text-center">
-                Forward or CC any email to create tasks automatically using AI
-              </p>
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground mb-2">Your agent email</p>
-                <div className="inline-flex items-center">
-                  <div className="relative group">
-                    <div 
-                      className="text-lg border rounded px-3 py-1.5 pr-10 bg-background/80 backdrop-blur cursor-pointer flex items-center hover:bg-background/90 transition-colors"
-                      onClick={copyEmail}
-                    >
+          <div className="mb-8 md:mb-12">
+            <div className="relative overflow-hidden rounded-xl border p-6 bg-gradient-to-br from-blue-50/50 via-transparent to-purple-50/50 dark:from-blue-950/30 dark:via-transparent dark:to-purple-950/30">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold mb-1">
+                    Meet Everling, Your Friendly AI Assistant
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Send or forward any email • I'll turn chaos into organized tasks in seconds
+                  </p>
+                </div>
+                <div className="relative">
+                  <img 
+                    src="/everling_logo.png" 
+                    alt="Everling" 
+                    className="h-16 w-16 opacity-80 dark:opacity-60 animate-float drop-shadow-md"
+                  />
+                </div>
+              </div>
+              <div className="relative group/email">
+                <div className="px-4 py-3 bg-background/60 backdrop-blur-sm rounded-lg border border-border/50 hover:bg-background/80 transition-colors cursor-pointer" onClick={copyEmail}>
+                  <p className="text-xs text-muted-foreground mb-1">Send, forward, or CC any email</p>
+                  <div className="flex items-center justify-between">
+                    <p className="font-mono text-sm tracking-wide">
                       <span className="text-muted-foreground">{session?.user?.organizationSlug}@</span>
-                      <span className="text-lg mx-0.5 bg-gradient-to-r from-emerald-500 to-teal-600 dark:from-emerald-400 dark:to-cyan-500 bg-clip-text text-transparent">
-                        everling.io
-                      </span>
-                    </div>
-                    <button
-                      onClick={copyEmail}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                      title="Copy email"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </button>
+                      <span className="text-foreground font-semibold">everling.io</span>
+                    </p>
+                    <Copy className="h-3.5 w-3.5 text-muted-foreground group-hover/email:text-foreground transition-colors" />
                   </div>
                 </div>
               </div>
@@ -1201,7 +1204,7 @@ export default function DashboardPage() {
           />
 
           {/* Footer */}
-          <div className="mt-8 md:mt-12 pt-6 md:pt-8 border-t text-center">
+          <div className="mt-8 md:mt-12 pt-6 md:pt-8 border-t">
             <div className="flex items-center justify-center gap-3 md:gap-6 text-xs text-muted-foreground">
               <button
                 onClick={() => {
@@ -1230,6 +1233,11 @@ export default function DashboardPage() {
               >
                 Sign out
               </button>
+            </div>
+            
+            {/* Timezone indicator */}
+            <div className="mt-4 flex justify-center">
+              <CompactTimezoneIndicator selectedTimezone={timezone} />
             </div>
           </div>
         </div>

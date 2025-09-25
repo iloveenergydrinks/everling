@@ -5,6 +5,7 @@ import { timezones, getTimeOptions, getUserTimezone } from "@/lib/timezones"
 import { countries, getDefaultCountry, formatPhoneNumber } from "@/lib/countries"
 import { ChevronDown, X, Mail, MessageSquare, Ban, Zap } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
+import { TimezoneIndicator } from "@/components/timezone-indicator"
 
 // Discord Logo SVG Component
 const DiscordIcon = ({ className }: { className?: string }) => (
@@ -171,8 +172,12 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
 
   // Show loading while preferences are being fetched
   if (loadingPreferences) {
+    const loadingClassName = isOnboarding 
+      ? "border rounded-md p-6 bg-background shadow-sm border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20"
+      : "border rounded-md p-6 bg-background shadow-sm"
+    
     return (
-      <div className={`border rounded-md p-6 bg-white shadow-sm ${isOnboarding ? 'border-blue-200 bg-blue-50/50' : ''}`}>
+      <div className={loadingClassName}>
         <div className="text-center py-8">
           <p className="text-sm text-muted-foreground">Loading preferences...</p>
         </div>
@@ -180,16 +185,20 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
     )
   }
 
+  const mainClassName = isOnboarding 
+    ? "border rounded-md p-6 bg-background shadow-sm border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20"
+    : "border rounded-md p-6 bg-background shadow-sm"
+  
   return (
-    <div className={`border rounded-md p-6 bg-white shadow-sm ${isOnboarding ? 'border-blue-200 bg-blue-50/50' : ''}`}>
+    <div className={mainClassName}>
       {isOnboarding && (
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+            <h3 className="text-lg font-medium flex items-center gap-2">
               <Mail className="h-5 w-5" />
               Set up your daily digest
             </h3>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Get your tasks delivered the way you prefer, when you prefer.
             </p>
           </div>
@@ -315,6 +324,21 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
               </select>
             </div>
           </div>
+        )}
+        
+        {/* Timezone indicator and warning */}
+        {selectedChannels.length > 0 && (
+          <TimezoneIndicator 
+            selectedTimezone={timezone}
+            onTimezoneSync={() => {
+              const browserTz = getUserTimezone()
+              setTimezone(browserTz)
+              toast({
+                title: "Timezone Updated",
+                description: `Switched to your browser timezone: ${browserTz}`,
+              })
+            }}
+          />
         )}
 
         {/* Phone Number - only show if SMS is selected */}

@@ -78,6 +78,18 @@
     animation: floatY 3.5s ease-in-out infinite;
   }
 
+  @keyframes float {
+    0%, 100% { 
+      transform: translateY(0);
+    }
+    50% { 
+      transform: translateY(-5px);
+    }
+  }
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
   @keyframes shadowPulse {
     0%, 100% { transform: scale(1); opacity: 0.35; }
     50% { transform: scale(0.9); opacity: 0.25; }
