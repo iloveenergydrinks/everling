@@ -17,12 +17,19 @@ const DiscordIcon = ({ className }: { className?: string }) => (
 interface NotificationSetupProps {
   onComplete?: () => void
   isOnboarding?: boolean
+  timezone?: string
+  onTimezoneChange?: (tz: string) => void
 }
 
-export function NotificationSetup({ onComplete, isOnboarding = false }: NotificationSetupProps) {
+export function NotificationSetup({ 
+  onComplete, 
+  isOnboarding = false,
+  timezone: propTimezone,
+  onTimezoneChange 
+}: NotificationSetupProps) {
   const [selectedChannels, setSelectedChannels] = useState<string[]>(['email'])
   const [digestTime, setDigestTime] = useState("08:00")
-  const [timezone, setTimezone] = useState<string>('America/New_York')
+  const [timezone, setTimezone] = useState<string>(propTimezone || 'America/New_York')
   const [whatsappPhone, setWhatsappPhone] = useState("")
   const [selectedCountry, setSelectedCountry] = useState(getDefaultCountry())
   const [showCountryDropdown, setShowCountryDropdown] = useState(false)
@@ -30,6 +37,13 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
   const [loadingPreferences, setLoadingPreferences] = useState(true)
   const [discordConnected, setDiscordConnected] = useState(false)
   const [discordDMError, setDiscordDMError] = useState<string | null>(null)
+
+  // Sync with prop timezone when it changes
+  useEffect(() => {
+    if (propTimezone && propTimezone !== timezone) {
+      setTimezone(propTimezone)
+    }
+  }, [propTimezone])
 
   // Load current preferences on mount
   useEffect(() => {
@@ -317,7 +331,14 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
               </label>
               <select 
                 value={timezone}
-                onChange={(e) => setTimezone(e.target.value)}
+                onChange={(e) => {
+                  const newTimezone = e.target.value
+                  if (onTimezoneChange) {
+                    onTimezoneChange(newTimezone)
+                  } else {
+                    setTimezone(newTimezone)
+                  }
+                }}
                 className="w-full px-2 py-1.5 text-sm border rounded bg-background focus:outline-none focus:ring-1 focus:ring-ring"
               >
                 {timezones.map(group => (
@@ -340,33 +361,40 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
             selectedTimezone={timezone}
             onTimezoneSync={async () => {
               const browserTz = getUserTimezone()
-              setTimezone(browserTz)
               
-              // Only update timezone in database, not other preferences
-              try {
-                const response = await fetch('/api/user/timezone', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    timezone: browserTz
-                  })
-                })
+              // If parent component provided handler, use it
+              if (onTimezoneChange) {
+                onTimezoneChange(browserTz)
+              } else {
+                // Otherwise handle locally
+                setTimezone(browserTz)
                 
-                if (response.ok) {
-                  toast({
+                // Only update timezone in database, not other preferences
+                try {
+                  const response = await fetch('/api/user/timezone', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      timezone: browserTz
+                    })
+                  })
+                  
+                  if (response.ok) {
+                    toast({
                     title: "Timezone Updated",
                     description: `Switched to your browser timezone: ${browserTz}`,
                     variant: "success"
                   })
-                } else {
-                  throw new Error('Failed to update timezone')
+                  } else {
+                    throw new Error('Failed to update timezone')
+                  }
+                } catch (error) {
+                  toast({
+                    title: "Error",
+                    description: "Failed to update timezone. Please try again.",
+                    variant: "error"
+                  })
                 }
-              } catch (error) {
-                toast({
-                  title: "Error",
-                  description: "Failed to update timezone. Please try again.",
-                  variant: "error"
-                })
               }
             }}
           />

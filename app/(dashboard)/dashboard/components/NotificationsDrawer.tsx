@@ -8,12 +8,16 @@ interface NotificationsDrawerProps {
   show: boolean
   onClose: () => void
   onComplete: () => void
+  timezone?: string
+  onTimezoneChange?: (tz: string) => void
 }
 
 export function NotificationsDrawer({
   show,
   onClose,
   onComplete,
+  timezone,
+  onTimezoneChange,
 }: NotificationsDrawerProps) {
   return (
     <DrawerWrapper
@@ -32,6 +36,8 @@ export function NotificationsDrawer({
               variant: "success"
             })
           }}
+          timezone={timezone}
+          onTimezoneChange={onTimezoneChange}
         />
       </div>
     </DrawerWrapper>

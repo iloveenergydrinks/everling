@@ -81,6 +81,24 @@ export default function DashboardPage() {
   const [showNotificationOnboarding, setShowNotificationOnboarding] = useState(false)
   const [isNewUser, setIsNewUser] = useState(false)
 
+  // Load saved timezone on component mount
+  useEffect(() => {
+    const fetchUserTimezone = async () => {
+      try {
+        const response = await fetch("/api/user/timezone")
+        if (response.ok) {
+          const data = await response.json()
+          if (data.timezone) {
+            setTimezone(data.timezone)
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching saved timezone:", error)
+      }
+    }
+    fetchUserTimezone()
+  }, []) // Only run on mount
+
   // Show hint after user stops typing
   useEffect(() => {
     if (!searchQuery.trim() || isSearching || isProcessingAI) {
@@ -532,19 +550,59 @@ export default function DashboardPage() {
   const openSettings = async () => {
     setShowSettings(true)
     fetchWhatsAppSettings()
+    // Timezone is already fetched on component mount
+  }
+
+  // Handle timezone change - save to database
+  const handleTimezoneChange = async (newTimezone: string) => {
+    setTimezone(newTimezone) // Update local state immediately
+    setTimezoneLoading(true)
     
-    // Fetch user's current timezone
     try {
-      setTimezoneLoading(true)
-      const response = await fetch("/api/user/timezone")
+      const response = await fetch("/api/user/timezone", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ timezone: newTimezone }),
+      })
+      
       if (response.ok) {
         const data = await response.json()
-        if (data.timezone) {
-          setTimezone(data.timezone)
+        console.log("Timezone updated:", data.timezone)
+        toast({
+          title: "Success",
+          description: "Timezone updated successfully",
+          variant: "success",
+        })
+      } else {
+        // Revert on error
+        const currentResponse = await fetch("/api/user/timezone")
+        if (currentResponse.ok) {
+          const currentData = await currentResponse.json()
+          setTimezone(currentData.timezone)
         }
+        toast({
+          title: "Error",
+          description: "Failed to update timezone",
+          variant: "error",
+        })
       }
     } catch (error) {
-      console.error("Error fetching timezone:", error)
+      console.error("Error updating timezone:", error)
+      // Try to revert to saved timezone on error
+      try {
+        const response = await fetch("/api/user/timezone")
+        if (response.ok) {
+          const data = await response.json()
+          setTimezone(data.timezone)
+        }
+      } catch {}
+      toast({
+        title: "Error",
+        description: "Failed to update timezone",
+        variant: "error",
+      })
     } finally {
       setTimezoneLoading(false)
     }
@@ -1262,7 +1320,7 @@ export default function DashboardPage() {
         organization={organization}
         agentEmail={agentEmail}
         timezone={timezone}
-        onTimezoneChange={setTimezone}
+        onTimezoneChange={handleTimezoneChange}
         timezoneLoading={timezoneLoading}
         onShowNotifications={() => {
                         setShowNotifications(true)
@@ -1287,6 +1345,8 @@ export default function DashboardPage() {
         show={showNotifications}
         onClose={() => setShowNotifications(false)}
         onComplete={() => fetchWhatsAppSettings()}
+        timezone={timezone}
+        onTimezoneChange={handleTimezoneChange}
       />
 
       {/* API Key Modal */}
