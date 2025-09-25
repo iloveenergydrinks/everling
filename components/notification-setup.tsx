@@ -309,7 +309,39 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
               </label>
               <select 
                 value={timezone}
-                onChange={(e) => setTimezone(e.target.value)}
+                onChange={async (e) => {
+                  const newTimezone = e.target.value
+                  setTimezone(newTimezone)
+                  
+                  // Save timezone to database immediately
+                  try {
+                    const response = await fetch('/api/user/timezone', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        timezone: newTimezone
+                      })
+                    })
+                    
+                    if (response.ok) {
+                      toast({
+                        title: "Timezone Updated",
+                        description: `Changed to ${newTimezone.replace('_', ' ')}`,
+                        variant: "success"
+                      })
+                    } else {
+                      throw new Error('Failed to update timezone')
+                    }
+                  } catch (error) {
+                    toast({
+                      title: "Error",
+                      description: "Failed to update timezone. Please try again.",
+                      variant: "destructive"
+                    })
+                    // Revert on error
+                    setTimezone(timezone)
+                  }
+                }}
                 className="w-full px-2 py-1.5 text-sm border rounded bg-background focus:outline-none focus:ring-1 focus:ring-ring"
               >
                 {timezones.map(group => (
