@@ -22,7 +22,7 @@ interface NotificationSetupProps {
 export function NotificationSetup({ onComplete, isOnboarding = false }: NotificationSetupProps) {
   const [selectedChannels, setSelectedChannels] = useState<string[]>(['email'])
   const [digestTime, setDigestTime] = useState("08:00")
-  const [timezone, setTimezone] = useState(getUserTimezone())
+  const [timezone, setTimezone] = useState<string>('America/New_York')
   const [whatsappPhone, setWhatsappPhone] = useState("")
   const [selectedCountry, setSelectedCountry] = useState(getDefaultCountry())
   const [showCountryDropdown, setShowCountryDropdown] = useState(false)
@@ -61,7 +61,15 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
           
           setSelectedChannels(channels)
           setDigestTime(data.digestTime || '08:00')
-          setTimezone(data.timezone || getUserTimezone())
+          
+          // Load timezone from database, fallback to browser timezone if not set
+          if (data.timezone) {
+            setTimezone(data.timezone)
+          } else {
+            // If no timezone from DB, use browser timezone as fallback
+            const browserTz = getUserTimezone()
+            setTimezone(browserTz)
+          }
           
           // Load SMS settings if available
           if (data.phoneNumber) {
@@ -309,39 +317,7 @@ export function NotificationSetup({ onComplete, isOnboarding = false }: Notifica
               </label>
               <select 
                 value={timezone}
-                onChange={async (e) => {
-                  const newTimezone = e.target.value
-                  setTimezone(newTimezone)
-                  
-                  // Save timezone to database immediately
-                  try {
-                    const response = await fetch('/api/user/timezone', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        timezone: newTimezone
-                      })
-                    })
-                    
-                    if (response.ok) {
-                      toast({
-                        title: "Timezone Updated",
-                        description: `Changed to ${newTimezone.replace('_', ' ')}`,
-                        variant: "success"
-                      })
-                    } else {
-                      throw new Error('Failed to update timezone')
-                    }
-                  } catch (error) {
-                    toast({
-                      title: "Error",
-                      description: "Failed to update timezone. Please try again.",
-                      variant: "destructive"
-                    })
-                    // Revert on error
-                    setTimezone(timezone)
-                  }
-                }}
+                onChange={(e) => setTimezone(e.target.value)}
                 className="w-full px-2 py-1.5 text-sm border rounded bg-background focus:outline-none focus:ring-1 focus:ring-ring"
               >
                 {timezones.map(group => (
