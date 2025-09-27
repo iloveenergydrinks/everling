@@ -18,6 +18,7 @@ import { WelcomeCard } from "@/components/welcome-card"
 import { SettingsDrawer } from "./components/SettingsDrawer"
 import { IntegrationsDrawer } from "./components/IntegrationsDrawer"
 import { NotificationsDrawer } from "./components/NotificationsDrawer"
+import { HowItWorksDrawer } from "./components/HowItWorksDrawer"
 import { ApiKeyModal } from "./components/ApiKeyModal"
 import { TaskList } from "./components/TaskList"
 import { Task, FilterState, TimeFilter, OwnershipFilter } from "./components/types"
@@ -71,6 +72,7 @@ export default function DashboardPage() {
   const [showSettings, setShowSettings] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [showIntegrations, setShowIntegrations] = useState(false)
+  const [showHowItWorks, setShowHowItWorks] = useState(false)
   
   // Other UI states
   const [showApiKeyModal, setShowApiKeyModal] = useState(false)
@@ -780,7 +782,7 @@ export default function DashboardPage() {
     )
   }
 
-  const isDrawerOpen = showSettings || showNotifications || showIntegrations
+  const isDrawerOpen = showSettings || showNotifications || showIntegrations || showHowItWorks
   const isWideDrawer = false // No wide drawers anymore
 
   return (
@@ -826,7 +828,7 @@ export default function DashboardPage() {
           )}
           
           {/* Header with Agent Email */}
-          <div className="mb-8 md:mb-12">
+          <div className="mb-8">
             <div className="relative overflow-hidden rounded-xl border p-6 bg-gradient-to-br from-blue-50/50 via-transparent to-purple-50/50 dark:from-blue-950/30 dark:via-transparent dark:to-purple-950/30">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
@@ -1292,6 +1294,12 @@ export default function DashboardPage() {
                 Integrations
               </button>
               <button
+                onClick={() => setShowHowItWorks(true)}
+                className="hover:text-foreground"
+              >
+                How it works
+              </button>
+              <button
                 onClick={() => signOut({ callbackUrl: "/" })}
                 className="hover:text-foreground"
               >
@@ -1315,6 +1323,7 @@ export default function DashboardPage() {
             setShowSettings(false)
             setShowNotifications(false)
             setShowIntegrations(false)
+            setShowHowItWorks(false)
           }}
         />
       )}
@@ -1365,6 +1374,12 @@ export default function DashboardPage() {
             }}
           />
       )}
+
+      {/* How It Works Drawer */}
+      <HowItWorksDrawer
+        show={showHowItWorks}
+        onClose={() => setShowHowItWorks(false)}
+      />
     </>
   )
 }

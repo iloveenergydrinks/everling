@@ -58,6 +58,8 @@ model User {
   discordUserId         String?              @map("discord_user_id")
   discordDMEnabled      Boolean              @default(true) @map("discord_dm_enabled")
   discordDMError        String?              @map("discord_dm_error")
+  welcomeDismissed      Boolean              @default(false) @map("welcome_dismissed")
+  welcomeDismissedAt    DateTime?            @map("welcome_dismissed_at")
   accounts              Account[]
   allowedEmails         AllowedEmail[]
   apiKeys               ApiKey[]

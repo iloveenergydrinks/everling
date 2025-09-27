@@ -5,21 +5,55 @@ import { X, Mail, MessageSquare, Bell } from 'lucide-react'
 
 export function WelcomeCard({ organizationEmail }: { organizationEmail: string }) {
   const [isVisible, setIsVisible] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check if user has dismissed the welcome
-    const dismissed = localStorage.getItem('welcome-dismissed')
-    if (!dismissed) {
-      setIsVisible(true)
+    // Check if user has dismissed the welcome via API
+    const checkDismissalStatus = async () => {
+      try {
+        const response = await fetch('/api/user/welcome-dismiss')
+        if (response.ok) {
+          const data = await response.json()
+          if (!data.dismissed) {
+            setIsVisible(true)
+          }
+        } else {
+          // Fallback to localStorage if API fails
+          const dismissed = localStorage.getItem('welcome-dismissed')
+          if (!dismissed) {
+            setIsVisible(true)
+          }
+        }
+      } catch (error) {
+        console.error('Error checking welcome status:', error)
+        // Fallback to localStorage
+        const dismissed = localStorage.getItem('welcome-dismissed')
+        if (!dismissed) {
+          setIsVisible(true)
+        }
+      } finally {
+        setLoading(false)
+      }
     }
+    
+    checkDismissalStatus()
   }, [])
 
-  const handleDismiss = () => {
+  const handleDismiss = async () => {
     setIsVisible(false)
+    
+    // Save to localStorage immediately for quick response
     localStorage.setItem('welcome-dismissed', 'true')
+    
+    // Also save to database
+    try {
+      await fetch('/api/user/welcome-dismiss', { method: 'POST' })
+    } catch (error) {
+      console.error('Error saving welcome dismissal:', error)
+    }
   }
 
-  if (!isVisible) return null
+  if (loading || !isVisible) return null
 
   return (
     <div className="mb-8 rounded-lg border bg-background">
