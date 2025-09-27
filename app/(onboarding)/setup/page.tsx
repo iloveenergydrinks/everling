@@ -14,7 +14,7 @@ export default function SetupOrganization() {
   const router = useRouter()
   const { data: session, status } = useSession()
   const [agentName, setAgentName] = useState('')
-  const [organizationName, setOrganizationName] = useState('')
+  // Organization name will be auto-generated from agent name
   const [isChecking, setIsChecking] = useState(false)
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null)
   const [isCreating, setIsCreating] = useState(false)
@@ -111,14 +111,12 @@ export default function SetupOrganization() {
       return
     }
 
-    if (!organizationName.trim()) {
-      toast({
-        title: 'Organization name required',
-        description: 'Please enter your organization name',
-        variant: 'error'
-      })
-      return
-    }
+    // Auto-generate organization name from agent name
+    // Convert "my-agent" to "My Agent", "acme" to "Acme", etc.
+    const organizationName = agentName
+      .split(/[-_]/)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
 
     setIsCreating(true)
     try {
@@ -127,14 +125,14 @@ export default function SetupOrganization() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           agentName,
-          organizationName: organizationName.trim()
+          organizationName: organizationName
         })
       })
 
       if (response.ok) {
         toast({
-          title: 'Organization created!',
-          description: `Your agent email is ${agentName}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN || 'everling.io'}`,
+          title: 'Success!',
+          description: `Your AI assistant email is ${agentName}@${process.env.NEXT_PUBLIC_EMAIL_DOMAIN || 'everling.io'}`,
           variant: 'success'
         })
         
@@ -184,34 +182,16 @@ export default function SetupOrganization() {
       <div className="w-full max-w-md">
         <div className="border rounded">
           <div className="p-6 pb-0">
-            <h2 className="text-lg font-medium">Welcome to Everling!</h2>
+            <h2 className="text-lg font-medium">Get started in seconds</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Let's set up your organization and choose your agent email address
+              Choose your AI assistant email address
             </p>
           </div>
           <div className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Organization Name */}
-            <div className="space-y-2">
-              <Label htmlFor="organization">Organization Name</Label>
-              <Input
-                id="organization"
-                type="text"
-                placeholder="Acme Inc"
-                value={organizationName}
-                onChange={(e) => setOrganizationName(e.target.value)}
-                required
-                disabled={isCreating}
-                className="rounded"
-              />
-              <p className="text-xs text-muted-foreground">
-                Your company or team name
-              </p>
-            </div>
-
             {/* Agent Email */}
             <div className="space-y-2">
-              <Label htmlFor="agent">Agent Email Name</Label>
+              <Label htmlFor="agent">Choose Your AI Assistant Email</Label>
               <div className="relative">
                 <Input
                   id="agent"
@@ -257,12 +237,12 @@ export default function SetupOrganization() {
               {/* Preview */}
               {agentName && isAvailable && (
                 <div className="mt-3 p-3 border rounded bg-green-50/50 dark:bg-green-950/20 border-green-200/50 dark:border-green-800/50">
-                  <p className="text-xs text-muted-foreground mb-1">Your agent email will be:</p>
+                  <p className="text-xs text-muted-foreground mb-1">Your AI assistant email will be:</p>
                   <code className="text-sm font-mono text-green-700 dark:text-green-400">
                     {agentName}@{process.env.NEXT_PUBLIC_EMAIL_DOMAIN || 'everling.io'}
                   </code>
                   <p className="text-xs text-muted-foreground mt-2">
-                    Forward emails to this address to create tasks automatically.
+                    Forward emails here to instantly create tasks. Your personal AI inbox that never forgets.
                   </p>
                 </div>
               )}
@@ -272,15 +252,15 @@ export default function SetupOrganization() {
             <Button
               type="submit"
               className="w-full rounded"
-              disabled={!isAvailable || !organizationName.trim() || isCreating}
+              disabled={!isAvailable || !agentName.trim() || isCreating}
             >
               {isCreating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating organization...
+                  Creating your AI assistant...
                 </>
               ) : (
-                'Create Organization'
+                'Get Started'
               )}
             </Button>
           </form>
