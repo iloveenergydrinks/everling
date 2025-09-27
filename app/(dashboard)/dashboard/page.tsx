@@ -12,6 +12,7 @@ import {
   CheckCircle, User
 } from "lucide-react"
 import { CompactTimezoneIndicator } from "@/components/compact-timezone-indicator"
+import { WelcomeCard } from "@/components/welcome-card"
 
 // Import drawer components
 import { SettingsDrawer } from "./components/SettingsDrawer"
@@ -858,6 +859,11 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+
+          {/* Welcome Card for new users */}
+          <WelcomeCard 
+            organizationEmail={`${session?.user?.organizationSlug}@everling.io`} 
+          />
 
           {/* AI Search/Command Interface */}
           <div className="mb-8">
