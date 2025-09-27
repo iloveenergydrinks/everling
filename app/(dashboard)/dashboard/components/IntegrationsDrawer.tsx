@@ -1,6 +1,6 @@
 "use client"
 
-import { CheckCircle, Copy, ChevronDown, ChevronRight, X, Plus, MessageSquare, Command, Users, ExternalLink } from "lucide-react"
+import { CheckCircle, Copy, ChevronDown, ChevronRight, X, Plus, MessageSquare, Command, Users, ExternalLink, Calendar, Bell, RefreshCw } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { useState, useEffect } from "react"
 import { formatDate } from "@/lib/utils"
@@ -546,17 +546,59 @@ export function IntegrationsDrawer({
           </div>
 
           {/* Google Calendar (Coming Soon) */}
-          <div className="border rounded-lg p-3 md:p-4 opacity-60">
-            <h3 className="text-sm font-medium mb-3">Google Calendar</h3>
-            <p className="text-xs text-muted-foreground mb-3">
-              Sync tasks with Google Calendar (Coming soon)
-            </p>
-            <button
-              disabled
-              className="text-sm px-4 py-2 border rounded opacity-50 cursor-not-allowed"
-            >
-              Coming Soon
-            </button>
+          <div className="border rounded-lg">
+            <div className="flex items-start justify-between p-3 md:p-4 border-b">
+              <div className="flex items-center gap-3">
+                <Calendar className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <h3 className="text-sm font-medium">Google Calendar</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Sync tasks with your Google Calendar
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs px-2 py-1 bg-muted rounded text-muted-foreground">
+                Coming Soon
+              </span>
+            </div>
+            
+            <div className="p-3 md:p-4 space-y-4 opacity-60">
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <Calendar className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm">Two-way Sync</p>
+                    <p className="text-xs text-muted-foreground">Tasks with deadlines appear in your calendar automatically</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start gap-3">
+                  <Bell className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm">Calendar Reminders</p>
+                    <p className="text-xs text-muted-foreground">Get Google Calendar notifications for tasks</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start gap-3">
+                  <RefreshCw className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm">Real-time Updates</p>
+                    <p className="text-xs text-muted-foreground">Changes sync instantly between Everling and Google Calendar</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="pt-3 border-t">
+                <button
+                  disabled
+                  className="w-full flex items-center justify-center gap-2 text-sm px-3 py-2 bg-muted text-muted-foreground rounded-md cursor-not-allowed opacity-50"
+                >
+                  <Calendar className="h-4 w-4" />
+                  Coming Soon
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
