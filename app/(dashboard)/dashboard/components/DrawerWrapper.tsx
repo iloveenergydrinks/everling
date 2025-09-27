@@ -34,10 +34,20 @@ export function DrawerWrapper({
 
   return (
     <>
-      {/* Backdrop - always rendered but with opacity transition */}
+      {/* Mobile Backdrop - full screen */}
       <div 
-        className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${
+        className={`md:hidden fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${
           show ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={onClose}
+      />
+      
+      {/* Desktop Backdrop - only covers left side to avoid gap */}
+      <div 
+        className={`hidden md:block fixed inset-0 bg-black/10 z-40 transition-all duration-300 ease-out ${
+          show 
+            ? `opacity-100 pointer-events-auto ${wide ? 'md:mr-[800px] lg:mr-[960px]' : 'md:mr-[480px] lg:mr-[640px]'}` 
+            : 'opacity-0 pointer-events-none'
         }`}
         onClick={onClose}
       />
