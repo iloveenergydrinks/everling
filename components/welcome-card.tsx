@@ -61,7 +61,7 @@ export function WelcomeCard({ organizationEmail }: { organizationEmail: string }
           </div>
           <button
             onClick={handleDismiss}
-            className="text-xs px-2 py-1 rounded-md bg-foreground text-background hover:bg-foreground/90 transition-colors"
+            className="text-xs px-2 py-1 rounded-sm bg-foreground text-background hover:bg-foreground/90 transition-colors"
             aria-label="Dismiss"
           >
             Got it

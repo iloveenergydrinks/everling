@@ -114,6 +114,7 @@ export default function AdminDashboard() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
+  const [dataLoaded, setDataLoaded] = useState(false)
   
   // Data states
   const [users, setUsers] = useState<User[]>([])
@@ -146,6 +147,7 @@ export default function AdminDashboard() {
   // Fetch all data
   const fetchData = async () => {
     setLoading(true)
+    setDataLoaded(false)
     try {
       const [usersRes, orgsRes, emailsRes, keysRes, statsRes, allowedRes] = await Promise.all([
         fetch("/api/admin/users"),
@@ -166,6 +168,7 @@ export default function AdminDashboard() {
         // The admin endpoint already includes organization info
         setAllowedEmails(allowedData)
       }
+      setDataLoaded(true)
     } catch (error) {
       console.error("Error fetching admin data:", error)
       toast({
@@ -558,11 +561,11 @@ export default function AdminDashboard() {
       {/* Tabs */}
       <Tabs defaultValue="users" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="users">Users ({users.length})</TabsTrigger>
-          <TabsTrigger value="organizations">Organizations ({organizations.length})</TabsTrigger>
-          <TabsTrigger value="allowed">Allowed Emails ({allowedEmails.length})</TabsTrigger>
-          <TabsTrigger value="emails">Email Logs ({emailLogs.length})</TabsTrigger>
-          <TabsTrigger value="keys">API Keys ({apiKeys.length})</TabsTrigger>
+          <TabsTrigger value="users">Users {dataLoaded ? `(${users.length})` : '(...)'}</TabsTrigger>
+          <TabsTrigger value="organizations">Organizations {dataLoaded ? `(${organizations.length})` : '(...)'}</TabsTrigger>
+          <TabsTrigger value="allowed">Allowed Emails {dataLoaded ? `(${allowedEmails.length})` : '(...)'}</TabsTrigger>
+          <TabsTrigger value="emails">Email Logs {dataLoaded ? `(${emailLogs.length})` : '(...)'}</TabsTrigger>
+          <TabsTrigger value="keys">API Keys {dataLoaded ? `(${apiKeys.length})` : '(...)'}</TabsTrigger>
         </TabsList>
 
         {/* Users Tab */}
