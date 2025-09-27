@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Mail, MessageSquare, Bell } from 'lucide-react'
+import { Mail, MessageSquare, Bell } from 'lucide-react'
 
 export function WelcomeCard({ organizationEmail }: { organizationEmail: string }) {
   const [isVisible, setIsVisible] = useState(false)
@@ -61,10 +61,10 @@ export function WelcomeCard({ organizationEmail }: { organizationEmail: string }
           </div>
           <button
             onClick={handleDismiss}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="text-xs px-2 py-1 rounded-md bg-foreground text-background hover:bg-foreground/90 transition-colors"
             aria-label="Dismiss"
           >
-            <X className="h-3.5 w-3.5" />
+            Got it
           </button>
         </div>
         
