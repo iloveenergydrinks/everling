@@ -25,6 +25,10 @@ export function getEmailQueue(): Queue<InboundEmailJob> {
 }
 
 export async function enqueueInboundEmail(payload: InboundEmailJob, opts?: JobsOptions) {
+  // Check if Redis is available
+  if (!process.env.REDIS_URL) {
+    throw new Error('Redis not configured - falling back to inline processing')
+  }
   const q = getEmailQueue()
   const jobId = payload.emailData?.MessageID || payload.requestId || undefined
   return await q.add('process', payload, { jobId, ...opts })
