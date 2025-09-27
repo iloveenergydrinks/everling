@@ -79,10 +79,10 @@ export function SettingsDrawer({
 
   const fetchEmailLogsCount = async () => {
     try {
-      const response = await fetch("/api/emails")
+      const response = await fetch("/api/emails?count_only=true")
       if (response.ok) {
         const data = await response.json()
-        setEmailLogsCount(data.length)
+        setEmailLogsCount(data.count)
       }
     } catch (error) {
       console.error("Error fetching email logs count:", error)
@@ -95,8 +95,16 @@ export function SettingsDrawer({
       const response = await fetch("/api/emails")
       if (response.ok) {
         const data = await response.json()
-        setEmailLogs(data)
-        setEmailLogsCount(data.length)
+        // Handle both old and new API response formats
+        if (Array.isArray(data)) {
+          // Old format (backward compatibility)
+          setEmailLogs(data)
+          setEmailLogsCount(data.length)
+        } else {
+          // New format with pagination info
+          setEmailLogs(data.logs)
+          setEmailLogsCount(data.totalCount)
+        }
       }
     } catch (error) {
       console.error("Error fetching email logs:", error)
@@ -506,7 +514,13 @@ export function SettingsDrawer({
                     No email logs yet
                   </p>
                 ) : (
-                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                  <>
+                    {emailLogsCount && emailLogsCount > 50 && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        Showing most recent 50 of {emailLogsCount} total logs
+                      </p>
+                    )}
+                    <div className="space-y-2 max-h-[400px] overflow-y-auto">
                     {emailLogs.map((log) => (
                       <div
                         key={log.id}
@@ -574,6 +588,7 @@ export function SettingsDrawer({
                       </div>
                     ))}
                   </div>
+                  </>
                 )}
               </div>
             )}

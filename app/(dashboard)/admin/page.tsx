@@ -120,6 +120,7 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState<User[]>([])
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([])
+  const [emailLogsTotal, setEmailLogsTotal] = useState<number | null>(null)
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
   const [allowedEmails, setAllowedEmails] = useState<AllowedEmail[]>([])
   const [stats, setStats] = useState<any>(null)
@@ -148,6 +149,7 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     setLoading(true)
     setDataLoaded(false)
+    setEmailLogsTotal(null)
     try {
       const [usersRes, orgsRes, emailsRes, keysRes, statsRes, allowedRes] = await Promise.all([
         fetch("/api/admin/users"),
@@ -160,7 +162,17 @@ export default function AdminDashboard() {
 
       if (usersRes.ok) setUsers(await usersRes.json())
       if (orgsRes.ok) setOrganizations(await orgsRes.json())
-      if (emailsRes.ok) setEmailLogs(await emailsRes.json())
+      if (emailsRes.ok) {
+        const emailData = await emailsRes.json()
+        // Handle both old and new API response formats
+        if (Array.isArray(emailData)) {
+          setEmailLogs(emailData)
+          setEmailLogsTotal(emailData.length)
+        } else {
+          setEmailLogs(emailData.logs)
+          setEmailLogsTotal(emailData.totalCount)
+        }
+      }
       if (keysRes.ok) setApiKeys(await keysRes.json())
       if (statsRes.ok) setStats(await statsRes.json())
       if (allowedRes.ok) {
@@ -564,7 +576,7 @@ export default function AdminDashboard() {
           <TabsTrigger value="users">Users {dataLoaded ? `(${users.length})` : '(...)'}</TabsTrigger>
           <TabsTrigger value="organizations">Organizations {dataLoaded ? `(${organizations.length})` : '(...)'}</TabsTrigger>
           <TabsTrigger value="allowed">Allowed Emails {dataLoaded ? `(${allowedEmails.length})` : '(...)'}</TabsTrigger>
-          <TabsTrigger value="emails">Email Logs {dataLoaded ? `(${emailLogs.length})` : '(...)'}</TabsTrigger>
+          <TabsTrigger value="emails">Email Logs {dataLoaded ? `(${emailLogsTotal || emailLogs.length})` : '(...)'}</TabsTrigger>
           <TabsTrigger value="keys">API Keys {dataLoaded ? `(${apiKeys.length})` : '(...)'}</TabsTrigger>
         </TabsList>
 
@@ -913,7 +925,11 @@ export default function AdminDashboard() {
           <Card>
             <CardHeader>
               <CardTitle>Global Email Activity</CardTitle>
-              <CardDescription>Last 200 emails across all organizations</CardDescription>
+              <CardDescription>
+                {emailLogsTotal && emailLogsTotal > 200 
+                  ? `Showing most recent 200 of ${emailLogsTotal} total emails across all organizations`
+                  : 'Last 200 emails across all organizations'}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-2 max-h-[600px] overflow-y-auto">

@@ -16,17 +16,43 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const emailLogs = await prisma.emailLog.findMany({
-      where: {
-        organizationId: session.user.organizationId
-      },
-      orderBy: {
-        createdAt: 'desc'
-      },
-      take: 50 // Limit to last 50 emails
-    })
+    // Check if we only need the count
+    const { searchParams } = new URL(request.url)
+    const countOnly = searchParams.get('count_only') === 'true'
+    
+    if (countOnly) {
+      const count = await prisma.emailLog.count({
+        where: {
+          organizationId: session.user.organizationId
+        }
+      })
+      return NextResponse.json({ count })
+    }
 
-    return NextResponse.json(emailLogs)
+    // Get both count and limited data
+    const [emailLogs, totalCount] = await Promise.all([
+      prisma.emailLog.findMany({
+        where: {
+          organizationId: session.user.organizationId
+        },
+        orderBy: {
+          createdAt: 'desc'
+        },
+        take: 50 // Limit to last 50 emails
+      }),
+      prisma.emailLog.count({
+        where: {
+          organizationId: session.user.organizationId
+        }
+      })
+    ])
+
+    return NextResponse.json({
+      logs: emailLogs,
+      totalCount,
+      displayedCount: emailLogs.length,
+      hasMore: totalCount > 50
+    })
 
   } catch (error) {
     console.error("Error fetching email logs:", error)

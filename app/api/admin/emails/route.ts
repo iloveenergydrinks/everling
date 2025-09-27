@@ -10,7 +10,7 @@ const ADMIN_EMAILS = [
   "olmo93@hotmail.it",
 ]
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions)
     
@@ -21,31 +21,48 @@ export async function GET() {
       )
     }
 
-    // Get ALL email logs globally across all organizations
-    const emailLogs = await prisma.emailLog.findMany({
-      select: {
-        id: true,
-        fromEmail: true,
-        toEmail: true,
-        subject: true,
-        processed: true,
-        taskId: true,
-        createdAt: true,
-        error: true,
-        organization: {
-          select: {
-            name: true,
-            slug: true
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      },
-      take: 200 // Show last 200 emails globally
-    })
+    // Check if we only need the count
+    const { searchParams } = new URL(request.url)
+    const countOnly = searchParams.get('count_only') === 'true'
+    
+    if (countOnly) {
+      const count = await prisma.emailLog.count()
+      return NextResponse.json({ count })
+    }
 
-    return NextResponse.json(emailLogs)
+    // Get both count and limited data for all organizations
+    const [emailLogs, totalCount] = await Promise.all([
+      prisma.emailLog.findMany({
+        select: {
+          id: true,
+          fromEmail: true,
+          toEmail: true,
+          subject: true,
+          processed: true,
+          taskId: true,
+          createdAt: true,
+          error: true,
+          organization: {
+            select: {
+              name: true,
+              slug: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        },
+        take: 200 // Show last 200 emails globally
+      }),
+      prisma.emailLog.count()
+    ])
+
+    return NextResponse.json({
+      logs: emailLogs,
+      totalCount,
+      displayedCount: emailLogs.length,
+      hasMore: totalCount > 200
+    })
   } catch (error) {
     console.error("Error fetching email logs:", error)
     return NextResponse.json(
