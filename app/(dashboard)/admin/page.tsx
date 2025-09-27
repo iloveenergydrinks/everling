@@ -791,7 +791,7 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               {/* Add new allowed email form */}
-              <div className="border rounded-lg p-4 mb-6">
+              <div className="border rounded-md p-4 mb-6">
                 <h3 className="font-medium text-sm mb-3">Add Allowed Email</h3>
                 <div className="space-y-3">
                   {/* Organization selector */}

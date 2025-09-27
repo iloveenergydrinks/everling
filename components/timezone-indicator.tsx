@@ -95,7 +95,7 @@ export function TimezoneIndicator({ selectedTimezone, onTimezoneSync }: Timezone
   return (
     <div className="space-y-3">
       {/* Current time in selected timezone */}
-      <div className="bg-muted/50 rounded-lg p-4 border">
+      <div className="bg-muted/50 rounded-md p-4 border">
         <div className="flex items-start gap-3">
           <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
           <div className="flex-1">
@@ -117,7 +117,7 @@ export function TimezoneIndicator({ selectedTimezone, onTimezoneSync }: Timezone
 
       {/* Timezone mismatch warning */}
       {timezoneMismatch && (
-        <div className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+        <div className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-md p-4">
           <div className="flex items-start gap-3">
             <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
             <div className="flex-1">

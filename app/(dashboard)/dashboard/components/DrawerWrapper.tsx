@@ -64,7 +64,7 @@ export function DrawerWrapper({
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg hover:bg-muted transition-colors"
+              className="p-2 rounded-md hover:bg-muted transition-colors"
               aria-label="Close drawer"
             >
               <X className="h-5 w-5" />

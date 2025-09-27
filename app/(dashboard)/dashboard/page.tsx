@@ -829,7 +829,7 @@ export default function DashboardPage() {
           
           {/* Header with Agent Email */}
           <div className="mb-8">
-            <div className="relative overflow-hidden rounded-lg border p-6 bg-gradient-to-br from-blue-50/50 via-transparent to-purple-50/50 dark:from-blue-950/30 dark:via-transparent dark:to-purple-950/30">
+            <div className="relative overflow-hidden rounded-md border p-6 bg-gradient-to-br from-blue-50/50 via-transparent to-purple-50/50 dark:from-blue-950/30 dark:via-transparent dark:to-purple-950/30">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <h3 className="text-sm font-semibold mb-1">
@@ -848,7 +848,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="relative group/email">
-                <div className="px-4 py-3 bg-background/60 backdrop-blur-sm rounded-lg border border-border/50 hover:bg-background/80 transition-colors cursor-pointer" onClick={copyEmail}>
+                <div className="px-4 py-3 bg-background/60 backdrop-blur-sm rounded-md border border-border/50 hover:bg-background/80 transition-colors cursor-pointer" onClick={copyEmail}>
                   <p className="text-xs text-muted-foreground mb-1">Send, forward, or CC any email</p>
                   <div className="flex items-center justify-between">
                     <p className="font-mono text-sm tracking-wide">
@@ -876,7 +876,7 @@ export default function DashboardPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Ask anything or describe a task..."
                 disabled={commandMode !== null || aiCommand !== null || isSearching || isProcessingAI}
-                className={`h-12 w-full rounded-lg border ${
+                className={`h-12 w-full rounded-md border ${
                   commandMode ? 'border-orange-500 dark:border-orange-400' : 
                   aiCommand ? 'border-emerald-500 dark:border-emerald-400' :
                   searchFocused ? 'border-primary' : 'border-input'

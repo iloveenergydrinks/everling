@@ -49,7 +49,7 @@ export function WelcomeCard({ organizationEmail }: { organizationEmail: string }
   if (loading || !isVisible) return null
 
   return (
-    <div className="mb-6 rounded-lg border bg-background">
+    <div className="mb-6 rounded-md border bg-background">
       <div className="p-4 space-y-3">
         {/* Header with clear value prop */}
         <div className="flex items-start justify-between">

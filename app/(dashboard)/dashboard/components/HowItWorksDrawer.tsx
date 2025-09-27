@@ -42,7 +42,7 @@ export function HowItWorksDrawer({ show, onClose }: HowItWorksDrawerProps) {
             <h4 className="text-sm font-medium">Three Simple Steps</h4>
             
             <div className="space-y-3">
-              <div className="flex items-start gap-4 p-3 rounded-lg border bg-muted/30">
+              <div className="flex items-start gap-4 p-3 rounded-md border bg-muted/30">
                 <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary text-sm font-medium flex-shrink-0">
                   1
                 </div>
@@ -55,7 +55,7 @@ export function HowItWorksDrawer({ show, onClose }: HowItWorksDrawerProps) {
                 </div>
               </div>
 
-              <div className="flex items-start gap-4 p-3 rounded-lg border bg-muted/30">
+              <div className="flex items-start gap-4 p-3 rounded-md border bg-muted/30">
                 <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary text-sm font-medium flex-shrink-0">
                   2
                 </div>
@@ -68,7 +68,7 @@ export function HowItWorksDrawer({ show, onClose }: HowItWorksDrawerProps) {
                 </div>
               </div>
 
-              <div className="flex items-start gap-4 p-3 rounded-lg border bg-muted/30">
+              <div className="flex items-start gap-4 p-3 rounded-md border bg-muted/30">
                 <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary text-sm font-medium flex-shrink-0">
                   3
                 </div>
@@ -153,7 +153,7 @@ export function HowItWorksDrawer({ show, onClose }: HowItWorksDrawerProps) {
           {/* Integration Examples */}
           <div className="space-y-4">
             <h4 className="text-sm font-medium">Works Everywhere</h4>
-            <div className="p-4 rounded-lg border bg-muted/30">
+            <div className="p-4 rounded-md border bg-muted/30">
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col items-center">
                   <Mail className="h-5 w-5 text-muted-foreground mb-1" />
@@ -200,7 +200,7 @@ export function HowItWorksDrawer({ show, onClose }: HowItWorksDrawerProps) {
 
           {/* Bottom CTA */}
           <div className="pt-6 border-t">
-            <div className="bg-muted/30 rounded-lg p-4">
+            <div className="bg-muted/30 rounded-md p-4">
               <p className="text-sm font-medium mb-2">Ready to get started?</p>
               <p className="text-xs text-muted-foreground mb-3">
                 Try creating your first task. Type anything in the search box above and press Enter.

@@ -60,7 +60,7 @@ export function UniversalProcessingIndicator() {
     <div className="fixed bottom-4 right-4 z-50">
       {isProcessing && (
         <div className={cn(
-          "bg-background border rounded-lg shadow-lg p-3 flex items-center gap-3",
+          "bg-background border rounded-md shadow-lg p-3 flex items-center gap-3",
           "animate-in slide-in-from-bottom-2 duration-300",
           "min-w-[280px]"
         )}>
@@ -82,7 +82,7 @@ export function UniversalProcessingIndicator() {
 
       {showSuccess && !isProcessing && (
         <div className={cn(
-          "bg-background border rounded-lg shadow-lg p-3 flex items-center gap-3",
+          "bg-background border rounded-md shadow-lg p-3 flex items-center gap-3",
           "animate-in slide-in-from-bottom-2 duration-300",
           "min-w-[280px]",
           "border-green-200 dark:border-green-800"

@@ -90,7 +90,7 @@ export function CompactTimezoneIndicator({
       
       {/* Dropdown details */}
       {showDetails && (
-        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-64 bg-background border rounded-lg shadow-lg p-3 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
+        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-64 bg-background border rounded-md shadow-lg p-3 z-50 animate-in fade-in slide-in-from-bottom-2 duration-200">
           {/* Arrow pointing down */}
           <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-background border-b border-r rotate-45"></div>
           

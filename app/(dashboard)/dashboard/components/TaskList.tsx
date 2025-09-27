@@ -214,7 +214,7 @@ export function TaskList({
     }, [])
 
     return (
-      <div className="absolute left-0 top-8 z-50 bg-background border rounded-lg shadow-lg p-3 w-72 md:w-80">
+      <div className="absolute left-0 top-8 z-50 bg-background border rounded-md shadow-lg p-3 w-72 md:w-80">
         <div className="flex flex-wrap gap-1 mb-2">
           <button onClick={() => choosePreset('today')} className="px-2 py-1 text-xs border rounded hover:bg-muted">Today 5pm</button>
           <button onClick={() => choosePreset('tomorrow')} className="px-2 py-1 text-xs border rounded hover:bg-muted">Tomorrow 9am</button>
@@ -278,7 +278,7 @@ export function TaskList({
   return (
     <div className="space-y-2 md:space-y-3">
       {tasks.length === 0 ? (
-        <div className="text-center py-8 md:py-12 border rounded-lg">
+        <div className="text-center py-8 md:py-12 border rounded-md">
           <p className="text-sm text-muted-foreground">
             {searchQuery ? (
               isSearching ? "Searching..." : "No matching tasks found"
@@ -304,7 +304,7 @@ export function TaskList({
             return (
               <div
                 key={task.id}
-                className={`relative p-3 md:p-4 border rounded-lg hover:bg-muted/30 transition-all duration-300 ${getTaskFadeClass(task)}`}
+                className={`relative p-3 md:p-4 border rounded-md hover:bg-muted/30 transition-all duration-300 ${getTaskFadeClass(task)}`}
               >
                 {/* Action buttons - positioned absolute top-right for both mobile and desktop */}
                 <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
@@ -337,7 +337,7 @@ export function TaskList({
                       <MoreVertical className="h-4 w-4 text-muted-foreground" />
                     </button>
                     {showActionsFor === task.id && (
-                      <div className="absolute right-0 top-8 z-20 bg-background border rounded-lg shadow-lg p-1 min-w-[120px]">
+                      <div className="absolute right-0 top-8 z-20 bg-background border rounded-md shadow-lg p-1 min-w-[120px]">
                         <button
                           onClick={() => {
                             const newStatus = task.status === 'done' ? 'pending' : 'done'

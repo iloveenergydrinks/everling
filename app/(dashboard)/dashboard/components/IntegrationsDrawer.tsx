@@ -207,7 +207,7 @@ export function IntegrationsDrawer({
       <div className="p-4 md:p-6">
         <div className="space-y-4 md:space-y-6">
           {/* Discord Integration */}
-          <div className="border rounded-lg">
+          <div className="border rounded-md">
             <div className="flex items-start justify-between p-3 md:p-4 border-b">
               <div className="flex items-center gap-3">
                 <DiscordLogo className="h-5 w-5 text-[#5865F2]" />
@@ -346,7 +346,7 @@ export function IntegrationsDrawer({
           </div>
 
           {/* API Access Section */}
-          <div className="border rounded-lg p-3 md:p-4">
+          <div className="border rounded-md p-3 md:p-4">
             <button
               onClick={() => setShowApiSection(!showApiSection)}
               className="w-full flex items-center justify-between hover:opacity-80 transition-opacity"
@@ -490,7 +490,7 @@ export function IntegrationsDrawer({
           </div>
 
           {/* Slack (Coming Soon) */}
-          <div className="border rounded-lg">
+          <div className="border rounded-md">
             <div className="flex items-start justify-between p-3 md:p-4 border-b">
               <div className="flex items-center gap-3">
                 <SlackLogo className="h-5 w-5" />
@@ -546,7 +546,7 @@ export function IntegrationsDrawer({
           </div>
 
           {/* Google Calendar (Coming Soon) */}
-          <div className="border rounded-lg">
+          <div className="border rounded-md">
             <div className="flex items-start justify-between p-3 md:p-4 border-b">
               <div className="flex items-center gap-3">
                 <Calendar className="h-5 w-5 text-muted-foreground" />

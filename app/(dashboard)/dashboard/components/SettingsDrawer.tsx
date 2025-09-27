@@ -245,7 +245,7 @@ export function SettingsDrawer({
       <div className="p-4 md:p-6">
         <div className="space-y-4 md:space-y-6">
           {/* Organization Info */}
-          <div className="border rounded-lg p-3 md:p-4">
+          <div className="border rounded-md p-3 md:p-4">
             <h3 className="text-sm font-medium mb-3">Organization</h3>
             <div className="space-y-3">
               <div>
@@ -270,7 +270,7 @@ export function SettingsDrawer({
           </div>
 
           {/* Account Info */}
-          <div className="border rounded-lg p-3 md:p-4">
+          <div className="border rounded-md p-3 md:p-4">
             <h3 className="text-sm font-medium mb-3">Account</h3>
             <div className="space-y-3">
               <div>
@@ -285,7 +285,7 @@ export function SettingsDrawer({
           </div>
 
           {/* Email Forwarding */}
-          <div className="border rounded-lg p-3 md:p-4">
+          <div className="border rounded-md p-3 md:p-4">
             <div className="space-y-6">
               {/* Header */}
               <div>
@@ -296,7 +296,7 @@ export function SettingsDrawer({
               </div>
 
               {/* Forwarding Address Section */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg p-4 border border-blue-200/50 dark:border-blue-800/50">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-md p-4 border border-blue-200/50 dark:border-blue-800/50">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
                     <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
@@ -364,7 +364,7 @@ export function SettingsDrawer({
 
                 {/* Add Email Form */}
                 {showAddEmailForm && (
-                  <div className="bg-muted/30 border-2 border-dashed border-muted-foreground/30 rounded-lg p-4">
+                  <div className="bg-muted/30 border-2 border-dashed border-muted-foreground/30 rounded-md p-4">
                     <div className="space-y-3">
                       <div>
                         <label className="text-xs font-medium text-foreground block mb-1">
@@ -413,7 +413,7 @@ export function SettingsDrawer({
                 )}
 
                 {/* Allowed Emails List */}
-                <div className="border rounded-lg bg-card">
+                <div className="border rounded-md bg-card">
                   {allowedEmails.length > 0 ? (
                     <div className="divide-y divide-border max-h-[220px] overflow-y-auto pr-2">
                       {allowedEmails.map((email) => (
@@ -458,7 +458,7 @@ export function SettingsDrawer({
           </div>
 
           {/* Timezone */}
-          <div className="border rounded-lg p-3 md:p-4">
+          <div className="border rounded-md p-3 md:p-4">
             <h3 className="text-sm font-medium mb-3">Timezone</h3>
             <p className="text-xs text-muted-foreground mb-3">
               Times shown in: {timezone}
@@ -485,7 +485,7 @@ export function SettingsDrawer({
           </div>
 
           {/* Email Logs Section */}
-          <div className="border rounded-lg p-3 md:p-4">
+          <div className="border rounded-md p-3 md:p-4">
             <button
               onClick={() => setShowEmailLogsSection(!showEmailLogsSection)}
               className="w-full flex items-center justify-between hover:opacity-80 transition-opacity"
@@ -595,7 +595,7 @@ export function SettingsDrawer({
           </div>
 
           {/* Notifications */}
-          <div className="border rounded-lg p-3 md:p-4">
+          <div className="border rounded-md p-3 md:p-4">
             <h3 className="text-sm font-medium mb-3">Notifications</h3>
             <p className="text-xs text-muted-foreground mb-3">
               Configure how you receive task reminders and daily digests
