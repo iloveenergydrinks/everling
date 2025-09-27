@@ -54,14 +54,16 @@ export function SettingsDrawer({
   // Email logs state
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([])
   const [loadingLogs, setLoadingLogs] = useState(false)
+  const [emailLogsCount, setEmailLogsCount] = useState<number | null>(null)
   const [selectedRawData, setSelectedRawData] = useState<any>(null)
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null)
   const [showEmailLogsSection, setShowEmailLogsSection] = useState(false)
 
-  // Fetch allowed emails when drawer opens
+  // Fetch allowed emails and email logs count when drawer opens
   useEffect(() => {
     if (show) {
       fetchAllowedEmails()
+      fetchEmailLogsCount()
     }
   }, [show])
   
@@ -75,6 +77,18 @@ export function SettingsDrawer({
     }
   }, [showEmailLogsSection])
 
+  const fetchEmailLogsCount = async () => {
+    try {
+      const response = await fetch("/api/emails")
+      if (response.ok) {
+        const data = await response.json()
+        setEmailLogsCount(data.length)
+      }
+    } catch (error) {
+      console.error("Error fetching email logs count:", error)
+    }
+  }
+
   const fetchEmailLogs = async () => {
     setLoadingLogs(true)
     try {
@@ -82,6 +96,7 @@ export function SettingsDrawer({
       if (response.ok) {
         const data = await response.json()
         setEmailLogs(data)
+        setEmailLogsCount(data.length)
       }
     } catch (error) {
       console.error("Error fetching email logs:", error)
@@ -476,7 +491,7 @@ export function SettingsDrawer({
                 )}
               </h3>
               <span className="text-xs text-muted-foreground">
-                {emailLogs.length} logs
+                {emailLogsCount !== null ? `${emailLogsCount} logs` : '...'}
               </span>
             </button>
             
