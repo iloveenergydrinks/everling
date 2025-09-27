@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/hooks/use-toast'
-import { Loader2, Users, Settings, Send, UserPlus, Crown, User, Shield, Copy, Trash2, Building } from 'lucide-react'
+import { Loader2, Users, Settings, Send, UserPlus, Crown, User, Shield, Copy, Trash2 } from 'lucide-react'
 import { DrawerWrapper } from './DrawerWrapper'
 
 interface Organization {
@@ -245,7 +245,7 @@ export function OrganizationDrawer({ show, onClose }: OrganizationDrawerProps) {
       show={show}
       onClose={onClose}
       title="Organization"
-      icon={<Building className="h-5 w-5" />}
+      description="Manage your organization, members, and settings"
     >
       <div className="p-4 md:p-6 overflow-y-auto h-full">
         {loading ? (
