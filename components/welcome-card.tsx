@@ -49,53 +49,68 @@ export function WelcomeCard({ organizationEmail }: { organizationEmail: string }
   if (loading || !isVisible) return null
 
   return (
-    <div className="mb-6 rounded-lg border bg-muted/30">
-      {/* Simplified compact design */}
-      <div className="p-4">
-        <div className="flex items-start justify-between mb-3">
+    <div className="mb-6 rounded-lg border bg-background">
+      <div className="p-4 space-y-3">
+        {/* Header with clear value prop */}
+        <div className="flex items-start justify-between">
           <div>
-            <h3 className="text-sm font-medium">Getting Started</h3>
+            <h3 className="text-sm font-medium">Welcome to Everling</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Three ways to create tasks
+              AI turns your emails into organized tasks automatically
             </p>
           </div>
           <button
             onClick={handleDismiss}
-            className="text-muted-foreground hover:text-foreground transition-colors -mt-1"
+            className="text-muted-foreground hover:text-foreground transition-colors"
             aria-label="Dismiss"
           >
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
         
-        {/* Simplified options */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="flex items-center gap-2">
-            <Mail className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-            <div className="text-xs">
-              <span className="font-medium">Email:</span>{' '}
-              <code className="text-[10px]">{organizationEmail}</code>
+        {/* What it does - one line */}
+        <div className="text-xs text-muted-foreground pb-2 border-b">
+          Forward any email and we'll extract deadlines, assignees, and priorities. No app needed.
+        </div>
+        
+        {/* Three methods - compact but clear */}
+        <div className="space-y-2">
+          <div className="flex items-start gap-3">
+            <Mail className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <div className="text-xs">
+                <span className="font-medium">Email</span> → <code className="text-[10px] px-1 py-0.5 rounded bg-muted">{organizationEmail}</code>
+              </div>
+              <div className="text-xs text-muted-foreground">Forward from Gmail, Outlook, anywhere</div>
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
-            <MessageSquare className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-            <div className="text-xs">
-              <span className="font-medium">Type:</span> Use the search box above
+          <div className="flex items-start gap-3">
+            <MessageSquare className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <div className="text-xs">
+                <span className="font-medium">Quick add</span> → Search box above
+              </div>
+              <div className="text-xs text-muted-foreground">"Meeting tomorrow 3pm" - AI understands</div>
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-start gap-3">
             <Bell className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-            <div className="text-xs">
-              <span className="font-medium">Reminders:</span> Email/SMS alerts
+            <div className="flex-1">
+              <div className="text-xs">
+                <span className="font-medium">Smart reminders</span> → Email/SMS/Discord
+              </div>
+              <div className="text-xs text-muted-foreground">Reply "done" to complete tasks</div>
             </div>
           </div>
         </div>
         
-        {/* Single CTA */}
-        <div className="mt-3 text-xs text-muted-foreground">
-          <span className="font-medium">Try:</span> "Meeting tomorrow at 3pm" ↑
+        {/* Clear CTA */}
+        <div className="pt-2 border-t">
+          <div className="text-xs text-muted-foreground">
+            <span className="font-medium">Try now:</span> Type "Schedule dentist next week" in the box above
+          </div>
         </div>
       </div>
     </div>
