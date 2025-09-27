@@ -95,6 +95,15 @@ export function WelcomeCard({ organizationEmail }: { organizationEmail: string }
           </div>
         </div>
 
+        {/* Integrations */}
+        <div className="rounded-lg border bg-muted/30 p-3">
+          <div className="text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">Messaging integrations:</span>{' '}
+            Connect Discord or Slack to create tasks directly from your team chat. 
+            Just DM the bot or use slash commands. Set up in Settings → Integrations.
+          </div>
+        </div>
+
         {/* Quick start */}
         <div className="pt-3 border-t">
           <div className="text-xs text-muted-foreground">
