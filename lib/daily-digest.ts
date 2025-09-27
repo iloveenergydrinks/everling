@@ -14,14 +14,64 @@ interface DailyTask {
 }
 
 /**
+ * Get start and end of "today" in user's timezone
+ * This ensures we get tasks that are "today" from the user's perspective
+ */
+function getTodayInTimezone(timezone: string): { start: Date; end: Date } {
+  const now = new Date()
+  
+  // Get the date string in user's timezone
+  const userDateStr = now.toLocaleDateString('en-CA', { timeZone: timezone }) // en-CA gives YYYY-MM-DD format
+  
+  // Create start and end times as ISO strings
+  const startISO = `${userDateStr}T00:00:00`
+  const endISO = `${userDateStr}T23:59:59`
+  
+  // Convert these to Date objects
+  // These represent midnight and end-of-day in the user's timezone
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  })
+  
+  // Get the UTC equivalent of midnight in user's timezone
+  const startInUserTz = new Date(`${userDateStr}T00:00:00`)
+  const endInUserTz = new Date(`${userDateStr}T23:59:59`)
+  
+  // Calculate the offset
+  const userOffset = -startInUserTz.getTimezoneOffset() // in minutes
+  const actualOffset = new Date().toLocaleString('en-US', { timeZone: timezone, timeZoneName: 'short' })
+  const match = actualOffset.match(/GMT([+-]\d+)/)
+  const tzOffset = match ? parseInt(match[1]) * 60 : 0 // convert hours to minutes
+  
+  // Adjust for the difference
+  const offsetDiff = tzOffset - userOffset
+  
+  return {
+    start: new Date(startInUserTz.getTime() - offsetDiff * 60000),
+    end: new Date(endInUserTz.getTime() - offsetDiff * 60000)
+  }
+}
+
+/**
  * Send daily digest SMS with all tasks for today
  */
 export async function sendDailyDigest(userId: string, phoneNumber: string) {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  // Get user's timezone
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { timezone: true }
+  })
+  const userTimezone = user?.timezone || 'America/New_York'
   
-  const tomorrow = new Date(today)
-  tomorrow.setDate(tomorrow.getDate() + 1)
+  // Get today's date range in user's timezone
+  const { start: today, end: tomorrow } = getTodayInTimezone(userTimezone)
   
   // Get all tasks due today or with reminders today
   const tasks = await prisma.task.findMany({
@@ -217,13 +267,7 @@ export async function handleDigestReply(
  * Send email digest with all tasks for today
  */
 export async function sendEmailDigest(userId: string, email: string) {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  
-  const tomorrow = new Date(today)
-  tomorrow.setDate(tomorrow.getDate() + 1)
-
-  // Get user's organization to use their agent email as sender
+  // Get user's organization and timezone
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: {
@@ -234,6 +278,11 @@ export async function sendEmailDigest(userId: string, email: string) {
       }
     }
   })
+  
+  const userTimezone = user?.timezone || 'America/New_York'
+  
+  // Get today's date range in user's timezone
+  const { start: today, end: tomorrow } = getTodayInTimezone(userTimezone)
   
   const organization = user?.organizations[0]?.organization
   const fromEmail = organization ? 
@@ -374,13 +423,7 @@ export async function sendEmailDigest(userId: string, email: string) {
  * Send Discord digest with all tasks for today
  */
 export async function sendDiscordDigest(userId: string, discordUserId: string) {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  
-  const tomorrow = new Date(today)
-  tomorrow.setDate(tomorrow.getDate() + 1)
-
-  // Get user's organization
+  // Get user's organization and timezone
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: {
@@ -391,6 +434,11 @@ export async function sendDiscordDigest(userId: string, discordUserId: string) {
       }
     }
   })
+  
+  const userTimezone = user?.timezone || 'America/New_York'
+  
+  // Get today's date range in user's timezone
+  const { start: today, end: tomorrow } = getTodayInTimezone(userTimezone)
   
   // Get all tasks due today or with reminders today
   const tasks = await prisma.task.findMany({

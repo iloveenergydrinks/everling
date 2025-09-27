@@ -171,8 +171,35 @@ export const authOptions: NextAuthOptions = {
               })
             }
             
+            // Ensure email is marked as verified for Google OAuth users
+            if (!existingUser.emailVerified) {
+              await prisma.user.update({
+                where: { id: existingUser.id },
+                data: { emailVerified: new Date() }
+              })
+            }
+            
             // Update user.id to match existing user
             user.id = existingUser.id
+          } else {
+            // For new Google OAuth users, NextAuth adapter will create them
+            // The adapter automatically sets emailVerified for OAuth providers
+            // But we'll double-check this happens after user creation
+            setTimeout(async () => {
+              try {
+                const newUser = await prisma.user.findUnique({
+                  where: { email: user.email! }
+                })
+                if (newUser && !newUser.emailVerified) {
+                  await prisma.user.update({
+                    where: { id: newUser.id },
+                    data: { emailVerified: new Date() }
+                  })
+                }
+              } catch (err) {
+                console.error('Error verifying Google user email:', err)
+              }
+            }, 1000)
           }
         } catch (error) {
           console.error('Error linking Google account:', error)

@@ -1,0 +1,446 @@
+
+> everling@1.0.0 worker:email
+> tsx scripts/email-worker.ts
+
+[Worker] Email worker started
+[yuggaofeykmg10z6z4] Worker: processing inbound email job <delegawwwwtqwwe91d7@gmail.com>
+Processing inbound email: {
+  To: 'martinodev@everling.io',
+  OriginalRecipient: undefined,
+  From: 'martino.fabbro@gmail.com',
+  Subject: 'Fwd: Attività da wqedwelegare al team',
+  traceId: 'yuggaofeykmg10z6z4'
+}
+Found recipient in To field: martinodev@everling.io
+Extracted email details: {
+  originalRecipient: 'martinodev@everling.io',
+  toEmail: 'martinodev@everling.io',
+  emailPrefix: 'martinodev',
+  senderEmail: 'martino.fabbro@gmail.com',
+  traceId: 'yuggaofeykmg10z6z4'
+}
+📧 Sender authorization check: {
+  senderEmail: 'martino.fabbro@gmail.com',
+  isInAllowedList: true,
+  isOrganizationMember: true,
+  isAllowed: true,
+  allowedEmailsCount: 1,
+  allowedEmails: [ 'martino.fabbro@gmail.com' ],
+  organizationMembers: [ 'martino.fabbro@gmail.com' ],
+  traceId: 'yuggaofeykmg10z6z4'
+}
+📧 Step 1: Checking for existing thread...
+📧 Step 2: Authorization passed (sender is allowed or replying to existing thread), proceeding to task processing...
+📧 Step 3: Looking for existing tasks in thread...
+📧 Step 3a: Reply detection check: { inReplyTo: null, hasInReplyTo: false, isForward: true }
+📧 DEBUG: Checking for duplicate with MessageID: <delegawwwwtqwwe91d7@gmail.com>
+📧 DEBUG: Organization ID: cmfmdorqu000ftqpsmyvuiv25
+📧 DEBUG: Found email logs with this MessageID: 1 [
+  {
+    id: 'cmg10zcex000110asy0ngd4nx',
+    taskId: null,
+    createdAt: 2025-09-26T15:57:22.714Z,
+    processed: false
+  }
+]
+📧 DEBUG: Duplicate check result: {
+  found: false,
+  taskId: undefined,
+  emailLogId: undefined,
+  taskTitle: undefined
+}
+📧 DEBUG: Checking for similar recent tasks...
+📧 DEBUG: Subject to match: Fwd: Attività da wqedwelegare al team
+📧 DEBUG: Sender to match: martino.fabbro@gmail.com
+📧 DEBUG: Similar task check result: {
+  found: false,
+  taskId: undefined,
+  taskTitle: undefined,
+  createdAt: undefined
+}
+📧 Step 4: Getting sender history for smart analysis...
+📧 Step 5: Analyzing thread context...
+📧 Step 6: Calculating smart priority using AI...
+📧 Command extraction result: {
+  hasCommand: true,
+  command: 'portare cane fuori domani mattina alle 10 30 per prendere le medicine',
+  bodyLength: 69,
+  forwardedContentLength: 0
+}
+📧 Parsing command with AI: portare cane fuori domani mattina alle 10 30 per prendere le medicine
+📧 AI command parser raw response: {
+  "hasCommand": true,
+  "commandType": "remind",
+  "action": "Take dog out and get medicine",
+  "parameters": {
+    "reminderDate": "2025-09-27T10:30:00Z",
+    "notes": "Take dog out in the morning and pick up medicine",
+    "status": "pending"
+  },
+  "confidence": 0.9
+}
+
+Key parsing details:
+- Language: Italian
+- Command identifies a reminder ("portare" = take)
+- Specific time: 10:30 AM tomorrow morning
+- Calculated reminder date uses tomorrow's date at the specified time
+- Added descriptive notes about taking dog out and getting medicine
+- Set default status as "pending"
+- High confidence due to clear, specific instructions
+
+The ISO timestamp is calculated from the current reference date (2025-09-26) by adding one day and setting the specific time of 10:30 AM.
+📧 Parsed command JSON: {
+  hasCommand: true,
+  commandType: 'remind',
+  action: 'Take dog out and get medicine',
+  confidence: 0.9,
+  originalCommand: 'portare cane fuori domani mattina alle 10 30 per prendere le medicine',
+  parameters: {
+    reminderDate: '2025-09-27T10:30:00Z',
+    notes: 'Take dog out in the morning and pick up medicine',
+    status: 'pending'
+  }
+}
+📧 Normalized parameters: {
+  reminderDate: '2025-09-27T10:30:00Z',
+  notes: 'Take dog out in the morning and pick up medicine',
+  status: 'pending'
+}
+📧 AI command parsing result: {
+  hasCommand: true,
+  commandType: 'remind',
+  action: 'Take dog out and get medicine',
+  confidence: 0.9,
+  originalCommand: 'portare cane fuori domani mattina alle 10 30 per prendere le medicine',
+  parameters: {
+    reminderDate: '2025-09-27T10:30:00Z',
+    notes: 'Take dog out in the morning and pick up medicine',
+    status: 'pending'
+  }
+}
+📧 Calling AI task extraction with data: {
+  from: 'martino.fabbro@gmail.com',
+  subject: 'Fwd: Attività da wqedwelegare al team',
+  bodyLength: 69,
+  hasThreadContext: false,
+  priorityScore: 15
+}
+🤖 Starting AI task extraction: {
+  from: 'martino.fabbro@gmail.com',
+  subject: 'Fwd: Attività da wqedwelegare al team',
+  bodyLength: 69,
+  hasThreadContext: false,
+  priorityScore: 15
+}
+🤖 Calling Claude API for task extraction...
+🤖 Claude API response received, processing...
+🤖 Claude response text length: 575
+🤖 Claude response preview: {
+  "title": "Portare il cane dal veterinario per medicine",
+  "description": "Accompagnare il cane per prelevare le medicine, appuntamento programmato per domani mattina alle 10:30",
+  "priority": "l...
+🤖 Found JSON in response, parsing...
+🤖 Extracted tags: {
+  when: 'Mon, Oct 27, 2025 10:30',
+  where: null,
+  who: null,
+  what: 'appointment',
+  extras: [ 'veterinarian', 'dog medication' ]
+}
+🤖 Extracted task data: {
+  title: 'Portare il cane dal veterinario per medicine',
+  priority: 'low',
+  hasDueDate: true,
+  hasReminderDate: true
+}
+🤖 Task extraction successful: Portare il cane dal veterinario per medicine
+📧 AI task extraction result: SUCCESS
+📧 Single task to process: {
+  title: 'Portare il cane dal veterinario per medicine',
+  priority: 15,
+  hasCommand: true,
+  reason: 'User forwarded this email intentionally'
+}
+📧 Applying command parameters to task: {
+  hasCommand: true,
+  commandType: 'remind',
+  parameters: {
+    reminderDate: '2025-09-27T10:30:00Z',
+    notes: 'Take dog out in the morning and pick up medicine',
+    status: 'pending'
+  },
+  originalCommand: 'portare cane fuori domani mattina alle 10 30 per prendere le medicine'
+}
+🤖 Extracting task relationships...
+🤖 DEBUG: extractTaskRelationships input: {
+  from: 'martino.fabbro@gmail.com',
+  to: 'martinodev@everling.io',
+  subject: 'Fwd: Attività da wqedwelegare al team',
+  organizationEmail: 'martinodev@everling.io',
+  forwardedContext: undefined
+}
+🤖 DEBUG: AI extracted relationships: {
+  assignedToEmail: 'martinodev@everling.io',
+  assignedByEmail: 'martino.fabbro@gmail.com',
+  taskType: 'self',
+  userRole: 'executor',
+  stakeholders: [
+    {
+      name: 'Martino Fabbro',
+      email: 'martino.fabbro@gmail.com',
+      role: 'task originator'
+    }
+  ]
+}
+🤖 Task relationships: {
+  assignedToEmail: 'martinodev@everling.io',
+  assignedByEmail: 'martino.fabbro@gmail.com',
+  taskType: 'self',
+  userRole: 'executor',
+  stakeholders: [
+    {
+      name: 'Martino Fabbro',
+      email: 'martino.fabbro@gmail.com',
+      role: 'task originator'
+    }
+  ]
+}
+📧 Creating task with data: {
+  title: 'Portare il cane dal veterinario per medicine',
+  description: 'Accompagnare il cane per prelevare le medicine, appuntamento programmato per domani mattina alle 10:',
+  priority: 'medium',
+  dueDate: 2025-09-27T10:30:00.000Z,
+  reminderDate: 2025-09-27T10:30:00.000Z,
+  organizationId: 'cmfmdorqu000ftqpsmyvuiv25',
+  creatorId: 'cmfmdorqu000gtqpsfzn8x536'
+}
+📧 Task created successfully: {
+  taskId: 'cmg10zrc1000310ash48rliq2',
+  title: 'Portare il cane dal veterinario per medicine',
+  dueDate: 2025-09-27T10:30:00.000Z,
+  reminderDate: 2025-09-27T10:30:00.000Z
+}
+[Queue] Job completed: <delegawwwwtqwwe91d7@gmail.com>
+[nidqabehh4dmg1119b9] Worker: processing inbound email job <delegawwwwwtqwwe91d7@gmail.com>
+Processing inbound email: {
+  To: 'martinodev@everling.io',
+  OriginalRecipient: undefined,
+  From: 'martino.fabbro@gmail.com',
+  Subject: 'Fwd: Attività da  al team',
+  traceId: 'nidqabehh4dmg1119b9'
+}
+Found recipient in To field: martinodev@everling.io
+Extracted email details: {
+  originalRecipient: 'martinodev@everling.io',
+  toEmail: 'martinodev@everling.io',
+  emailPrefix: 'martinodev',
+  senderEmail: 'martino.fabbro@gmail.com',
+  traceId: 'nidqabehh4dmg1119b9'
+}
+📧 Sender authorization check: {
+  senderEmail: 'martino.fabbro@gmail.com',
+  isInAllowedList: true,
+  isOrganizationMember: true,
+  isAllowed: true,
+  allowedEmailsCount: 1,
+  allowedEmails: [ 'martino.fabbro@gmail.com' ],
+  organizationMembers: [ 'martino.fabbro@gmail.com' ],
+  traceId: 'nidqabehh4dmg1119b9'
+}
+📧 Step 1: Checking for existing thread...
+📧 Step 2: Authorization passed (sender is allowed or replying to existing thread), proceeding to task processing...
+📧 Step 3: Looking for existing tasks in thread...
+📧 Step 3a: Reply detection check: { inReplyTo: null, hasInReplyTo: false, isForward: true }
+📧 DEBUG: Checking for duplicate with MessageID: <delegawwwwwtqwwe91d7@gmail.com>
+📧 DEBUG: Organization ID: cmfmdorqu000ftqpsmyvuiv25
+📧 DEBUG: Found email logs with this MessageID: 1 [
+  {
+    id: 'cmg111cw8000b10as99mxm6bn',
+    taskId: null,
+    createdAt: 2025-09-26T15:58:56.649Z,
+    processed: false
+  }
+]
+📧 DEBUG: Duplicate check result: {
+  found: false,
+  taskId: undefined,
+  emailLogId: undefined,
+  taskTitle: undefined
+}
+📧 DEBUG: Checking for similar recent tasks...
+📧 DEBUG: Subject to match: Fwd: Attività da  al team
+📧 DEBUG: Sender to match: martino.fabbro@gmail.com
+📧 DEBUG: Similar task check result: {
+  found: false,
+  taskId: undefined,
+  taskTitle: undefined,
+  createdAt: undefined
+}
+📧 Step 4: Getting sender history for smart analysis...
+📧 Step 5: Analyzing thread context...
+📧 Step 6: Calculating smart priority using AI...
+📧 Command extraction result: {
+  hasCommand: true,
+  command: 'portare cane fuori domani mattina alle 10 30 per prendere le medicine di laura',
+  bodyLength: 78,
+  forwardedContentLength: 0
+}
+📧 Parsing command with AI: portare cane fuori domani mattina alle 10 30 per prendere le medicine di laura
+📧 AI command parser raw response: {
+    "hasCommand": true,
+    "commandType": "remind",
+    "action": "Take dog out and get Laura's medicine",
+    "parameters": {
+        "reminderDate": "2025-09-27T10:30:00Z",
+        "notes": "Take dog out in the morning and pick up Laura's medicine",
+        "assignTo": "Laura"
+    },
+    "confidence": 0.9
+}
+
+Key parsing details:
+- Language: Italian
+- Command interprets "domani mattina alle 10:30" as tomorrow morning at 10:30 AM
+- Converts to precise ISO timestamp based on current reference date
+- Extracts key task details: taking dog out and getting medicine
+- Assigns to "Laura" based on context in notes
+- High confidence due to clear, structured natural language command
+📧 Parsed command JSON: {
+  hasCommand: true,
+  commandType: 'remind',
+  action: "Take dog out and get Laura's medicine",
+  confidence: 0.9,
+  originalCommand: 'portare cane fuori domani mattina alle 10 30 per prendere le medicine di laura',
+  parameters: {
+    reminderDate: '2025-09-27T10:30:00Z',
+    notes: "Take dog out in the morning and pick up Laura's medicine",
+    assignTo: 'Laura'
+  }
+}
+📧 Normalized parameters: {
+  reminderDate: '2025-09-27T10:30:00Z',
+  notes: "Take dog out in the morning and pick up Laura's medicine",
+  assignTo: 'Laura'
+}
+📧 AI command parsing result: {
+  hasCommand: true,
+  commandType: 'remind',
+  action: "Take dog out and get Laura's medicine",
+  confidence: 0.9,
+  originalCommand: 'portare cane fuori domani mattina alle 10 30 per prendere le medicine di laura',
+  parameters: {
+    reminderDate: '2025-09-27T10:30:00Z',
+    notes: "Take dog out in the morning and pick up Laura's medicine",
+    assignTo: 'Laura'
+  }
+}
+📧 Calling AI task extraction with data: {
+  from: 'martino.fabbro@gmail.com',
+  subject: 'Fwd: Attività da  al team',
+  bodyLength: 78,
+  hasThreadContext: false,
+  priorityScore: 15
+}
+🤖 Starting AI task extraction: {
+  from: 'martino.fabbro@gmail.com',
+  subject: 'Fwd: Attività da  al team',
+  bodyLength: 78,
+  hasThreadContext: false,
+  priorityScore: 15
+}
+🤖 Calling Claude API for task extraction...
+🤖 Claude API response received, processing...
+🤖 Claude response text length: 547
+🤖 Claude response preview: {
+  "title": "Portare il cane fuori per medicine di Laura",
+  "description": "Uscita mattutina con il cane per ritirare le medicine di Laura alle 10:30",
+  "priority": "low",
+  "dueDate": "2025-10-27T...
+🤖 Found JSON in response, parsing...
+🤖 Extracted tags: {
+  when: 'Mon, Oct 27, 2025 10:30',
+  where: null,
+  who: 'Laura',
+  what: 'errand',
+  extras: [ 'dog care', 'medicine pickup' ]
+}
+🤖 Extracted task data: {
+  title: 'Portare il cane fuori per medicine di Laura',
+  priority: 'low',
+  hasDueDate: true,
+  hasReminderDate: true
+}
+🤖 Task extraction successful: Portare il cane fuori per medicine di Laura
+📧 AI task extraction result: SUCCESS
+📧 Single task to process: {
+  title: 'Portare il cane fuori per medicine di Laura',
+  priority: 15,
+  hasCommand: true,
+  reason: 'User forwarded this email intentionally'
+}
+📧 Applying command parameters to task: {
+  hasCommand: true,
+  commandType: 'remind',
+  parameters: {
+    reminderDate: '2025-09-27T10:30:00Z',
+    notes: "Take dog out in the morning and pick up Laura's medicine",
+    assignTo: 'Laura'
+  },
+  originalCommand: 'portare cane fuori domani mattina alle 10 30 per prendere le medicine di laura'
+}
+🤖 Extracting task relationships...
+🤖 DEBUG: extractTaskRelationships input: {
+  from: 'martino.fabbro@gmail.com',
+  to: 'martinodev@everling.io',
+  subject: 'Fwd: Attività da  al team',
+  organizationEmail: 'martinodev@everling.io',
+  forwardedContext: undefined
+}
+🤖 DEBUG: AI extracted relationships: {
+  assignedToEmail: 'martinodev@everling.io',
+  assignedByEmail: null,
+  taskType: 'self',
+  userRole: 'executor',
+  stakeholders: [
+    { name: 'Laura', email: null, role: 'task subject (dog owner)' },
+    {
+      name: 'Martino Fabbro',
+      email: 'martino.fabbro@gmail.com',
+      role: 'task originator'
+    }
+  ]
+}
+🤖 Task relationships: {
+  assignedToEmail: 'martinodev@everling.io',
+  assignedByEmail: null,
+  taskType: 'self',
+  userRole: 'executor',
+  stakeholders: [
+    { name: 'Laura', email: null, role: 'task subject (dog owner)' },
+    {
+      name: 'Martino Fabbro',
+      email: 'martino.fabbro@gmail.com',
+      role: 'task originator'
+    }
+  ]
+}
+📧 Creating task with data: {
+  title: 'Portare il cane fuori per medicine di Laura',
+  description: 'Uscita mattutina con il cane per ritirare le medicine di Laura alle 10:30\n' +
+    '\n' +
+    '📝 Note: Take dog out in ',
+  priority: 'medium',
+  dueDate: 2025-09-27T10:30:00.000Z,
+  reminderDate: 2025-09-27T10:30:00.000Z,
+  organizationId: 'cmfmdorqu000ftqpsmyvuiv25',
+  creatorId: 'cmfmdorqu000gtqpsfzn8x536'
+}
+📧 Task created successfully: {
+  taskId: 'cmg111pr3000d10asw2pkzkjb',
+  title: 'Portare il cane fuori per medicine di Laura',
+  dueDate: 2025-09-27T10:30:00.000Z,
+  reminderDate: 2025-09-27T10:30:00.000Z
+}
+[Queue] Job completed: <delegawwwwwtqwwe91d7@gmail.com>
+[Queue] Job completed: <delegawwwwwtqwwe9w1d7@gmail.com>

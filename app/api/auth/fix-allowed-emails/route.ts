@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
               organizationId: organization.id,
               email: memberEmail,
               addedById: session.user.id,
-              note: `Organization member (auto-added via fix)`
+              note: `Organization member`
             }
           })
           addedEmails.push(memberEmail)

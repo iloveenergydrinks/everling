@@ -4,7 +4,6 @@ import prisma from "@/lib/prisma"
 import { smartAgent } from "@/lib/discord-agent"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { handleDigestCommand } from "./digest-command"
 
 // Verify Discord webhook signature using Ed25519
 function verifyDiscordSignature(
@@ -88,18 +87,13 @@ export async function POST(req: NextRequest) {
 }
 
 async function handleSlashCommand(interaction: any) {
-  const { data, member, user, channel_id, guild_id } = interaction
+  const { data, member, user } = interaction
   const command = data.name
   const options = data.options || []
-  
-  // Handle digest command
-  if (command === 'digest') {
-    return await handleDigestCommand(interaction)
-  }
-  
+
   // Get the Discord user
   const discordUser = member?.user || user
-  
+
   // Find the linked user account
   const linkedUser = await prisma.user.findFirst({
     where: {
@@ -109,7 +103,7 @@ async function handleSlashCommand(interaction: any) {
       ]
     }
   })
-  
+
   if (!linkedUser) {
     return NextResponse.json({
       type: 4,
@@ -119,112 +113,155 @@ async function handleSlashCommand(interaction: any) {
       }
     })
   }
-  
-  switch (command) {
-    case 'task':
-      return await handleTaskCommand(interaction, linkedUser)
-    
-    case 'tasks':
-      return await handleTasksListCommand(interaction, linkedUser)
-    
-    case 'everling':
-      return await handleEverlingCommand(interaction, linkedUser)
-    
-    default:
-      return NextResponse.json({
-        type: 4,
-        data: {
-          content: "Unknown command",
-          flags: 64
+
+  // Always defer ephemeral, then follow up asynchronously
+  ;(async () => {
+    try {
+      switch (command) {
+        case 'task': {
+          const description = options?.find((o: any) => o.name === 'description')?.value
+          const due = options?.find((o: any) => o.name === 'due')?.value
+          const priority = options?.find((o: any) => o.name === 'priority')?.value || 'medium'
+
+          if (!description) {
+            await sendFollowup(interaction, { content: "❌ Please provide a task description", flags: 64 })
+            return
+          }
+
+          const enrichedContent = `${description}${priority === 'high' ? ' [high priority]' : ''}${due ? ` [due ${due}]` : ''}`
+
+          const result = await smartAgent({
+            content: enrichedContent,
+            subject: `Quick task from Discord`,
+            from: discordUser?.username || 'Discord User',
+            metadata: {
+              source: 'discord',
+              channelId: interaction.channel_id,
+              guildId: interaction.guild_id,
+              messageId: interaction.id
+            },
+            userId: linkedUser.id
+          })
+
+          if (result.success && result.task) {
+            await sendFollowup(interaction, {
+              content: `✅ Created task: **${result.task.title}**${result.task.dueDate ? `\n📅 Due: ${new Date(result.task.dueDate).toLocaleDateString()}` : ''}`,
+              flags: 64
+            })
+          } else if (result.success && result.tasks && result.tasks.length > 0) {
+            const taskList = result.tasks.map((t: any, i: number) => `${i + 1}. ${t.title}${t.dueDate ? ` (due ${new Date(t.dueDate).toLocaleDateString()})` : ''}`).join('\n')
+            await sendFollowup(interaction, {
+              content: `✅ Created ${result.tasks.length} task(s):\n${taskList}`,
+              flags: 64
+            })
+          } else {
+            await sendFollowup(interaction, { content: "❌ Failed to create task. Please try again.", flags: 64 })
+          }
+          break
         }
-      })
-  }
-}
 
-async function handleTaskCommand(interaction: any, user: any) {
-  const description = interaction.data.options?.find((o: any) => o.name === 'description')?.value
-  const due = interaction.data.options?.find((o: any) => o.name === 'due')?.value
-  const priority = interaction.data.options?.find((o: any) => o.name === 'priority')?.value || 'medium'
-  
-  if (!description) {
-    return NextResponse.json({
-      type: 4,
-      data: {
-        content: "❌ Please provide a task description",
-        flags: 64
-      }
-    })
-  }
-  
-  // Use smart agent to process the task
-  // Include priority and due date in the content so they're processed
-  const enrichedContent = `${description}${priority === 'high' ? ' [high priority]' : ''}${due ? ` [due ${due}]` : ''}`
-  
-  const result = await smartAgent({
-    content: enrichedContent,
-    subject: `Quick task from Discord`,
-    from: interaction.member?.user?.username || interaction.user?.username || 'Discord User',
-    metadata: {
-      source: 'discord',
-      channelId: interaction.channel_id,
-      guildId: interaction.guild_id,
-      messageId: interaction.id // Use messageId instead of interactionId
-    },
-    userId: user.id
-  })
-  
-  if (result.success && result.task) {
-    return NextResponse.json({
-      type: 4,
-      data: {
-        content: `✅ Created task: **${result.task.title}**${result.task.dueDate ? `\n📅 Due: ${new Date(result.task.dueDate).toLocaleDateString()}` : ''}`,
-        flags: 0 // Visible to everyone
-      }
-    })
-  } else {
-    return NextResponse.json({
-      type: 4,
-      data: {
-        content: "❌ Failed to create task. Please try again.",
-        flags: 64
-      }
-    })
-  }
-}
+        case 'tasks': {
+          const tasks = await prisma.task.findMany({
+            where: {
+              createdById: linkedUser.id,
+              status: 'todo'
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 5
+          })
 
-async function handleTasksListCommand(interaction: any, user: any) {
-  // Get recent tasks for this user
-  const tasks = await prisma.task.findMany({
-    where: {
-      createdById: user.id,
-      status: 'pending'
-    },
-    orderBy: { createdAt: 'desc' },
-    take: 5
-  })
-  
-  if (tasks.length === 0) {
-    return NextResponse.json({
-      type: 4,
-      data: {
-        content: "📋 You have no pending tasks",
-        flags: 64
+          if (tasks.length === 0) {
+            await sendFollowup(interaction, { content: "📋 You have no pending tasks", flags: 64 })
+          } else {
+            const taskList = tasks.map((task, index) => `**${index + 1}.** ${task.title}${task.dueDate ? ` (due ${new Date(task.dueDate).toLocaleDateString()})` : ''}`).join('\n')
+            await sendFollowup(interaction, { content: `📋 **Your pending tasks:**\n${taskList}`, flags: 64 })
+          }
+          break
+        }
+
+        case 'everling': {
+          const sub = options?.[0]?.name
+          if (sub === 'help') {
+            await sendFollowup(interaction, { content: `**Everling Discord Commands:**\n📝 **/task** - Create a quick task\n📋 **/tasks** - View your pending tasks\n🤖 **/everling context** - Extract tasks from recent messages\n❓ **/everling help** - Show this help message`, flags: 64 })
+          } else if (sub === 'context') {
+            await sendFollowup(interaction, { content: `Processing recent conversation... You'll receive a DM if tasks are detected.`, flags: 64 })
+          } else {
+            await sendFollowup(interaction, { content: "Use `/everling help` to see available commands", flags: 64 })
+          }
+          break
+        }
+
+        case 'digest': {
+          // Build an ephemeral digest-like response
+          const today = new Date(); today.setHours(0, 0, 0, 0)
+          const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1)
+
+          const tasks = await prisma.task.findMany({
+            where: {
+              createdById: linkedUser.id,
+              status: { not: 'done' },
+              OR: [
+                { dueDate: { gte: today, lt: tomorrow } },
+                { reminderDate: { gte: today, lt: tomorrow } }
+              ]
+            },
+            orderBy: [
+              { priority: 'desc' },
+              { dueDate: 'asc' },
+              { reminderDate: 'asc' }
+            ],
+            take: 10
+          })
+
+          const totalPending = await prisma.task.count({
+            where: { createdById: linkedUser.id, status: { not: 'done' } }
+          })
+
+          let content = "📋 **Your Task Digest**\n\n"
+          if (tasks.length === 0) {
+            content += "You have no tasks due today."
+          } else {
+            content += tasks.map((t, i) => `${i + 1}. ${t.title}${t.dueDate ? ` (due ${new Date(t.dueDate).toLocaleDateString()})` : ''}`).join('\n')
+            if (totalPending > tasks.length) {
+              content += `\n\n+${totalPending - tasks.length} more pending task(s)`
+            }
+          }
+          await sendFollowup(interaction, { content, flags: 64 })
+          break
+        }
+
+        default: {
+          await sendFollowup(interaction, { content: "Unknown command", flags: 64 })
+        }
       }
-    })
-  }
-  
-  const taskList = tasks.map((task, index) => 
-    `**${index + 1}.** ${task.title}${task.dueDate ? ` (due ${new Date(task.dueDate).toLocaleDateString()})` : ''}`
-  ).join('\n')
-  
-  return NextResponse.json({
-    type: 4,
-    data: {
-      content: `📋 **Your pending tasks:**\n${taskList}`,
-      flags: 64
+    } catch (err) {
+      console.error('Slash command follow-up error:', err)
+      try { await sendFollowup(interaction, { content: '❌ An error occurred while processing your command.', flags: 64 }) } catch {}
     }
+  })()
+
+  // Defer ephemeral response immediately
+  return NextResponse.json({
+    type: 5,
+    data: { flags: 64 }
   })
 }
+
+// Helper: send follow-up message after a deferred reply
+async function sendFollowup(interaction: any, data: { content?: string; embeds?: any; flags?: number }) {
+  const url = `https://discord.com/api/webhooks/${interaction.application_id}/${interaction.token}`
+  await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      content: data.content,
+      embeds: data.embeds,
+      flags: typeof data.flags === 'number' ? data.flags : 64
+    })
+  })
+}
+
+// (old handleTasksListCommand inlined into deferred follow-up flow)
 
 async function handleEverlingCommand(interaction: any, user: any) {
   const subcommand = interaction.data.options?.[0]?.name

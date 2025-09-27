@@ -157,7 +157,7 @@ export async function POST(request: NextRequest) {
           organizationId: organization.id,
           email: email.toLowerCase(),
           addedById: user.id,
-          note: 'Registration email (auto-added)',
+          note: 'Registration email',
         }
       })
 

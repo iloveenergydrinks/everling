@@ -47,12 +47,8 @@ export function calculateRelevanceScore(task: Task): number {
  * Get smart explanation for why a task is prioritized
  */
 export function getRelevanceReason(task: Task): string {
-  const reason = task.emailMetadata?.smartAnalysis?.priorityReasoning
-  if (typeof reason === 'string' && reason.trim().length > 0) {
-    return reason.trim().slice(0, 140)
-  }
-  const score = task.emailMetadata?.smartAnalysis?.priorityScore
-  return Number.isFinite(score) ? `AI priority ${Math.round(score)} / 100` : ''
+  // Don't show reasoning text - it's stored but not displayed
+  return ''
 }
 
 /**

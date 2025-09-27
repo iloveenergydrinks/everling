@@ -212,11 +212,13 @@ function extractCommandFromEmail(body: string): { command: string | null, forwar
 
 export async function processInboundEmail(emailData: EmailData) {
   // Log the incoming email data for debugging
+  const traceId = (emailData as any)._traceId || Math.random().toString(36).slice(2)
   console.log('Processing inbound email:', {
     To: emailData.To,
     OriginalRecipient: emailData.OriginalRecipient,
     From: emailData.From,
-    Subject: emailData.Subject
+    Subject: emailData.Subject,
+    traceId
   })
   
   // Extract the original recipient from Postmark webhook data
@@ -320,7 +322,8 @@ export async function processInboundEmail(emailData: EmailData) {
     originalRecipient,
     toEmail,
     emailPrefix,
-    senderEmail
+    senderEmail,
+    traceId
   })
   const threadId = getThreadId(emailData)
   // Prefer strict reply detection via In-Reply-To only
@@ -347,7 +350,7 @@ export async function processInboundEmail(emailData: EmailData) {
 
     if (!organization) {
       // Log the failed attempt (without organization ID since we don't have one)
-      console.log(`Email rejected: No organization found for prefix: ${emailPrefix} (from: ${senderEmail})`)
+      console.log(`[${traceId}] Email rejected: No organization found for prefix: ${emailPrefix} (from: ${senderEmail})`)
       
       // Return a status indicating the email was rejected (not an error)
       return {
@@ -395,7 +398,8 @@ export async function processInboundEmail(emailData: EmailData) {
       isAllowed,
       allowedEmailsCount: organization.allowedEmails.length,
       allowedEmails: organization.allowedEmails.map((ae: { email: string }) => ae.email),
-      organizationMembers: organization.members.map((m: any) => m.user.email)
+      organizationMembers: organization.members.map((m: any) => m.user.email),
+      traceId
     })
     
     console.log('📧 Step 1: Checking for existing thread...')
@@ -435,7 +439,7 @@ export async function processInboundEmail(emailData: EmailData) {
         }
       })
       
-      console.log(`📧 Email rejected: Sender ${senderEmail} is not authorized for org: ${organization.name}`)
+      console.log(`[${traceId}] 📧 Email rejected: Sender ${senderEmail} is not authorized for org: ${organization.name}`)
       console.log(`📧 Sender is NOT an organization member and NOT in the allowed emails list`)
       console.log(`📧 To allow this sender, either:`)
       console.log(`   1. Add them as a member of the organization`)
@@ -745,9 +749,11 @@ export async function processInboundEmail(emailData: EmailData) {
     
     console.log('📧 Step 5: Analyzing thread context...')
     
-    // Analyze thread context if this is part of a thread
+    // Analyze thread context if this is part of a thread (gated)
     let threadContext = null
-    if (threadId) {
+    const bodyLength = (emailData.TextBody || emailData.HtmlBody || '').length
+    const shouldAnalyzeThread = !!threadId && bodyLength > 400
+    if (shouldAnalyzeThread) {
       threadContext = await analyzeEmailThread(threadId, organization.id)
     }
 

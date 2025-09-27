@@ -146,7 +146,7 @@ export async function smartAgent(params: {
         data: {
           title: taskData.title || params.subject,
           description: taskData.description || params.content,
-          status: 'pending',
+          status: 'todo',
           priority: taskData.priority || 'medium',
           dueDate: taskData.dueDate,
           reminderDate: taskData.reminderDate,

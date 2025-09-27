@@ -8,131 +8,112 @@ datasource db {
 }
 
 model Organization {
-  id           String   @id @default(cuid())
-  name         String
-  slug         String   @unique
-  emailPrefix  String   @unique @map("email_prefix")
-  plan         String   @default("free")
-  taskLimit    Int      @default(100) @map("task_limit")
-  tasksCreated Int      @default(0) @map("tasks_created")
-  
-  // Monthly task tracking
-  monthlyTasksUsed  Int      @default(0) @map("monthly_tasks_used")
-  monthlyResetDate  DateTime @default(now()) @map("monthly_reset_date")
-  
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-
-  members       OrganizationMember[]
-  tasks         Task[]
-  emailLogs          EmailLog[]
-  apiKeys            ApiKey[]
+  id                 String               @id @default(cuid())
+  name               String
+  slug               String               @unique
+  emailPrefix        String               @unique @map("email_prefix")
+  plan               String               @default("free")
+  taskLimit          Int                  @default(100) @map("task_limit")
+  tasksCreated       Int                  @default(0) @map("tasks_created")
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+  monthlyResetDate   DateTime             @default(now()) @map("monthly_reset_date")
+  monthlyTasksUsed   Int                  @default(0) @map("monthly_tasks_used")
   allowedEmails      AllowedEmail[]
+  apiKeys            ApiKey[]
+  emailLogs          EmailLog[]
+  members            OrganizationMember[]
   senderIntelligence SenderIntelligence[]
+  tasks              Task[]
 
   @@map("organizations")
 }
 
 model User {
-  id                   String    @id @default(cuid())
-  email                String    @unique
-  name                 String?
-  password             String?
-  emailVerified        DateTime? @map("email_verified")
-  image                String?
-  phoneNumber          String?   @map("phone_number")
-  whatsappEnabled      Boolean   @default(false) @map("whatsapp_enabled")
-  whatsappVerified     Boolean   @default(false) @map("whatsapp_verified")
-  
-  // Notification preferences
-  notificationType     String    @default("email") @map("notification_type") // "email", "sms", "both", "none"
-  digestTime           String    @default("08:00") @map("digest_time") // HH:MM format
-  timezone             String    @default("America/New_York") @map("timezone")
-  emailDigestEnabled   Boolean   @default(true) @map("email_digest_enabled")
-  smsDigestEnabled     Boolean   @default(false) @map("sms_digest_enabled")
-  
-  // Calendar integrations
-  calendarProvider     String?   @map("calendar_provider")
-  calendarDefaultId    String?   @map("calendar_default_id")
-  calendarAutoPush     Boolean   @default(false) @map("calendar_auto_push")
-  googleRefreshToken   String?   @map("google_refresh_token")
-  microsoftRefreshToken String?  @map("microsoft_refresh_token")
-  
-  // Discord integration
-  discordId            String?   @unique @map("discord_id")
-  discordUsername      String?   @map("discord_username")
-  discordConnected     DateTime? @map("discord_connected")
-  discordUserId        String?   @map("discord_user_id")
-  discordDigestEnabled Boolean   @default(false) @map("discord_digest_enabled")
-  discordDMEnabled     Boolean   @default(true) @map("discord_dm_enabled")
-  discordDMError       String?   @map("discord_dm_error")
-  
-  createdAt            DateTime  @default(now()) @map("created_at")
-  updatedAt            DateTime  @updatedAt @map("updated_at")
-
-  organizations  OrganizationMember[]
-  tasksCreated   Task[] @relation("CreatedBy")
-  tasksAssigned  Task[] @relation("AssignedTo")
-  apiKeys        ApiKey[]
-  accounts       Account[]
-  sessions       Session[]
-  allowedEmails  AllowedEmail[]
-  taskActivities TaskActivity[]
+  id                    String               @id @default(cuid())
+  email                 String               @unique
+  name                  String?
+  password              String?
+  emailVerified         DateTime?            @map("email_verified")
+  image                 String?
+  phoneNumber           String?              @map("phone_number")
+  whatsappEnabled       Boolean              @default(false) @map("whatsapp_enabled")
+  whatsappVerified      Boolean              @default(false) @map("whatsapp_verified")
+  notificationType      String               @default("email") @map("notification_type")
+  digestTime            String               @default("08:00") @map("digest_time")
+  timezone              String               @default("America/New_York") @map("timezone")
+  emailDigestEnabled    Boolean              @default(true) @map("email_digest_enabled")
+  smsDigestEnabled      Boolean              @default(false) @map("sms_digest_enabled")
+  createdAt             DateTime             @default(now()) @map("created_at")
+  updatedAt             DateTime             @updatedAt @map("updated_at")
+  calendarAutoPush      Boolean              @default(false) @map("calendar_auto_push")
+  calendarDefaultId     String?              @map("calendar_default_id")
+  calendarProvider      String?              @map("calendar_provider")
+  googleRefreshToken    String?              @map("google_refresh_token")
+  microsoftRefreshToken String?              @map("microsoft_refresh_token")
+  discordConnected      DateTime?            @map("discord_connected")
+  discordId             String?              @unique @map("discord_id")
+  discordUsername       String?              @map("discord_username")
+  discordDigestEnabled  Boolean              @default(false) @map("discord_digest_enabled")
+  discordUserId         String?              @map("discord_user_id")
+  discordDMEnabled      Boolean              @default(true) @map("discord_dm_enabled")
+  discordDMError        String?              @map("discord_dm_error")
+  accounts              Account[]
+  allowedEmails         AllowedEmail[]
+  apiKeys               ApiKey[]
+  organizations         OrganizationMember[]
+  sessions              Session[]
+  taskActivities        TaskActivity[]
+  tasksAssigned         Task[]               @relation("AssignedTo")
+  tasksCreated          Task[]               @relation("CreatedBy")
 
   @@map("users")
 }
 
 model OrganizationMember {
-  organizationId String @map("organization_id")
-  userId         String @map("user_id")
-  role           String @default("member") // admin, member, viewer
-  joinedAt       DateTime @default(now()) @map("joined_at")
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user         User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String       @map("organization_id")
+  userId         String       @map("user_id")
+  role           String       @default("member")
+  joinedAt       DateTime     @default(now()) @map("joined_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([organizationId, userId])
   @@map("organization_members")
 }
 
 model Task {
-  id             String   @id @default(cuid())
-  organizationId String   @map("organization_id")
-  title          String
-  description    String?  @db.Text
-  status         String   @default("todo") // todo, in_progress, done, archived
-  priority       String   @default("medium") // low, medium, high
-  dueDate        DateTime? @map("due_date")
-  reminderDate   DateTime? @map("reminder_date") // When to remind about this task
-  reminderSent   Boolean  @default(false) @map("reminder_sent")
-  assignedToId   String?  @map("assigned_to_id")
-  createdById    String?  @map("created_by_id")
-  
-  // Enhanced relationship fields for hybrid task management (v2)
-  assignedToEmail String?  @map("assigned_to_email") // Email of person who should do this (when not a system user)
-  assignedByEmail String?  @map("assigned_by_email") // Email of person who requested this
-  taskType       String?   @map("task_type") // assigned/self/delegation/tracking/fyi
-  userRole       String?   @map("user_role") // executor/delegator/observer/coordinator
-  stakeholders   Json?    // Array of people mentioned/involved [{name, email, role}]
-  
-  createdVia     String   @default("email") @map("created_via") // email, web, api
-  emailMetadata  Json?    @map("email_metadata")
-  emailThreadId  String?  @map("email_thread_id") // To link all emails in a thread
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
-
-  // External calendar linkage (one-way push)
-  externalProvider   String?  @map("external_provider")
-  externalCalendarId String?  @map("external_calendar_id")
-  externalEventId    String?  @map("external_event_id")
-  lastCalendarSyncAt DateTime? @map("last_calendar_sync_at")
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  createdBy    User? @relation("CreatedBy", fields: [createdById], references: [id])
-  assignedTo   User? @relation("AssignedTo", fields: [assignedToId], references: [id])
-  activities   TaskActivity[]
-  emailLogs    EmailLog[]
-  reminders    TaskReminder[]
+  id                 String         @id @default(cuid())
+  organizationId     String         @map("organization_id")
+  title              String
+  description        String?
+  status             String         @default("todo")
+  priority           String         @default("medium")
+  dueDate            DateTime?      @map("due_date")
+  reminderDate       DateTime?      @map("reminder_date")
+  reminderSent       Boolean        @default(false) @map("reminder_sent")
+  assignedToId       String?        @map("assigned_to_id")
+  createdById        String?        @map("created_by_id")
+  createdVia         String         @default("email") @map("created_via")
+  emailMetadata      Json?          @map("email_metadata")
+  emailThreadId      String?        @map("email_thread_id")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+  assignedByEmail    String?        @map("assigned_by_email")
+  assignedToEmail    String?        @map("assigned_to_email")
+  stakeholders       Json?
+  taskType           String?        @map("task_type")
+  userRole           String?        @map("user_role")
+  externalCalendarId String?        @map("external_calendar_id")
+  externalEventId    String?        @map("external_event_id")
+  externalProvider   String?        @map("external_provider")
+  lastCalendarSyncAt DateTime?      @map("last_calendar_sync_at")
+  emailLogs          EmailLog[]
+  activities         TaskActivity[]
+  reminders          TaskReminder[]
+  assignedTo         User?          @relation("AssignedTo", fields: [assignedToId], references: [id])
+  createdBy          User?          @relation("CreatedBy", fields: [createdById], references: [id])
+  organization       Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
   @@index([status])
@@ -149,18 +130,17 @@ model Task {
 }
 
 model TaskActivity {
-  id             String   @id @default(cuid())
-  taskId         String   @map("task_id")
-  type           String   // comment, status_change, reply_email, assignment
-  content        String?  @db.Text
-  metadata       Json?
-  emailLogId     String?  @map("email_log_id")
-  userId         String?  @map("user_id")
-  createdAt      DateTime @default(now()) @map("created_at")
-
-  task           Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user           User? @relation(fields: [userId], references: [id])
-  emailLog       EmailLog? @relation(fields: [emailLogId], references: [id])
+  id         String    @id @default(cuid())
+  taskId     String    @map("task_id")
+  type       String
+  content    String?
+  metadata   Json?
+  emailLogId String?   @map("email_log_id")
+  userId     String?   @map("user_id")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  emailLog   EmailLog? @relation(fields: [emailLogId], references: [id])
+  task       Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user       User?     @relation(fields: [userId], references: [id])
 
   @@index([taskId])
   @@index([emailLogId])
@@ -168,23 +148,22 @@ model TaskActivity {
 }
 
 model EmailLog {
-  id             String   @id @default(cuid())
-  organizationId String   @map("organization_id")
-  fromEmail      String   @map("from_email")
-  toEmail        String   @map("to_email")
-  subject        String   @db.Text
-  processed      Boolean  @default(false)
-  taskId         String?  @map("task_id")
-  rawData        Json     @map("raw_data")
-  error          String?  @db.Text
-  messageId      String?  @map("message_id")
-  inReplyTo      String?  @map("in_reply_to")
-  threadId       String?  @map("thread_id")
-  senderAllowed  Boolean  @default(false) @map("sender_allowed")
-  createdAt      DateTime @default(now()) @map("created_at")
-
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  task           Task? @relation(fields: [taskId], references: [id])
+  id             String         @id @default(cuid())
+  organizationId String         @map("organization_id")
+  fromEmail      String         @map("from_email")
+  toEmail        String         @map("to_email")
+  subject        String
+  processed      Boolean        @default(false)
+  taskId         String?        @map("task_id")
+  rawData        Json           @map("raw_data")
+  error          String?
+  messageId      String?        @map("message_id")
+  inReplyTo      String?        @map("in_reply_to")
+  threadId       String?        @map("thread_id")
+  senderAllowed  Boolean        @default(false) @map("sender_allowed")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  task           Task?          @relation(fields: [taskId], references: [id])
   activities     TaskActivity[]
 
   @@index([organizationId])
@@ -196,16 +175,15 @@ model EmailLog {
 }
 
 model ApiKey {
-  id             String   @id @default(cuid())
-  organizationId String   @map("organization_id")
-  userId         String   @map("user_id")
+  id             String       @id @default(cuid())
+  organizationId String       @map("organization_id")
+  userId         String       @map("user_id")
   name           String
-  keyHash        String   @unique @map("key_hash")
-  lastUsed       DateTime? @map("last_used")
-  createdAt      DateTime @default(now()) @map("created_at")
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user         User @relation(fields: [userId], references: [id])
+  keyHash        String       @unique @map("key_hash")
+  lastUsed       DateTime?    @map("last_used")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id])
 
   @@index([organizationId])
   @@index([keyHash])
@@ -213,16 +191,15 @@ model ApiKey {
 }
 
 model TaskReminder {
-  id             String   @id @default(cuid())
-  taskId         String   @map("task_id")
-  reminderDate   DateTime @map("reminder_date")
-  recurring      String?  // daily, weekly, monthly
-  sent           Boolean  @default(false)
-  sentAt         DateTime? @map("sent_at")
-  metadata       Json?
-  createdAt      DateTime @default(now()) @map("created_at")
-
-  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  id           String    @id @default(cuid())
+  taskId       String    @map("task_id")
+  reminderDate DateTime  @map("reminder_date")
+  recurring    String?
+  sent         Boolean   @default(false)
+  sentAt       DateTime? @map("sent_at")
+  metadata     Json?
+  createdAt    DateTime  @default(now()) @map("created_at")
+  task         Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@index([taskId])
   @@index([reminderDate])
@@ -231,15 +208,14 @@ model TaskReminder {
 }
 
 model AllowedEmail {
-  id             String   @id @default(cuid())
-  organizationId String   @map("organization_id")
+  id             String       @id @default(cuid())
+  organizationId String       @map("organization_id")
   email          String
-  addedById      String?  @map("added_by_id")
+  addedById      String?      @map("added_by_id")
   note           String?
-  createdAt      DateTime @default(now()) @map("created_at")
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  addedBy      User? @relation(fields: [addedById], references: [id])
+  createdAt      DateTime     @default(now()) @map("created_at")
+  addedBy        User?        @relation(fields: [addedById], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, email])
   @@index([organizationId])
@@ -247,22 +223,20 @@ model AllowedEmail {
   @@map("allowed_emails")
 }
 
-// NextAuth required models
 model Account {
   id                String  @id @default(cuid())
   userId            String  @map("user_id")
   type              String
   provider          String
   providerAccountId String  @map("provider_account_id")
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@map("accounts")
@@ -273,9 +247,8 @@ model Session {
   sessionToken String   @unique @map("session_token")
   userId       String   @map("user_id")
   expires      DateTime
-  
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@map("sessions")
 }
 
@@ -289,10 +262,10 @@ model VerificationToken {
 }
 
 model PasswordResetToken {
-  id      String   @id @default(cuid())
-  email   String
-  token   String   @unique
-  expires DateTime
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expires   DateTime
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([email])
@@ -300,28 +273,20 @@ model PasswordResetToken {
 }
 
 model SenderIntelligence {
-  id               String   @id @default(cuid())
-  organizationId   String   @map("organization_id")
-  senderEmail      String   @map("sender_email")
-  
-  // Statistics
-  totalEmails      Int      @default(0) @map("total_emails")
-  tasksCreated     Int      @default(0) @map("tasks_created")
-  avgPriority      Float    @default(50) @map("avg_priority")
-  avgResponseTime  Float    @default(24) @map("avg_response_time") // hours
-  completionRate   Float    @default(0.8) @map("completion_rate")
-  
-  // Patterns (JSON)
-  patterns         Json     @default("{}")
-  
-  // Timestamps
-  lastInteraction  DateTime @map("last_interaction")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
-  
-  // Relations
-  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  
+  id              String       @id @default(cuid())
+  organizationId  String       @map("organization_id")
+  senderEmail     String       @map("sender_email")
+  totalEmails     Int          @default(0) @map("total_emails")
+  tasksCreated    Int          @default(0) @map("tasks_created")
+  avgPriority     Float        @default(50) @map("avg_priority")
+  avgResponseTime Float        @default(24) @map("avg_response_time")
+  completionRate  Float        @default(0.8) @map("completion_rate")
+  patterns        Json         @default("{}")
+  lastInteraction DateTime     @map("last_interaction")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   @@unique([organizationId, senderEmail])
   @@index([organizationId])
   @@index([senderEmail])
@@ -331,23 +296,23 @@ model SenderIntelligence {
 model ShortLink {
   id          String   @id @default(cuid())
   shortCode   String   @unique
-  originalUrl String   @db.Text
+  originalUrl String
   clicks      Int      @default(0)
   expiresAt   DateTime
   createdAt   DateTime @default(now())
-  
+
   @@index([expiresAt])
   @@map("short_links")
 }
 
 model DiscordJob {
-  messageId      String   @id @map("message_id")
-  organizationId String   @map("organization_id")
-  status         String   @default("processing")
-  meta           Json     @default("{}")
-  createdAt      DateTime @default(now()) @map("created_at")
+  messageId      String    @id @map("message_id")
+  organizationId String    @map("organization_id")
+  status         String    @default("processing")
+  createdAt      DateTime  @default(now()) @map("created_at")
   finishedAt     DateTime? @map("finished_at")
-  
+  meta           Json      @default("{}")
+
   @@index([organizationId])
   @@index([status])
   @@index([createdAt])
@@ -356,9 +321,9 @@ model DiscordJob {
 }
 
 model DiscordProcessedMessage {
-  messageId  String   @id @map("message_id")
-  createdAt  DateTime @default(now()) @map("created_at")
-  
+  messageId String   @id @map("message_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
   @@index([createdAt])
   @@map("discord_processed_messages")
 }

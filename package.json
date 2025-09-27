@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "worker:email": "tsx scripts/email-worker.ts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
@@ -50,6 +51,8 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "tweetnacl": "^1.0.3",
+    "ioredis": "^5.4.1",
+    "bullmq": "^5.9.0",
     "twilio": "^5.9.0",
     "utf-8-validate": "^6.0.5",
     "zod": "^3.25.76"

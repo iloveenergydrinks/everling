@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
         organizationId: session.user.organizationId,
         email: session.user.email.toLowerCase(),
         addedById: session.user.id,
-        note: "Registration email (auto-added via fix)"
+        note: "Registration email"
       }
     })
 
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
               organizationId: session.user.organizationId,
               email: member.user.email.toLowerCase(),
               addedById: session.user.id,
-              note: "Organization member email (auto-added)"
+              note: "Organization member email"
             }
           })
           addedEmails.push(member.user.email)

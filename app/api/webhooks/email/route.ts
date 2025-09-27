@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { processInboundEmail } from "@/lib/email"
+import { enqueueInboundEmail } from "@/lib/queues/email-queue"
+import { logTrace, logGlobal } from "@/lib/redis-logs"
 import crypto from "crypto"
 
 export const dynamic = 'force-dynamic'
@@ -66,6 +68,9 @@ export async function POST(request: NextRequest) {
   console.log('Email webhook received')
   
   try {
+    // Generate a trace id for this request
+    const requestId = Math.random().toString(36).slice(2) + Date.now().toString(36)
+    console.log('traceId:', requestId)
     // Skip auth check only in development for easier testing
     const skipAuth = process.env.NODE_ENV !== 'production'
     
@@ -86,6 +91,9 @@ export async function POST(request: NextRequest) {
 
     // Parse verified webhook data
     const emailData = JSON.parse(body)
+    ;(emailData as any)._traceId = requestId
+    await logTrace(requestId, 'webhook:received', { keys: Object.keys(emailData || {}) })
+    await logGlobal('webhook:received', requestId, { from: emailData.From, subject: emailData.Subject })
     console.log('Parsed email data keys:', Object.keys(emailData))
     
     // Debug: Log all recipient-related fields
@@ -108,32 +116,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Queue processing and return immediately
-    setTimeout(() => {
+    // Enqueue processing and return immediately
+    try {
+      await enqueueInboundEmail({ emailData, requestId })
+      console.log(`[${requestId}] Enqueued inbound email`)
+      await logTrace(requestId, 'queue:enqueued')
+      await logGlobal('queue:enqueued', requestId, { messageId: emailData.MessageID })
+    } catch (e) {
+      console.error(`[${requestId}] Failed to enqueue inbound email, falling back to inline processing`, e)
+      await logTrace(requestId, 'queue:enqueue_failed', { error: (e as any)?.message })
+      // Fallback inline (best effort) to avoid data loss
       processInboundEmail(emailData)
-        .then((res) => {
-          if (res && typeof res === 'object' && 'status' in res && (res as any).status === 'rejected') {
-            const r: any = res
-            console.log(`Async email rejected: ${r.reason} - ${r.message}`)
-          } else if (res && typeof res === 'object' && 'id' in res) {
-            console.log(`Async email processed: taskId=${(res as any).id}`)
-          } else if (res && typeof res === 'object' && 'taskId' in res) {
-            const r: any = res
-            if (r.taskIds && Array.isArray(r.taskIds)) {
-              console.log(`Async email processed: ${r.taskIds.length} tasks created: ${r.taskIds.join(', ')}`)
-            } else {
-              console.log(`Async email processed: taskId=${r.taskId}`)
-            }
-          } else {
-            console.log('Async email processed (no task)')
-          }
+        .then(() => logTrace(requestId, 'inline:processed'))
+        .catch(err => {
+          console.error(`[${requestId}] Inline processing error:`, err)
+          logTrace(requestId, 'inline:error', { error: (err as any)?.message })
         })
-        .catch((err) => {
-          console.error('Async email processing error:', err)
-        })
-    }, 0)
+    }
 
-    return NextResponse.json({ success: true, queued: true }, { status: 200 })
+    return NextResponse.json({ success: true, queued: true, traceId: requestId }, { status: 200 })
 
   } catch (error) {
     console.error("Email webhook error:", error)

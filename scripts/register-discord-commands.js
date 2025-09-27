@@ -40,10 +40,6 @@ const commands = [
     description: 'Get your daily task digest (only you can see it)'
   },
   {
-    name: 'setchannel',
-    description: 'Set this channel to receive your automated daily digests'
-  },
-  {
     name: 'everling',
     description: 'Everling bot commands',
     options: [

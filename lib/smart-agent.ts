@@ -5,6 +5,59 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
 })
 
+// Concurrency + timeout guards for Anthropic calls
+const MAX_ANTHROPIC_CONCURRENCY = Number(process.env.AI_CONCURRENCY || 5)
+const DEFAULT_AI_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS || 12000)
+
+let activeAnthropic = 0
+const anthropicQueue: Array<() => void> = []
+
+function runNextAnthropic() {
+  if (activeAnthropic >= MAX_ANTHROPIC_CONCURRENCY) return
+  const next = anthropicQueue.shift()
+  if (next) next()
+}
+
+function enqueueAnthropic<T>(fn: () => Promise<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const run = async () => {
+      activeAnthropic++
+      try {
+        const val = await fn()
+        resolve(val)
+      } catch (e) {
+        reject(e)
+      } finally {
+        activeAnthropic = Math.max(0, activeAnthropic - 1)
+        runNextAnthropic()
+      }
+    }
+    if (activeAnthropic < MAX_ANTHROPIC_CONCURRENCY) run()
+    else anthropicQueue.push(run)
+  })
+}
+
+async function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return await Promise.race([
+    p,
+    new Promise<T>((_, rej) => setTimeout(() => rej(new Error(`${label} timeout after ${ms}ms`)), ms))
+  ])
+}
+
+async function anthropicCall(options: any, label: string, forceJson: boolean = false, timeoutMs: number = DEFAULT_AI_TIMEOUT_MS): Promise<any> {
+  // Note: Anthropic Messages API does not support response_format; enforce JSON via prompt only
+  const params = { ...options }
+  return await withTimeout(
+    enqueueAnthropic(() => anthropic.messages.create(params as any) as any),
+    timeoutMs,
+    label
+  )
+}
+
+// Simple in-memory cache for thread analysis (upgrade to Redis later)
+const THREAD_CACHE_TTL_MS = Number(process.env.THREAD_CACHE_TTL_MS || 15 * 60 * 1000)
+const threadAnalysisCache = new Map<string, { expiresAt: number; value: any }>()
+
 interface SmartPriorityScore {
   score: number // 0-100
   reasoning: string
@@ -78,11 +131,25 @@ export async function calculateSmartPriority(
   }
 ): Promise<SmartPriorityScore> {
   try {
-    const message = await anthropic.messages.create({
+    const message = await anthropicCall({
       model: 'claude-3-5-haiku-20241022', // Use more powerful model for complex analysis
       max_tokens: 800,
       temperature: 0.1, // Low temperature for consistent scoring
       system: `You are an expert MULTILINGUAL email priority analyst. Score email priority from 0-100 based on sophisticated factors, handling ANY language fluently (especially Italian and English).
+
+STRICT OUTPUT REQUIREMENT:
+Return ONLY a single JSON object matching this TypeScript type, with no preamble or extra text:
+{
+  "score": number, // 0-100
+  "reasoning": string,
+  "factors": {
+    "senderImportance": number,
+    "urgencyLevel": number,
+    "businessImpact": number,
+    "timeConstraint": number,
+    "contextualRelevance": number
+  }
+}
 
 SCORING FRAMEWORK:
 
@@ -150,7 +217,7 @@ ORGANIZATION CONTEXT:
 
 Provide detailed priority analysis with specific reasoning.`
       }],
-    })
+    }, 'calculateSmartPriority', false)
 
     const content = message.content[0]
     if (content.type === 'text') {
@@ -201,11 +268,14 @@ export async function analyzeThreadContext(
     // Sort emails chronologically
     const sortedEmails = emails.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
     
-    const message = await anthropic.messages.create({
+    const message = await anthropicCall({
       model: 'claude-3-5-haiku-20241022',
       max_tokens: 1200,
       temperature: 0.2,
       system: `You are an expert MULTILINGUAL conversation analyst. Analyze email threads in ANY LANGUAGE to understand:
+
+STRICT OUTPUT REQUIREMENT:
+Return ONLY one JSON object. No prose, no markdown. Start with { and end with }.
 
 1. CONVERSATION FLOW
    - Who is asking what from whom
@@ -276,7 +346,7 @@ ${email.body.substring(0, 1500)}
 
 Provide comprehensive thread analysis with conversation flow, decisions, action items, and current status.`
       }],
-    })
+    }, 'analyzeThreadContext', false)
 
     const content = message.content[0]
     if (content.type === 'text') {
@@ -348,11 +418,21 @@ export async function extractTaskRelationships(
   })
   
   try {
-    const message = await anthropic.messages.create({
+    const message = await anthropicCall({
       model: 'claude-3-5-haiku-20241022',
       max_tokens: 500,
       temperature: 0.1,
       system: `You are an expert at understanding task relationships in emails across ALL languages.
+
+STRICT OUTPUT REQUIREMENT:
+Return ONLY a JSON object with exactly these fields and no extras:
+{
+  "assignedToEmail": string | null,
+  "assignedByEmail": string | null,
+  "taskType": "assigned" | "self" | "delegation" | "tracking" | "fyi",
+  "userRole": "executor" | "delegator" | "observer" | "coordinator",
+  "stakeholders": Array<{ "name"?: string, "email": string, "role": string }>
+}
 
 CRITICAL CONTEXT UNDERSTANDING:
 When analyzing forwarded emails, pay special attention to:
@@ -432,7 +512,7 @@ ANALYSIS HINTS:
 
 Who should do this task? What's the recipient's role?`
       }]
-    })
+    }, 'extractTaskRelationships', false)
 
     const content = message.content[0]
     if (content.type === 'text') {
@@ -594,11 +674,34 @@ export async function extractSmartTask(
   try {
     console.log('🤖 Calling Claude API for task extraction...')
     
-    const message = await anthropic.messages.create({
+    const message = await anthropicCall({
       model: 'claude-3-5-haiku-20241022',
       max_tokens: 1000,
       temperature: 0.2,
       system: `You are an expert MULTILINGUAL task extraction specialist. Extract comprehensive task information from emails in ANY language, with special expertise in Italian and English.
+
+STRICT OUTPUT REQUIREMENT:
+If the email has ONE task, return ONLY a single JSON object with the following fields (all required):
+{
+  "title": string,
+  "description": string,
+  "priority": "low" | "medium" | "high",
+  "dueDate": string | null, // ISO 8601 or null
+  "reminderDate": string | null, // ISO 8601 or null
+  "estimatedEffort": "quick" | "medium" | "complex",
+  "businessImpact": "low" | "medium" | "high",
+  "stakeholders": string[],
+  "projectTag": string | null,
+  "dependencies": string[],
+  "tags": { "when": string | null, "where": string | null, "who": string | null, "what": string | null, "extras": string[] }
+}
+
+If the email has MULTIPLE tasks, return ONLY one JSON object with a "tasks" array of the above objects:
+{
+  "tasks": [ { ...taskFields }, { ...taskFields } ]
+}
+
+Do NOT include any text outside of the JSON. Do NOT wrap in markdown.
 
 CRITICAL NEW CAPABILITY: MULTIPLE TASK EXTRACTION
 When an email contains MULTIPLE distinct tasks (each with different deadlines or actions):
@@ -749,7 +852,7 @@ ${threadContext ? `
 
 Extract comprehensive task information with smart analysis.`
       }],
-    })
+    }, 'extractSmartTask', true)
 
     console.log('🤖 Claude API response received, processing...')
     
@@ -963,6 +1066,12 @@ export async function analyzeEmailThread(
   organizationId: string
 ): Promise<ThreadContext | null> {
   try {
+    // Cache key and lookup
+    const cacheKey = `${organizationId}:${threadId}`
+    const cached = threadAnalysisCache.get(cacheKey)
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.value
+    }
     // Get all emails in thread
     const threadEmails = await prisma.emailLog.findMany({
       where: {
@@ -994,7 +1103,11 @@ export async function analyzeEmailThread(
       }
     })
 
-    return await analyzeThreadContext(emailsForAnalysis)
+    const analysis = await analyzeThreadContext(emailsForAnalysis)
+    if (analysis) {
+      threadAnalysisCache.set(cacheKey, { value: analysis, expiresAt: Date.now() + THREAD_CACHE_TTL_MS })
+    }
+    return analysis
   } catch (error) {
     console.error('Failed to analyze email thread:', error)
     return null

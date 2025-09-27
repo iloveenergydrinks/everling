@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react"
 import { formatDateTime } from "@/lib/utils"
 import { recordInteraction } from "@/lib/tasks"
 import { 
-  ArrowDownToLine, Share2, Eye, User, Pencil, Clock, MoreVertical, Trash2, CheckCircle 
+  ArrowDownToLine, Share2, Eye, User, Pencil, Clock, MoreVertical, Trash2, CheckCircle, Info
 } from "lucide-react"
 import { Task } from "./types"
 import { toast } from "@/hooks/use-toast"
@@ -38,6 +38,7 @@ export function TaskList({
   const [showHiddenTasks, setShowHiddenTasks] = useState(false)
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
   const [showActionsFor, setShowActionsFor] = useState<string | null>(null)
+  const [showReasoningFor, setShowReasoningFor] = useState<string | null>(null)
 
   // Calculate task age and staleness
   const getTaskAge = (task: Task) => {
@@ -305,44 +306,67 @@ export function TaskList({
                 key={task.id}
                 className={`relative p-3 md:p-4 border rounded-lg hover:bg-muted/30 transition-all duration-300 ${getTaskFadeClass(task)}`}
               >
-                {/* Mobile actions menu - positioned absolute top-right */}
-                <div className="md:hidden absolute top-2 right-2 z-10">
-                  <button
-                    onClick={() => setShowActionsFor(showActionsFor === task.id ? null : task.id)}
-                    className="p-1.5 hover:bg-muted rounded-md"
-                  >
-                    <MoreVertical className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                  {showActionsFor === task.id && (
-                    <div className="absolute right-0 top-8 z-20 bg-background border rounded-lg shadow-lg p-1 min-w-[120px]">
-                      <button
-                        onClick={() => {
-                          const newStatus = task.status === 'done' ? 'pending' : 'done'
-                          updateTaskStatus(task.id, newStatus)
-                          recordInteraction(task.id, newStatus === 'done' ? 'complete' : 'click')
-                          setShowActionsFor(null)
-                        }}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded flex items-center gap-2"
-                      >
-                        <CheckCircle className="h-3.5 w-3.5" />
-                        {task.status === 'done' ? 'Reopen' : 'Complete'}
-                      </button>
-                      <button
-                        onClick={() => {
-                          deleteTask(task.id)
-                          setShowActionsFor(null)
-                        }}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded text-destructive flex items-center gap-2"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Delete
-                      </button>
-                    </div>
-                  )}
+                {/* Action buttons - positioned absolute top-right for both mobile and desktop */}
+                <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+                  {/* Desktop buttons - always visible */}
+                  <div className="hidden md:flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        const newStatus = task.status === 'done' ? 'pending' : 'done'
+                        updateTaskStatus(task.id, newStatus)
+                        recordInteraction(task.id, newStatus === 'done' ? 'complete' : 'click')
+                      }}
+                      className="text-xs px-2 py-1 border rounded hover:bg-muted"
+                    >
+                      {task.status === 'done' ? 'Reopen' : 'Complete'}
+                    </button>
+                    <button
+                      onClick={() => deleteTask(task.id)}
+                      className="text-xs text-muted-foreground hover:text-destructive px-2 py-1"
+                    >
+                      Delete
+                    </button>
+                  </div>
+
+                  {/* Mobile dropdown menu */}
+                  <div className="md:hidden">
+                    <button
+                      onClick={() => setShowActionsFor(showActionsFor === task.id ? null : task.id)}
+                      className="p-1.5 hover:bg-muted rounded-md"
+                    >
+                      <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                    {showActionsFor === task.id && (
+                      <div className="absolute right-0 top-8 z-20 bg-background border rounded-lg shadow-lg p-1 min-w-[120px]">
+                        <button
+                          onClick={() => {
+                            const newStatus = task.status === 'done' ? 'pending' : 'done'
+                            updateTaskStatus(task.id, newStatus)
+                            recordInteraction(task.id, newStatus === 'done' ? 'complete' : 'click')
+                            setShowActionsFor(null)
+                          }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded flex items-center gap-2"
+                        >
+                          <CheckCircle className="h-3.5 w-3.5" />
+                          {task.status === 'done' ? 'Reopen' : 'Complete'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            deleteTask(task.id)
+                            setShowActionsFor(null)
+                          }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded text-destructive flex items-center gap-2"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
-                {/* Main content area - add padding-right on mobile to avoid overlap with menu */}
-                <div className="space-y-2 pr-8 md:pr-0">
+                {/* Main content area - add padding-right to avoid overlap with action buttons */}
+                <div className="space-y-2 pr-32 md:pr-28">
                   {/* Task Relationship Indicators */}
                   {(task.assignedByEmail || task.taskType === 'tracking' || task.taskType === 'delegation' || 
                     task.taskType === 'assigned') && (
@@ -408,43 +432,19 @@ export function TaskList({
                     </div>
                   )}
                   
-                  {/* Task title and actions row */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 
-                          className="text-sm font-medium flex-1 cursor-pointer"
-                          onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}
-                        >
-                          <span className={isExpanded ? "" : "line-clamp-2"}>{task.title}</span>
-                        </h3>
-                        {age.isStale && (
-                          <span className="text-[10px] md:text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 flex-shrink-0">
-                            stale
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* Desktop action buttons */}
-                    <div className="hidden md:flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          const newStatus = task.status === 'done' ? 'pending' : 'done'
-                          updateTaskStatus(task.id, newStatus)
-                          recordInteraction(task.id, newStatus === 'done' ? 'complete' : 'click')
-                        }}
-                        className="text-xs px-2 py-1 border rounded hover:bg-muted"
-                      >
-                        {task.status === 'done' ? 'Reopen' : 'Complete'}
-                      </button>
-                      <button
-                        onClick={() => deleteTask(task.id)}
-                        className="text-xs text-muted-foreground hover:text-destructive px-2 py-1"
-                      >
-                        Delete
-                      </button>
-                    </div>
+                  {/* Task title row */}
+                  <div className="flex items-center gap-2">
+                    <h3
+                      className="text-sm font-medium flex-1 cursor-pointer"
+                      onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}
+                    >
+                      <span className={isExpanded ? "" : "line-clamp-2"}>{task.title}</span>
+                    </h3>
+                    {age.isStale && (
+                      <span className="text-[10px] md:text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 flex-shrink-0">
+                        stale
+                      </span>
+                    )}
                   </div>
                   
                   {/* Description (expandable on mobile) */}
@@ -459,15 +459,10 @@ export function TaskList({
                     </div>
                   )}
                   
-                  {/* Meta line */}
-                  {(task.relevanceReason || task.priority === 'high') && (
-                    <div className="flex flex-wrap items-center gap-2 md:gap-4 text-[10px] md:text-xs text-muted-foreground">
-                      {task.relevanceReason && (
-                        <span className="font-medium">{task.relevanceReason}</span>
-                      )}
-                      {task.priority === 'high' && (
-                        <span className="text-red-600">High priority</span>
-                      )}
+                  {/* Priority indicator */}
+                  {task.priority === 'high' && (
+                    <div className="text-[10px] md:text-xs text-red-600">
+                      High priority
                     </div>
                   )}
 
