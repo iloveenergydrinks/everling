@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { UniversalProcessingIndicator } from "@/components/universal-processing-indicator"
 
+export const dynamic = 'force-dynamic'
+
 export default async function DashboardLayout({
   children,
 }: {
