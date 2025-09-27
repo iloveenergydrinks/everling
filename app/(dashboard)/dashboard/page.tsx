@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { useSession, signOut } from "next-auth/react"
-import { useRouter } from "next/navigation"
 import { getSmartTaskList, interpretCommand } from "@/lib/tasks"
 import { NotificationSetup } from "@/components/notification-setup"
 import { getUserTimezone } from "@/lib/timezones"
@@ -20,13 +19,13 @@ import { SettingsDrawer } from "./components/SettingsDrawer"
 import { IntegrationsDrawer } from "./components/IntegrationsDrawer"
 import { NotificationsDrawer } from "./components/NotificationsDrawer"
 import { HowItWorksDrawer } from "./components/HowItWorksDrawer"
+import { OrganizationDrawer } from "./components/OrganizationDrawer"
 import { ApiKeyModal } from "./components/ApiKeyModal"
 import { TaskList } from "./components/TaskList"
 import { Task, FilterState, TimeFilter, OwnershipFilter } from "./components/types"
 
 export default function DashboardPage() {
   const { data: session } = useSession()
-  const router = useRouter()
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -75,6 +74,7 @@ export default function DashboardPage() {
   const [showNotifications, setShowNotifications] = useState(false)
   const [showIntegrations, setShowIntegrations] = useState(false)
   const [showHowItWorks, setShowHowItWorks] = useState(false)
+  const [showOrganization, setShowOrganization] = useState(false)
   
   // Other UI states
   const [showApiKeyModal, setShowApiKeyModal] = useState(false)
@@ -1290,7 +1290,7 @@ export default function DashboardPage() {
                 Settings
               </button>
               <button
-                onClick={() => router.push('/dashboard/organization')}
+                onClick={() => setShowOrganization(true)}
                 className="hover:text-foreground"
               >
                 Organization
@@ -1332,6 +1332,7 @@ export default function DashboardPage() {
             setShowNotifications(false)
             setShowIntegrations(false)
             setShowHowItWorks(false)
+            setShowOrganization(false)
           }}
         />
       )}
@@ -1384,9 +1385,13 @@ export default function DashboardPage() {
       )}
 
       {/* How It Works Drawer */}
-      <HowItWorksDrawer
+      <HowItWorksDrawer 
         show={showHowItWorks}
         onClose={() => setShowHowItWorks(false)}
+      />
+      <OrganizationDrawer
+        show={showOrganization}
+        onClose={() => setShowOrganization(false)}
       />
     </>
   )
