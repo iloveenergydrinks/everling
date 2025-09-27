@@ -1385,10 +1385,12 @@ export default function DashboardPage() {
       )}
 
       {/* How It Works Drawer */}
-      <HowItWorksDrawer 
+      <HowItWorksDrawer
         show={showHowItWorks}
         onClose={() => setShowHowItWorks(false)}
       />
+
+      {/* Organization Drawer */}
       <OrganizationDrawer
         show={showOrganization}
         onClose={() => setShowOrganization(false)}

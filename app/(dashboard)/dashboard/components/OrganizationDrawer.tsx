@@ -2,17 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { DrawerWrapper } from './DrawerWrapper'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/hooks/use-toast'
-import { Loader2, Crown, User, Shield, Copy, Trash2, ChevronDown, ChevronRight, UserPlus } from 'lucide-react'
-
-interface OrganizationDrawerProps {
-  show: boolean
-  onClose: () => void
-}
+import { Loader2, Users, Settings, Send, UserPlus, Crown, User, Shield, Copy, Trash2, Building } from 'lucide-react'
+import { DrawerWrapper } from './DrawerWrapper'
 
 interface Organization {
   id: string
@@ -37,9 +34,14 @@ interface Member {
   joinedAt: string
 }
 
+interface OrganizationDrawerProps {
+  show: boolean
+  onClose: () => void
+}
+
 export function OrganizationDrawer({ show, onClose }: OrganizationDrawerProps) {
   const { data: session } = useSession()
-  const [activeSection, setActiveSection] = useState<'general' | 'members' | 'invites' | null>('general')
+  const [activeTab, setActiveTab] = useState('general')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   
@@ -164,7 +166,7 @@ export function OrganizationDrawer({ show, onClose }: OrganizationDrawerProps) {
         fetchMembers() // Refresh members list
       } else {
         const error = await response.json()
-        throw new Error(error.error || 'Failed to send invite')
+        throw new Error(error.message || 'Failed to send invite')
       }
     } catch (error: any) {
       toast({
@@ -217,11 +219,11 @@ export function OrganizationDrawer({ show, onClose }: OrganizationDrawerProps) {
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'admin':
-        return <Crown className="h-3.5 w-3.5" />
+        return <Crown className="h-4 w-4" />
       case 'member':
-        return <User className="h-3.5 w-3.5" />
+        return <User className="h-4 w-4" />
       default:
-        return <Shield className="h-3.5 w-3.5" />
+        return <Shield className="h-4 w-4" />
     }
   }
 
@@ -243,26 +245,40 @@ export function OrganizationDrawer({ show, onClose }: OrganizationDrawerProps) {
       show={show}
       onClose={onClose}
       title="Organization"
+      icon={<Building className="h-5 w-5" />}
     >
-      <div className="p-3 md:p-4 space-y-4">
+      <div className="p-4 md:p-6 overflow-y-auto h-full">
         {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <div className="flex items-center justify-center min-h-[400px]">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : !organization ? (
+          <div className="flex items-center justify-center min-h-[400px]">
+            <p className="text-muted-foreground">Organization not found</p>
           </div>
         ) : (
-          <>
-            {/* General Section */}
-            <div className="border rounded-md p-3 md:p-4">
-              <button
-                onClick={() => setActiveSection(activeSection === 'general' ? null : 'general')}
-                className="w-full flex items-center justify-between text-sm font-medium mb-3"
-              >
-                <span>General Settings</span>
-                {activeSection === 'general' ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              </button>
-              
-              {activeSection === 'general' && (
-                <div className="space-y-4">
+          <div className="space-y-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="w-full justify-start">
+                <TabsTrigger value="general" className="gap-2">
+                  <Settings className="h-4 w-4" />
+                  General
+                </TabsTrigger>
+                <TabsTrigger value="members" className="gap-2">
+                  <Users className="h-4 w-4" />
+                  Members {members.length > 0 && `(${members.length})`}
+                </TabsTrigger>
+                <TabsTrigger value="invites" className="gap-2">
+                  <Send className="h-4 w-4" />
+                  Invites
+                </TabsTrigger>
+              </TabsList>
+
+              {/* General Settings Tab */}
+              <TabsContent value="general" className="space-y-6">
+                <div className="border rounded-md p-3 md:p-4">
+                  <h3 className="font-medium text-sm mb-3">General Settings</h3>
+                  
                   {/* Organization Name */}
                   <div className="space-y-2">
                     <Label htmlFor="org-name" className="text-xs">Organization Name</Label>
@@ -272,18 +288,18 @@ export function OrganizationDrawer({ show, onClose }: OrganizationDrawerProps) {
                         value={organizationName}
                         onChange={(e) => setOrganizationName(e.target.value)}
                         placeholder="Enter organization name"
-                        className="text-sm rounded"
+                        className="rounded text-sm"
                         disabled={!canManageMembers}
                       />
                       {canManageMembers && (
                         <Button
                           onClick={handleUpdateOrganization}
-                          disabled={saving || organizationName === organization?.name}
-                          size="sm"
+                          disabled={saving || organizationName === organization.name}
                           className="rounded"
+                          size="sm"
                         >
                           {saving ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
                             'Save'
                           )}
@@ -296,124 +312,111 @@ export function OrganizationDrawer({ show, onClose }: OrganizationDrawerProps) {
                   </div>
 
                   {/* Agent Email */}
-                  <div className="space-y-2">
+                  <div className="space-y-2 mt-4">
                     <Label className="text-xs">Agent Email</Label>
                     <div className="flex items-center gap-2">
-                      <code className="px-2 py-1.5 bg-muted rounded text-xs">
-                        {organization?.emailPrefix}@{process.env.NEXT_PUBLIC_EMAIL_DOMAIN || 'everling.io'}
+                      <code className="px-3 py-2 bg-muted rounded text-xs">
+                        {organization.emailPrefix}@{process.env.NEXT_PUBLIC_EMAIL_DOMAIN || 'everling.io'}
                       </code>
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
                         onClick={copyAgentEmail}
-                        className="h-7 w-7 p-0"
+                        className="rounded"
                       >
-                        <Copy className="h-3.5 w-3.5" />
+                        <Copy className="h-3 w-3" />
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Forward emails here to create tasks
+                      Forward emails here to create tasks automatically
                     </p>
                   </div>
 
                   {/* Plan & Usage */}
-                  <div className="space-y-2">
+                  <div className="space-y-2 mt-4">
                     <Label className="text-xs">Current Plan</Label>
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-1 bg-primary/10 text-primary rounded text-xs font-medium">
-                        {organization?.plan === 'pro' ? 'Pro' : 'Free'}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {organization?.plan === 'pro' 
-                          ? 'Unlimited tasks' 
-                          : `${organization?.monthlyTasksUsed} / ${organization?.taskLimit} tasks this month`}
-                      </span>
-                    </div>
-                    {organization?.plan === 'free' && (
-                      <Button variant="outline" size="sm" className="text-xs rounded">
-                        Upgrade to Pro
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Members Section */}
-            <div className="border rounded-md p-3 md:p-4">
-              <button
-                onClick={() => setActiveSection(activeSection === 'members' ? null : 'members')}
-                className="w-full flex items-center justify-between text-sm font-medium mb-3"
-              >
-                <span>Team Members {members.length > 0 && `(${members.length})`}</span>
-                {activeSection === 'members' ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              </button>
-              
-              {activeSection === 'members' && (
-                <div className="space-y-2">
-                  {members.map((member) => (
-                    <div
-                      key={member.user.id}
-                      className="flex items-center justify-between p-2 border rounded"
-                    >
+                    <div className="space-y-3">
                       <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
-                          {member.user.name?.[0]?.toUpperCase() || member.user.email[0].toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="text-sm font-medium">
-                            {member.user.name || member.user.email}
-                          </div>
-                          {member.user.name && (
-                            <div className="text-xs text-muted-foreground">
-                              {member.user.email}
-                            </div>
-                          )}
-                        </div>
-                        <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium ${getRoleBadgeColor(member.role)}`}>
-                          {getRoleIcon(member.role)}
-                          <span>{member.role}</span>
-                        </div>
+                        <span className="px-2 py-1 bg-primary/10 text-primary rounded text-xs font-medium">
+                          {organization.plan === 'pro' ? 'Pro' : 'Free'}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {organization.plan === 'pro' 
+                            ? 'Unlimited tasks' 
+                            : `${organization.monthlyTasksUsed} / ${organization.taskLimit} tasks this month`}
+                        </span>
                       </div>
-                      
-                      {canManageMembers && member.user.id !== session?.user?.id && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveMember(member.user.id)}
-                          className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
+                      {organization.plan === 'free' && (
+                        <Button variant="outline" size="sm" className="rounded text-xs">
+                          Upgrade to Pro
                         </Button>
                       )}
                     </div>
-                  ))}
-
-                  {members.length === 0 && (
-                    <div className="text-center py-4 text-xs text-muted-foreground">
-                      No members yet
-                    </div>
-                  )}
+                  </div>
                 </div>
-              )}
-            </div>
+              </TabsContent>
 
-            {/* Invite Section */}
-            <div className="border rounded-md p-3 md:p-4">
-              <button
-                onClick={() => setActiveSection(activeSection === 'invites' ? null : 'invites')}
-                className="w-full flex items-center justify-between text-sm font-medium mb-3"
-              >
-                <span>Invite Members</span>
-                {activeSection === 'invites' ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              </button>
-              
-              {activeSection === 'invites' && (
-                <div className="space-y-3">
+              {/* Members Tab */}
+              <TabsContent value="members" className="space-y-4">
+                <div className="border rounded-md p-3 md:p-4">
+                  <h3 className="font-medium text-sm mb-3">Team Members</h3>
+                  
+                  {/* Members List */}
+                  <div className="space-y-2">
+                    {members.map((member) => (
+                      <div
+                        key={member.user.id}
+                        className="flex items-center justify-between p-3 border rounded"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                            {member.user.name?.[0]?.toUpperCase() || member.user.email[0].toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="font-medium text-sm">
+                              {member.user.name || member.user.email}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {member.user.email}
+                            </div>
+                          </div>
+                          <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${getRoleBadgeColor(member.role)}`}>
+                            {getRoleIcon(member.role)}
+                            {member.role}
+                          </div>
+                        </div>
+                        
+                        {canManageMembers && member.user.id !== session?.user?.id && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveMember(member.user.id)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+
+                    {members.length === 0 && (
+                      <div className="text-center py-6 text-muted-foreground text-sm">
+                        No members yet
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* Invites Tab */}
+              <TabsContent value="invites" className="space-y-4">
+                <div className="border rounded-md p-3 md:p-4">
+                  <h3 className="font-medium text-sm mb-3">Invite Team Members</h3>
+                  
                   {canManageMembers ? (
-                    <>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="space-y-1">
+                    <div className="space-y-4">
+                      <div className="grid gap-3">
+                        <div className="space-y-2">
                           <Label htmlFor="invite-email" className="text-xs">Email Address</Label>
                           <Input
                             id="invite-email"
@@ -421,10 +424,10 @@ export function OrganizationDrawer({ show, onClose }: OrganizationDrawerProps) {
                             placeholder="colleague@company.com"
                             value={inviteEmail}
                             onChange={(e) => setInviteEmail(e.target.value)}
-                            className="text-sm rounded"
+                            className="rounded text-sm"
                           />
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-2">
                           <Label htmlFor="invite-role" className="text-xs">Role</Label>
                           <select
                             id="invite-role"
@@ -441,49 +444,49 @@ export function OrganizationDrawer({ show, onClose }: OrganizationDrawerProps) {
                       <Button
                         onClick={handleInviteMember}
                         disabled={inviting || !inviteEmail}
+                        className="rounded w-full"
                         size="sm"
-                        className="w-full rounded"
                       >
                         {inviting ? (
                           <>
-                            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
                             Sending...
                           </>
                         ) : (
                           <>
-                            <UserPlus className="mr-2 h-3.5 w-3.5" />
+                            <UserPlus className="mr-2 h-3 w-3" />
                             Send Invitation
                           </>
                         )}
                       </Button>
                       
                       <div className="pt-3 border-t">
-                        <h4 className="text-xs font-medium mb-2">Role Permissions</h4>
+                        <h4 className="font-medium text-xs mb-2">Role Permissions</h4>
                         <div className="space-y-2 text-xs text-muted-foreground">
                           <div className="flex items-start gap-2">
-                            <User className="h-3.5 w-3.5 mt-0.5" />
+                            <User className="h-3 w-3 mt-0.5" />
                             <div>
                               <span className="font-medium">Member:</span> Can create and manage tasks
                             </div>
                           </div>
                           <div className="flex items-start gap-2">
-                            <Crown className="h-3.5 w-3.5 mt-0.5" />
+                            <Crown className="h-3 w-3 mt-0.5" />
                             <div>
-                              <span className="font-medium">Admin:</span> Full organization control
+                              <span className="font-medium">Admin:</span> Full access to organization settings
                             </div>
                           </div>
                         </div>
                       </div>
-                    </>
+                    </div>
                   ) : (
-                    <div className="text-center py-4 text-xs text-muted-foreground">
+                    <div className="text-center py-6 text-muted-foreground text-sm">
                       Only admins can invite new members
                     </div>
                   )}
                 </div>
-              )}
-            </div>
-          </>
+              </TabsContent>
+            </Tabs>
+          </div>
         )}
       </div>
     </DrawerWrapper>
