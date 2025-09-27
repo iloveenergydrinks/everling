@@ -32,24 +32,25 @@ export function DrawerWrapper({
     }
   }, [show])
 
-  if (!show) return null
-
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop - always rendered but with opacity transition */}
       <div 
-        className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 md:hidden"
+        className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${
+          show ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
         onClick={onClose}
       />
       
-      {/* Drawer */}
+      {/* Drawer - always rendered but slides in/out */}
       <div className={`
         fixed right-0 top-0 h-full bg-background border-l shadow-xl z-50 
-        transition-all duration-300 ease-out
+        transition-transform duration-300 ease-out
         ${wide 
           ? 'w-full md:w-[800px] lg:w-[960px]' 
           : 'w-full md:w-[480px] lg:w-[640px]'
         }
+        ${show ? 'translate-x-0' : 'translate-x-full'}
       `}>
         <div className="flex flex-col h-full">
           {/* Header */}
