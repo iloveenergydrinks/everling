@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cleanupExpiredLinks } from '@/lib/url-shortener'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     // Verify the request is authorized (same as other cron endpoints)
