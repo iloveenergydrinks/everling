@@ -14,6 +14,16 @@ const DiscordLogo = ({ className }: { className?: string }) => (
   </svg>
 )
 
+// Slack Logo SVG Component
+const SlackLogo = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 127 127" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M27.2 80c0 7.3-5.9 13.2-13.2 13.2C6.7 93.2.8 87.3.8 80s5.9-13.2 13.2-13.2h13.2V80zm6.6 0c0-7.3 5.9-13.2 13.2-13.2 7.3 0 13.2 5.9 13.2 13.2v33c0 7.3-5.9 13.2-13.2 13.2-7.3 0-13.2-5.9-13.2-13.2V80z" fill="#E01E5A"/>
+    <path d="M47 27c-7.3 0-13.2-5.9-13.2-13.2C33.8 6.5 39.7.6 47 .6c7.3 0 13.2 5.9 13.2 13.2V27H47zm0 6.7c7.3 0 13.2 5.9 13.2 13.2 0 7.3-5.9 13.2-13.2 13.2H13.9C6.6 60.1.7 54.2.7 46.9c0-7.3 5.9-13.2 13.2-13.2H47z" fill="#36C5F0"/>
+    <path d="M99.9 46.9c0-7.3 5.9-13.2 13.2-13.2 7.3 0 13.2 5.9 13.2 13.2 0 7.3-5.9 13.2-13.2 13.2H99.9V46.9zm-6.6 0c0 7.3-5.9 13.2-13.2 13.2-7.3 0-13.2-5.9-13.2-13.2V13.8C66.9 6.5 72.8.6 80.1.6c7.3 0 13.2 5.9 13.2 13.2v33.1z" fill="#2EB67D"/>
+    <path d="M80.1 99.8c7.3 0 13.2 5.9 13.2 13.2 0 7.3-5.9 13.2-13.2 13.2-7.3 0-13.2-5.9-13.2-13.2V99.8h13.2zm0-6.6c-7.3 0-13.2-5.9-13.2-13.2 0-7.3 5.9-13.2 13.2-13.2h33.1c7.3 0 13.2 5.9 13.2 13.2 0 7.3-5.9 13.2-13.2 13.2H80.1z" fill="#ECB22E"/>
+  </svg>
+)
+
 interface ApiKey {
   id: string
   name: string
@@ -479,25 +489,67 @@ export function IntegrationsDrawer({
             )}
           </div>
 
+          {/* Slack (Coming Soon) */}
+          <div className="border rounded-lg">
+            <div className="flex items-start justify-between p-3 md:p-4 border-b">
+              <div className="flex items-center gap-3">
+                <SlackLogo className="h-5 w-5" />
+                <div>
+                  <h3 className="text-sm font-medium">Slack</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Create tasks directly from Slack conversations
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs px-2 py-1 bg-muted rounded text-muted-foreground">
+                Coming Soon
+              </span>
+            </div>
+            
+            <div className="p-3 md:p-4 space-y-4">
+              <div className="space-y-3 opacity-60">
+                <div className="flex items-start gap-3">
+                  <MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm">Slash Commands</p>
+                    <p className="text-xs text-muted-foreground">/everling "meeting tomorrow" - Create tasks instantly</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start gap-3">
+                  <Command className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm">Message Actions</p>
+                    <p className="text-xs text-muted-foreground">Right-click any message → Create Task</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start gap-3">
+                  <Users className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm">Team Collaboration</p>
+                    <p className="text-xs text-muted-foreground">Share tasks with channels, assign to teammates</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="pt-3 border-t">
+                <button
+                  disabled
+                  className="w-full flex items-center justify-center gap-2 text-sm px-3 py-2 bg-muted text-muted-foreground rounded-md cursor-not-allowed opacity-50"
+                >
+                  <SlackLogo className="h-4 w-4" />
+                  Coming Soon
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Google Calendar (Coming Soon) */}
           <div className="border rounded-lg p-3 md:p-4 opacity-60">
             <h3 className="text-sm font-medium mb-3">Google Calendar</h3>
             <p className="text-xs text-muted-foreground mb-3">
               Sync tasks with Google Calendar (Coming soon)
-            </p>
-            <button
-              disabled
-              className="text-sm px-4 py-2 border rounded opacity-50 cursor-not-allowed"
-            >
-              Coming Soon
-            </button>
-          </div>
-
-          {/* Slack (Coming Soon) */}
-          <div className="border rounded-lg p-3 md:p-4 opacity-60">
-            <h3 className="text-sm font-medium mb-3">Slack</h3>
-            <p className="text-xs text-muted-foreground mb-3">
-              Create and manage tasks from Slack (Coming soon)
             </p>
             <button
               disabled
