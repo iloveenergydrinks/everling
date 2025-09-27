@@ -932,7 +932,7 @@ export default function AdminDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2 max-h-[600px] overflow-y-auto">
+              <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
                 {emailLogs.map((log) => (
                   <div key={log.id} className="flex items-center justify-between p-3 border rounded-sm hover:bg-muted/50">
                     <div className="flex-1">

@@ -415,7 +415,7 @@ export function SettingsDrawer({
                 {/* Allowed Emails List */}
                 <div className="border rounded-lg bg-card">
                   {allowedEmails.length > 0 ? (
-                    <div className="divide-y divide-border max-h-[220px] overflow-y-auto">
+                    <div className="divide-y divide-border max-h-[220px] overflow-y-auto pr-2">
                       {allowedEmails.map((email) => (
                         <div key={email.id} className="flex items-center justify-between p-3 hover:bg-muted/50 transition-colors">
                           <div className="flex-1 min-w-0">
@@ -520,7 +520,7 @@ export function SettingsDrawer({
                         Showing most recent 50 of {emailLogsCount} total logs
                       </p>
                     )}
-                    <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
                     {emailLogs.map((log) => (
                       <div
                         key={log.id}
