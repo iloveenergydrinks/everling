@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { useSession, signOut } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { getSmartTaskList, interpretCommand } from "@/lib/tasks"
 import { NotificationSetup } from "@/components/notification-setup"
 import { getUserTimezone } from "@/lib/timezones"
@@ -25,6 +26,7 @@ import { Task, FilterState, TimeFilter, OwnershipFilter } from "./components/typ
 
 export default function DashboardPage() {
   const { data: session } = useSession()
+  const router = useRouter()
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -1286,6 +1288,12 @@ export default function DashboardPage() {
                 className="hover:text-foreground"
               >
                 Settings
+              </button>
+              <button
+                onClick={() => router.push('/dashboard/organization')}
+                className="hover:text-foreground"
+              >
+                Organization
               </button>
               <button
                 onClick={() => setShowIntegrations(true)}
