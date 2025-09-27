@@ -24,12 +24,6 @@ export default async function HomePage() {
           </div>
           <div className="flex items-center gap-3">
             <Link 
-              href="/pricing"
-              className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Pricing
-            </Link>
-            <Link 
               href="/register"
               className="px-4 py-2 text-sm bg-foreground text-background rounded hover:bg-foreground/90 transition-colors"
             >
@@ -170,15 +164,13 @@ export default async function HomePage() {
             Start with zero friction
           </Link>
           <p className="text-xs text-muted-foreground mt-3">
-            Free plan: 100 tasks/month • No credit card • Upgrade anytime
+            Free • No setup required • Works immediately
           </p>
         </div>
 
         {/* Footer */}
         <div className="mt-16 pt-8 border-t text-center">
           <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground mb-2">
-            <Link href="/pricing" className="hover:text-foreground">Pricing</Link>
-            <span>•</span>
             <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
             <span>•</span>
             <Link href="/terms" className="hover:text-foreground">Terms</Link>

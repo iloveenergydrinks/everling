@@ -1,11 +1,10 @@
-import { redirect } from "next/navigation"
 import { getServerSession } from "next-auth"
+import { redirect } from "next/navigation"
 import { authOptions } from "@/lib/auth"
-import { UniversalProcessingIndicator } from "@/components/universal-processing-indicator"
 
 export const dynamic = 'force-dynamic'
 
-export default async function DashboardLayout({
+export default async function OnboardingLayout({
   children,
 }: {
   children: React.ReactNode
@@ -16,15 +15,12 @@ export default async function DashboardLayout({
     redirect("/login")
   }
 
-  // Check if user has an organization
-  if (!session.user?.organizationId) {
-    redirect("/setup")
-  }
+  // Don't redirect to setup if already has org (they shouldn't be here)
+  // This will be handled by the setup page itself
 
   return (
     <div className="min-h-screen bg-background">
       {children}
-      <UniversalProcessingIndicator />
     </div>
   )
 }

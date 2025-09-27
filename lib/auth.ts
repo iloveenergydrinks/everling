@@ -231,56 +231,13 @@ export const authOptions: NextAuthOptions = {
           token.email = dbUser.email
           token.name = dbUser.name
           
-          // If user has no organization, create one
-          if (dbUser.organizations.length === 0) {
-            // Generate a unique organization slug from email
-            const emailPrefix = (email as string).split('@')[0]
-            let slug = emailPrefix.toLowerCase().replace(/[^a-z0-9]/g, '')
-            
-            // Check if slug exists and make it unique
-            let counter = 0
-            let finalSlug = slug
-            while (await prisma.organization.findUnique({ where: { slug: finalSlug } })) {
-              counter++
-              finalSlug = `${slug}${counter}`
-            }
-            
-            // Create organization and member
-            const org = await prisma.organization.create({
-              data: {
-                name: dbUser.name || emailPrefix,
-                slug: finalSlug,
-                emailPrefix: finalSlug,
-                members: {
-                  create: {
-                    userId: dbUser.id,
-                    role: 'admin'
-                  }
-                }
-              }
-            })
-            
-            // Auto-add the user's email to allowed emails (just like email registration)
-            await prisma.allowedEmail.create({
-              data: {
-                organizationId: org.id,
-                email: dbUser.email.toLowerCase(),
-                addedById: dbUser.id,
-                note: 'Registration email (auto-added via Google)',
-              }
-            }).catch(err => {
-              console.error('Failed to add email to allowed list:', err)
-              // Don't fail the login if this fails
-            })
-            
-            token.organizationId = org.id
-            token.organizationRole = 'admin'
-            token.organizationSlug = org.slug
-          } else if (dbUser.organizations.length > 0) {
+          // Check if user has an organization
+          if (dbUser.organizations.length > 0) {
             token.organizationId = dbUser.organizations[0].organizationId
             token.organizationRole = dbUser.organizations[0].role
             token.organizationSlug = dbUser.organizations[0].organization.slug
           }
+          // If no organization, user will be redirected to setup page
         }
       }
 
@@ -291,6 +248,11 @@ export const authOptions: NextAuthOptions = {
       return token
     },
     async redirect({ url, baseUrl }) {
+      // Check if URL contains setup (for new users without org)
+      if (url.includes("/setup")) {
+        return url
+      }
+      
       // Always redirect to dashboard after successful auth
       if (url.includes("/dashboard")) {
         return url
