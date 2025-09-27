@@ -6,7 +6,6 @@ import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/hooks/use-toast'
 import { CheckCircle, X, Loader2 } from 'lucide-react'
 import debounce from 'lodash/debounce'
@@ -182,14 +181,15 @@ export default function SetupOrganization() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Welcome to Everling!</CardTitle>
-          <CardDescription>
-            Let's set up your organization and choose your agent email address.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="w-full max-w-md">
+        <div className="border rounded-lg">
+          <div className="p-6 pb-0">
+            <h2 className="text-lg font-medium">Welcome to Everling!</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Let's set up your organization and choose your agent email address
+            </p>
+          </div>
+          <div className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Organization Name */}
             <div className="space-y-2">
@@ -236,15 +236,15 @@ export default function SetupOrganization() {
               
               {/* Suggestions */}
               {suggestions.length > 0 && (
-                <div className="mt-2 p-2 bg-muted rounded-md">
-                  <p className="text-xs text-muted-foreground mb-1">Available alternatives:</p>
+                <div className="mt-2 p-3 border rounded-md bg-muted/50">
+                  <p className="text-xs text-muted-foreground mb-2">Available alternatives:</p>
                   <div className="flex flex-wrap gap-1">
                     {suggestions.map((suggestion) => (
                       <button
                         key={suggestion}
                         type="button"
                         onClick={() => setAgentName(suggestion)}
-                        className="text-xs px-2 py-1 bg-background rounded hover:bg-foreground hover:text-background transition-colors"
+                        className="text-xs px-2 py-1 bg-background border rounded-sm hover:bg-foreground hover:text-background transition-colors"
                       >
                         {suggestion}
                       </button>
@@ -255,9 +255,9 @@ export default function SetupOrganization() {
 
               {/* Preview */}
               {agentName && isAvailable && (
-                <div className="mt-3 p-3 bg-muted/50 rounded-md">
+                <div className="mt-3 p-3 border rounded-md bg-green-50/50 dark:bg-green-950/20 border-green-200/50 dark:border-green-800/50">
                   <p className="text-xs text-muted-foreground mb-1">Your agent email will be:</p>
-                  <code className="text-sm font-mono">
+                  <code className="text-sm font-mono text-green-700 dark:text-green-400">
                     {agentName}@{process.env.NEXT_PUBLIC_EMAIL_DOMAIN || 'everling.io'}
                   </code>
                   <p className="text-xs text-muted-foreground mt-2">
@@ -283,8 +283,9 @@ export default function SetupOrganization() {
               )}
             </Button>
           </form>
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
