@@ -829,7 +829,7 @@ export default function DashboardPage() {
           
           {/* Header with Agent Email */}
           <div className="mb-8">
-            <div className="relative overflow-hidden rounded-xl border p-6 bg-gradient-to-br from-blue-50/50 via-transparent to-purple-50/50 dark:from-blue-950/30 dark:via-transparent dark:to-purple-950/30">
+            <div className="relative overflow-hidden rounded-lg border p-6 bg-gradient-to-br from-blue-50/50 via-transparent to-purple-50/50 dark:from-blue-950/30 dark:via-transparent dark:to-purple-950/30">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <h3 className="text-sm font-semibold mb-1">

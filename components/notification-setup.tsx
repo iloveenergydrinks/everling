@@ -236,7 +236,7 @@ export function NotificationSetup({
           <div className={`grid gap-3 ${discordConnected ? 'grid-cols-2 md:grid-cols-3' : 'grid-cols-2'}`}>
             <button
               onClick={() => toggleChannel('email')}
-              className={`p-3 border-2 rounded text-left transition-all relative ${
+              className={`p-3 border-2 rounded-md text-left transition-all relative ${
                 selectedChannels.includes('email') 
                   ? 'border-primary bg-primary/5' 
                   : 'border-input hover:bg-muted'
@@ -256,7 +256,7 @@ export function NotificationSetup({
             
             <button
               onClick={() => toggleChannel('sms')}
-              className={`p-3 border-2 rounded text-left transition-all relative ${
+              className={`p-3 border-2 rounded-md text-left transition-all relative ${
                 selectedChannels.includes('sms')
                   ? 'border-primary bg-primary/5' 
                   : 'border-input hover:bg-muted'
@@ -277,7 +277,7 @@ export function NotificationSetup({
             {discordConnected && (
               <button
                 onClick={() => toggleChannel('discord')}
-                className={`p-3 border-2 rounded text-left transition-all relative ${
+                className={`p-3 border-2 rounded-md text-left transition-all relative ${
                   selectedChannels.includes('discord')
                     ? 'border-primary bg-primary/5' 
                     : 'border-input hover:bg-muted'
