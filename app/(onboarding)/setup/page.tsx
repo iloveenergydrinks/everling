@@ -182,7 +182,7 @@ export default function SetupOrganization() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <div className="w-full max-w-md">
-        <div className="border rounded-lg">
+        <div className="border rounded">
           <div className="p-6 pb-0">
             <h2 className="text-lg font-medium">Welcome to Everling!</h2>
             <p className="text-sm text-muted-foreground mt-1">
@@ -202,6 +202,7 @@ export default function SetupOrganization() {
                 onChange={(e) => setOrganizationName(e.target.value)}
                 required
                 disabled={isCreating}
+                className="rounded"
               />
               <p className="text-xs text-muted-foreground">
                 Your company or team name
@@ -220,7 +221,7 @@ export default function SetupOrganization() {
                   onChange={handleAgentNameChange}
                   required
                   disabled={isCreating}
-                  className="pr-10"
+                  className="pr-10 rounded"
                 />
                 <div className="absolute right-2 top-1/2 -translate-y-1/2">
                   {getStatusIcon()}
@@ -236,7 +237,7 @@ export default function SetupOrganization() {
               
               {/* Suggestions */}
               {suggestions.length > 0 && (
-                <div className="mt-2 p-3 border rounded-md bg-muted/50">
+                <div className="mt-2 p-3 border rounded bg-muted/50">
                   <p className="text-xs text-muted-foreground mb-2">Available alternatives:</p>
                   <div className="flex flex-wrap gap-1">
                     {suggestions.map((suggestion) => (
@@ -244,7 +245,7 @@ export default function SetupOrganization() {
                         key={suggestion}
                         type="button"
                         onClick={() => setAgentName(suggestion)}
-                        className="text-xs px-2 py-1 bg-background border rounded-sm hover:bg-foreground hover:text-background transition-colors"
+                        className="text-xs px-2 py-1 bg-background border rounded hover:bg-accent hover:text-accent-foreground transition-colors"
                       >
                         {suggestion}
                       </button>
@@ -255,7 +256,7 @@ export default function SetupOrganization() {
 
               {/* Preview */}
               {agentName && isAvailable && (
-                <div className="mt-3 p-3 border rounded-md bg-green-50/50 dark:bg-green-950/20 border-green-200/50 dark:border-green-800/50">
+                <div className="mt-3 p-3 border rounded bg-green-50/50 dark:bg-green-950/20 border-green-200/50 dark:border-green-800/50">
                   <p className="text-xs text-muted-foreground mb-1">Your agent email will be:</p>
                   <code className="text-sm font-mono text-green-700 dark:text-green-400">
                     {agentName}@{process.env.NEXT_PUBLIC_EMAIL_DOMAIN || 'everling.io'}
@@ -270,7 +271,7 @@ export default function SetupOrganization() {
             {/* Submit Button */}
             <Button
               type="submit"
-              className="w-full"
+              className="w-full rounded"
               disabled={!isAvailable || !organizationName.trim() || isCreating}
             >
               {isCreating ? (
