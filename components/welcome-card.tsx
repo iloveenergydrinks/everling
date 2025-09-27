@@ -8,7 +8,7 @@ export function WelcomeCard({ organizationEmail }: { organizationEmail: string }
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check if user has dismissed the welcome via API
+    // Check if user has dismissed the welcome via API (database only)
     const checkDismissalStatus = async () => {
       try {
         const response = await fetch('/api/user/welcome-dismiss')
@@ -18,19 +18,13 @@ export function WelcomeCard({ organizationEmail }: { organizationEmail: string }
             setIsVisible(true)
           }
         } else {
-          // Fallback to localStorage if API fails
-          const dismissed = localStorage.getItem('welcome-dismissed')
-          if (!dismissed) {
-            setIsVisible(true)
-          }
+          // Show welcome if API fails (better to show than hide)
+          setIsVisible(true)
         }
       } catch (error) {
         console.error('Error checking welcome status:', error)
-        // Fallback to localStorage
-        const dismissed = localStorage.getItem('welcome-dismissed')
-        if (!dismissed) {
-          setIsVisible(true)
-        }
+        // Show welcome if there's an error (better to show than hide)
+        setIsVisible(true)
       } finally {
         setLoading(false)
       }
@@ -42,21 +36,20 @@ export function WelcomeCard({ organizationEmail }: { organizationEmail: string }
   const handleDismiss = async () => {
     setIsVisible(false)
     
-    // Save to localStorage immediately for quick response
-    localStorage.setItem('welcome-dismissed', 'true')
-    
-    // Also save to database
+    // Save to database
     try {
       await fetch('/api/user/welcome-dismiss', { method: 'POST' })
     } catch (error) {
       console.error('Error saving welcome dismissal:', error)
+      // If save fails, show it again on next load
+      setIsVisible(true)
     }
   }
 
   if (loading || !isVisible) return null
 
   return (
-    <div className="mb-8 rounded-lg border bg-background">
+    <div className="mb-8 md:mb-12 rounded-lg border bg-background">
       {/* Header */}
       <div className="flex items-center justify-between border-b px-4 py-3">
         <div>
