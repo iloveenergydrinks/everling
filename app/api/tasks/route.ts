@@ -29,13 +29,6 @@ export async function GET(request: NextRequest) {
     let currentUserId: string | null = null
     if (auth.userId) {
       currentUserId = auth.userId
-    } else if (auth.authenticated && auth.type === 'session') {
-      // For session auth, get user ID from email
-      const user = await prisma.user.findUnique({
-        where: { email: auth.userEmail! },
-        select: { id: true }
-      })
-      currentUserId = user?.id || null
     }
 
     // Build the where clause based on visibility rules

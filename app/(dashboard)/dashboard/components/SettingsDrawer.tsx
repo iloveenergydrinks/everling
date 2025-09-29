@@ -160,12 +160,14 @@ export function SettingsDrawer({
   }
   
   const handleGoogleUnlink = async () => {
-    const confirmed = await showConfirm({
-      title: 'Unlink Google Account',
-      description: 'Are you sure you want to unlink your Google account? You can always link it again later.',
-      confirmText: 'Unlink',
-      variant: 'destructive'
-    })
+    const confirmed = await showConfirm(
+      'Unlink Google Account',
+      'Are you sure you want to unlink your Google account? You can always link it again later.',
+      {
+        confirmText: 'Unlink',
+        variant: 'destructive'
+      }
+    )
     
     if (!confirmed) return
     
@@ -249,12 +251,14 @@ export function SettingsDrawer({
   }
 
   const deleteAllowedEmail = async (id: string, email: string) => {
-    const confirmed = await showConfirm({
-      title: 'Remove authorized sender?',
-      description: `Are you sure you want to remove ${email} from the allowed senders list? Emails from this address will no longer create tasks.`,
-      confirmText: 'Remove',
-      variant: 'destructive'
-    })
+    const confirmed = await showConfirm(
+      'Remove authorized sender?',
+      `Are you sure you want to remove ${email} from the allowed senders list? Emails from this address will no longer create tasks.`,
+      {
+        confirmText: 'Remove',
+        variant: 'destructive'
+      }
+    )
 
     if (!confirmed) return
 
