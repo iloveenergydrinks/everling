@@ -23,13 +23,70 @@ export async function GET(request: NextRequest) {
     const limit = searchParams.get("limit") ? parseInt(searchParams.get("limit")!) : undefined
     const status = searchParams.get("status")
     const assignedToId = searchParams.get("assignedTo")
+    const filter = searchParams.get("filter") // 'assigned', 'created', 'all'
+
+    // Get the current user's ID for filtering
+    let currentUserId: string | null = null
+    if (auth.userId) {
+      currentUserId = auth.userId
+    } else if (auth.authenticated && auth.type === 'session') {
+      // For session auth, get user ID from email
+      const user = await prisma.user.findUnique({
+        where: { email: auth.userEmail! },
+        select: { id: true }
+      })
+      currentUserId = user?.id || null
+    }
+
+    // Build the where clause based on visibility rules
+    let whereClause: any = {
+      organizationId: auth.organizationId,
+      ...(status && { status })
+    }
+
+    // Apply visibility rules - users can only see:
+    // 1. Tasks they created (any visibility)
+    // 2. Tasks assigned to them
+    // 3. Tasks shared with them (in sharedWith array)
+    // 4. Team tasks (visibility = 'team')
+    
+    if (currentUserId) {
+      // Default visibility filter (what user can see)
+      const visibilityConditions = [
+        { createdById: currentUserId }, // Tasks I created
+        { assignedToId: currentUserId }, // Tasks assigned to me
+        { sharedWith: { has: currentUserId } }, // Tasks shared with me
+        { visibility: 'team' } // Team-wide tasks
+      ]
+      
+      // Apply additional filters based on query params
+      if (filter === 'assigned') {
+        // Only tasks assigned to me
+        whereClause.assignedToId = currentUserId
+      } else if (filter === 'created') {
+        // Only tasks I created
+        whereClause.createdById = currentUserId
+      } else if (filter === 'team') {
+        // Only team-visible tasks
+        whereClause.visibility = 'team'
+      } else if (filter === 'shared') {
+        // Tasks shared with me (not assigned, not created by me)
+        whereClause.AND = [
+          { sharedWith: { has: currentUserId } },
+          { createdById: { not: currentUserId } },
+          { assignedToId: { not: currentUserId } }
+        ]
+      } else {
+        // Default: Show all tasks user has access to
+        whereClause.OR = visibilityConditions
+      }
+    } else {
+      // No user ID (shouldn't happen with auth), show only team tasks
+      whereClause.visibility = 'team'
+    }
 
     const dbTasks = await prisma.task.findMany({
-      where: {
-        organizationId: auth.organizationId,
-        ...(status && { status }),
-        ...(assignedToId && { assignedToId })
-      },
+      where: whereClause,
       include: {
         createdBy: {
           select: {

@@ -14,6 +14,7 @@ import {
   applySmartDeadlines 
 } from '@/lib/smart-deadlines'
 import { createMultipleTasksFromEmail } from '@/lib/email-multi-task'
+import { processTaskVisibility } from '@/lib/task-visibility'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -336,6 +337,14 @@ export async function processInboundEmail(emailData: EmailData) {
   
   try {
     // Find organization FIRST
+    console.log(`[${traceId}] 🔍 Looking up organization with emailPrefix: "${emailPrefix}" (extracted from ${toEmail})`)
+    
+    // Debug: Check what's in the database
+    const allOrgs = await prisma.organization.findMany({
+      select: { id: true, emailPrefix: true, name: true }
+    })
+    console.log(`[${traceId}] 🗄️ Organizations in database:`, allOrgs.map(o => `${o.name}: ${o.emailPrefix}`).join(', '))
+    
     const organization = await prisma.organization.findUnique({
       where: { emailPrefix },
       include: {
@@ -350,7 +359,19 @@ export async function processInboundEmail(emailData: EmailData) {
 
     if (!organization) {
       // Log the failed attempt (without organization ID since we don't have one)
-      console.log(`[${traceId}] Email rejected: No organization found for prefix: ${emailPrefix} (from: ${senderEmail})`)
+      console.log(`[${traceId}] ❌ Email rejected: No organization found for prefix: ${emailPrefix} (from: ${senderEmail})`)
+      console.log(`[${traceId}] Debug info:`)
+      console.log(`  - emailPrefix: "${emailPrefix}" (type: ${typeof emailPrefix}, length: ${emailPrefix.length})`)
+      console.log(`  - toEmail: "${toEmail}"`)
+      console.log(`  - originalRecipient: "${originalRecipient}"`)
+      
+      // Try finding with different methods to debug
+      const directQuery = await prisma.$queryRaw`
+        SELECT id, email_prefix, name 
+        FROM organizations 
+        WHERE email_prefix = ${emailPrefix}
+      `
+      console.log(`[${traceId}] Direct SQL query result:`, directQuery)
       
       // Return a status indicating the email was rejected (not an error)
       return {
@@ -464,24 +485,30 @@ export async function processInboundEmail(emailData: EmailData) {
       console.log('📧 Step 3a: Reply detection check:', { inReplyTo, hasInReplyTo: !!inReplyTo, isForward })
 
       // First, check if we've already processed this exact MessageID
-      console.log('📧 DEBUG: Checking for duplicate with MessageID:', emailData.MessageID)
-      console.log('📧 DEBUG: Organization ID:', organization.id)
+      // IMPORTANT: This is TENANT-SPECIFIC deduplication - we check within the organization only
+      console.log('📧 [MESSAGEDEDUP] Checking for duplicate MessageID within org:', {
+        messageId: emailData.MessageID,
+        organizationName: organization.name,
+        organizationId: organization.id,
+        tenantScope: 'This check is TENANT-SPECIFIC - only checks within this organization'
+      })
       
       if (emailData.MessageID) {
-        // First, let's see ALL email logs with this MessageID
+        // First, let's see ALL email logs with this MessageID IN THIS ORGANIZATION ONLY
         const allEmailLogsWithMessageId = await prisma.emailLog.findMany({
           where: {
-            organizationId: organization.id,
+            organizationId: organization.id, // TENANT-SPECIFIC: Only this org's emails
             messageId: emailData.MessageID
           },
           select: {
             id: true,
             taskId: true,
             createdAt: true,
-            processed: true
+            processed: true,
+            organizationId: true
           }
         })
-        console.log('📧 DEBUG: Found email logs with this MessageID:', allEmailLogsWithMessageId.length, allEmailLogsWithMessageId)
+        console.log(`📧 [MESSAGEDEDUP] Found ${allEmailLogsWithMessageId.length} emails with MessageID in org ${organization.name}:`, allEmailLogsWithMessageId)
         
         const duplicateEmail = await prisma.emailLog.findFirst({
           where: {
@@ -502,7 +529,13 @@ export async function processInboundEmail(emailData: EmailData) {
         })
 
         if (duplicateEmail?.task) {
-          console.log('📧 Duplicate email detected - task already exists for this MessageID')
+          console.log(`📧 [MESSAGEDEDUP] Duplicate email detected in org ${organization.name}:`, {
+            messageId: emailData.MessageID,
+            organizationId: organization.id,
+            existingTaskId: duplicateEmail.task.id,
+            existingTaskTitle: duplicateEmail.task.title,
+            note: 'Returning existing task - NOT creating duplicate within this organization'
+          })
           await prisma.emailLog.update({
             where: { id: emailLog.id },
             data: { 
@@ -1100,8 +1133,10 @@ export async function processInboundEmail(emailData: EmailData) {
       }
     }
 
-    // Get the first admin or member to assign as creator
-    const creator = organization.members.find((m: any) => m.role === 'admin') || organization.members[0]
+    // Try to find the sender as a member, otherwise use admin/first member
+    const creator = organization.members.find((m: any) => 
+      m.user.email?.toLowerCase() === senderEmail.toLowerCase()
+    ) || organization.members.find((m: any) => m.role === 'admin') || organization.members[0]
     
     // Get the user's timezone for proper date handling
     let userTimezone = 'America/New_York' // Default fallback
@@ -1142,13 +1177,36 @@ export async function processInboundEmail(emailData: EmailData) {
       toEmail
     )
     console.log('🤖 Task relationships:', relationships)
+    
+    // Process task visibility
+    const visibilityResult = await processTaskVisibility(
+      {
+        from: emailData.From,
+        subject: emailData.Subject,
+        body: emailData.TextBody || emailData.HtmlBody || '',
+        aiRelationships: relationships // Pass AI's understanding to visibility processor
+      },
+      organization.id,
+      creator?.userId || null
+    )
+    
+    console.log('👁️ Task visibility:', {
+      visibility: visibilityResult.visibility,
+      assignedTo: visibilityResult.assignedToId,
+      sharedWithCount: visibilityResult.sharedWith.length,
+      unresolved: visibilityResult.unresolvedMentions
+    })
 
     // Check for duplicate task before creating (single task)
     // Look for tasks created in the last hour with same title and due date
+    // NOTE: This is TENANT-SPECIFIC - organizationId ensures we only check duplicates within this org
+    console.log(`📧 [DEDUP] Checking for duplicates in Organization: ${organization.name} (${organization.id})`)
+    console.log(`📧 [DEDUP] Looking for tasks with title: "${extractedTask.title}" created in last hour`)
+    
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
     const existingDuplicate = await prisma.task.findFirst({
       where: {
-        organizationId: organization.id,
+        organizationId: organization.id, // TENANT-SPECIFIC: Only check within this organization
         title: extractedTask.title,
         dueDate: extractedTask.dueDate,
         createdAt: {
@@ -1161,8 +1219,11 @@ export async function processInboundEmail(emailData: EmailData) {
       }
     })
 
+    console.log(`📧 [DEDUP] Duplicate check result in org ${organization.name}:`, existingDuplicate ? 'DUPLICATE FOUND' : 'NO DUPLICATE - Creating new task')
+
     if (existingDuplicate) {
-      console.log(`📧 Duplicate task detected: "${extractedTask.title}" - returning existing task`)
+      console.log(`📧 [DEDUP] Duplicate task detected in org ${organization.name}: "${extractedTask.title}" - returning existing task`)
+      console.log(`📧 [DEDUP] Existing task ID: ${existingDuplicate.id} (created at ${existingDuplicate.createdAt})`)
       
       // Update email log to reference the existing task
       await prisma.emailLog.update({
@@ -1197,7 +1258,11 @@ export async function processInboundEmail(emailData: EmailData) {
         createdById: creator?.userId || null,
         createdVia: 'email',
         emailThreadId: emailData.MessageID || threadId, // Store thread ID for future replies
-        // Task relationship fields
+        // Visibility fields
+        visibility: visibilityResult.visibility,
+        assignedToId: visibilityResult.assignedToId,
+        sharedWith: visibilityResult.sharedWith,
+        // Legacy relationship fields (kept for backward compatibility)
         assignedToEmail: relationships.assignedToEmail,
         assignedByEmail: relationships.assignedByEmail,
         taskType: relationships.taskType,

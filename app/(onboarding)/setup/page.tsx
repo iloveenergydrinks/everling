@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,15 +12,18 @@ import debounce from 'lodash/debounce'
 
 export default function SetupOrganization() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { data: session, status } = useSession()
+  const isCreatingNew = searchParams.get('new') === 'true'
   const [agentName, setAgentName] = useState('')
   // Organization name will be auto-generated from agent name
   const [isChecking, setIsChecking] = useState(false)
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [suggestions, setSuggestions] = useState<string[]>([])
+  const [hasExistingOrg, setHasExistingOrg] = useState(false)
 
-  // Redirect if user already has an organization
+  // Check authentication status and existing orgs
   useEffect(() => {
     if (status === 'loading') return
     
@@ -28,24 +31,12 @@ export default function SetupOrganization() {
       router.push('/login')
       return
     }
-
-    // Check if user already has an organization
-    checkExistingOrganization()
-  }, [session, status, router])
-
-  const checkExistingOrganization = async () => {
-    try {
-      const response = await fetch('/api/user/organization')
-      if (response.ok) {
-        const data = await response.json()
-        if (data.hasOrganization) {
-          router.push('/dashboard')
-        }
-      }
-    } catch (error) {
-      console.error('Error checking organization:', error)
+    
+    // Check if user has existing organizations
+    if (session.user?.organizationId) {
+      setHasExistingOrg(true)
     }
-  }
+  }, [session, status, router])
 
   // Debounced availability check
   const checkAvailability = useCallback(
@@ -182,16 +173,18 @@ export default function SetupOrganization() {
       <div className="w-full max-w-md">
         <div className="border rounded">
           <div className="p-6 pb-0">
-            <h2 className="text-lg font-medium">Get started in seconds</h2>
+            <h2 className="text-lg font-medium">
+              {hasExistingOrg ? 'Create Additional Organization' : 'Create Your First Organization'}
+            </h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Choose your AI assistant email address
+              Choose a unique email address for your {hasExistingOrg ? 'new' : ''} AI assistant
             </p>
           </div>
           <div className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Agent Email */}
             <div className="space-y-2">
-              <Label htmlFor="agent">Choose Your AI Assistant Email</Label>
+              <Label htmlFor="agent">AI Assistant Email</Label>
               <div className="relative">
                 <Input
                   id="agent"
@@ -249,20 +242,33 @@ export default function SetupOrganization() {
             </div>
 
             {/* Submit Button */}
-            <Button
-              type="submit"
-              className="w-full rounded"
-              disabled={!isAvailable || !agentName.trim() || isCreating}
-            >
-              {isCreating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating your AI assistant...
-                </>
-              ) : (
-                'Get Started'
+            <div className="flex gap-3">
+              {hasExistingOrg && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 rounded"
+                  onClick={() => router.push('/dashboard')}
+                  disabled={isCreating}
+                >
+                  Cancel
+                </Button>
               )}
-            </Button>
+              <Button
+                type="submit"
+                className="flex-1 rounded"
+                disabled={!isAvailable || !agentName.trim() || isCreating}
+              >
+                {isCreating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {hasExistingOrg ? 'Creating...' : 'Creating your AI assistant...'}
+                  </>
+                ) : (
+                  hasExistingOrg ? 'Create Organization' : 'Get Started'
+                )}
+              </Button>
+            </div>
           </form>
           </div>
         </div>

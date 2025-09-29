@@ -389,8 +389,19 @@ export function TaskList({
                         </span>
                       )}
                       
-                      {/* Task type indicators */}
-                      {task.taskType === 'assigned' && task.userRole === 'executor' && (
+                      {/* Show intended recipient for team tasks */}
+                      {task.visibility === 'team' && task.assignedToEmail && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-100/50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400">
+                          {task.assignedToEmail === session?.user?.email ? (
+                            <>intended for you</>
+                          ) : (
+                            <>intended for {task.assignedToEmail.split('@')[0]}</>
+                          )}
+                        </span>
+                      )}
+                      
+                      {/* Task type indicators - but NOT for team tasks (they have their own indicator) */}
+                      {task.taskType === 'assigned' && task.userRole === 'executor' && task.visibility !== 'team' && (
                         <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-purple-100/50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400">
                           <ArrowDownToLine className="h-3 w-3" />
                           <span className="hidden md:inline">assigned to me</span>
@@ -466,14 +477,40 @@ export function TaskList({
                     </div>
                   )}
 
-                  {/* Source line */}
+                  {/* Source and assignment line */}
                   {task.createdVia === 'email' && task.emailMetadata?.from && (
-                    <div className="text-[10px] md:text-xs text-muted-foreground">
+                    <div className="text-[10px] md:text-xs text-muted-foreground space-y-1">
                       {(() => {
                         const raw = String(task.emailMetadata.from)
                         const match = raw.match(/<(.+?)>/)
                         const addr = (match ? match[1] : raw).toLowerCase()
-                        return <span>via email from {addr}</span>
+                        const parts = []
+                        
+                        // Show source
+                        parts.push(`via email from ${addr}`)
+                        
+                        // Show visibility/assignment info
+                        if (task.visibility === 'team') {
+                          parts.push('• visible to team')
+                          // If there's an intended recipient, show it
+                          if (task.assignedToEmail && task.assignedToEmail !== session?.user?.email) {
+                            parts.push(`• intended for ${task.assignedToEmail.split('@')[0]}`)
+                          }
+                        } else if (task.visibility === 'assigned' && task.assignedToEmail) {
+                          const assignedEmail = task.assignedToEmail.toLowerCase()
+                          if (assignedEmail !== addr) {
+                            parts.push(`• assigned to ${assignedEmail}`)
+                          }
+                        } else if (task.visibility === 'shared' && task.sharedWith && task.sharedWith.length > 0) {
+                          parts.push(`• shared with ${task.sharedWith.length} ${task.sharedWith.length === 1 ? 'person' : 'people'}`)
+                        }
+                        
+                        // Show legacy assignment info if no visibility set
+                        if (!task.visibility && task.assignedToEmail && task.assignedToEmail !== addr) {
+                          parts.push(`• for ${task.assignedToEmail.toLowerCase()}`)
+                        }
+                        
+                        return <span>{parts.join(' ')}</span>
                       })()}
                     </div>
                   )}

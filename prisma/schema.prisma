@@ -25,6 +25,7 @@ model Organization {
   members            OrganizationMember[]
   senderIntelligence SenderIntelligence[]
   tasks              Task[]
+  invitations        Invitation[]
 
   @@map("organizations")
 }
@@ -60,6 +61,7 @@ model User {
   discordDMError        String?              @map("discord_dm_error")
   welcomeDismissed      Boolean              @default(false) @map("welcome_dismissed")
   welcomeDismissedAt    DateTime?            @map("welcome_dismissed_at")
+  currentOrganizationId String?              @map("current_organization_id")
   accounts              Account[]
   allowedEmails         AllowedEmail[]
   apiKeys               ApiKey[]
@@ -68,6 +70,7 @@ model User {
   taskActivities        TaskActivity[]
   tasksAssigned         Task[]               @relation("AssignedTo")
   tasksCreated          Task[]               @relation("CreatedBy")
+  invitationsSent       Invitation[]
 
   @@map("users")
 }
@@ -82,6 +85,24 @@ model OrganizationMember {
 
   @@id([organizationId, userId])
   @@map("organization_members")
+}
+
+model Invitation {
+  id             String       @id @default(cuid())
+  token          String       @unique @default(cuid())
+  email          String
+  organizationId String       @map("organization_id")
+  role           String       @default("member")
+  invitedById    String       @map("invited_by_id")
+  expiresAt      DateTime     @map("expires_at")
+  usedAt         DateTime?    @map("used_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy      User         @relation(fields: [invitedById], references: [id])
+
+  @@index([email])
+  @@index([token])
+  @@map("invitations")
 }
 
 model Task {
@@ -106,6 +127,8 @@ model Task {
   stakeholders       Json?
   taskType           String?        @map("task_type")
   userRole           String?        @map("user_role")
+  visibility         String         @default("private") // 'private', 'assigned', 'shared', 'team'
+  sharedWith         String[]       @default([]) @map("shared_with") // Array of user IDs who can see the task
   externalCalendarId String?        @map("external_calendar_id")
   externalEventId    String?        @map("external_event_id")
   externalProvider   String?        @map("external_provider")
@@ -128,6 +151,9 @@ model Task {
   @@index([dueDate])
   @@index([externalProvider])
   @@index([externalEventId])
+  @@index([visibility])
+  @@index([createdById])
+  @@index([sharedWith])
   @@map("tasks")
 }
 

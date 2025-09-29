@@ -217,7 +217,11 @@ export const authOptions: NextAuthOptions = {
       if (email) {
         const dbUser = await prisma.user.findUnique({
           where: { email: email as string },
-          include: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            currentOrganizationId: true,
             organizations: {
               include: {
                 organization: true
@@ -233,9 +237,13 @@ export const authOptions: NextAuthOptions = {
           
           // Check if user has an organization
           if (dbUser.organizations.length > 0) {
-            token.organizationId = dbUser.organizations[0].organizationId
-            token.organizationRole = dbUser.organizations[0].role
-            token.organizationSlug = dbUser.organizations[0].organization.slug
+            // Use currentOrganizationId if set, otherwise use first organization
+            const currentOrgId = dbUser.currentOrganizationId || dbUser.organizations[0].organizationId
+            const currentMembership = dbUser.organizations.find(m => m.organizationId === currentOrgId) || dbUser.organizations[0]
+            
+            token.organizationId = currentMembership.organizationId
+            token.organizationRole = currentMembership.role
+            token.organizationSlug = currentMembership.organization.slug
           }
           // If no organization, user will be redirected to setup page
         }

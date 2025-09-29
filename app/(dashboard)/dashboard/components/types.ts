@@ -17,7 +17,11 @@ export interface Task {
     name: string | null
     email: string
   } | null
-  // Relationship fields
+  // Visibility fields
+  visibility?: 'private' | 'assigned' | 'shared' | 'team'
+  assignedToId?: string | null
+  sharedWith?: string[]
+  // Legacy relationship fields
   assignedToEmail?: string | null
   assignedByEmail?: string | null
   taskType?: string | null
@@ -28,9 +32,7 @@ export interface Task {
 }
 
 export type TimeFilter = 'today' | 'tomorrow' | 'week' | 'no-date' | 'expired' | 'completed'
-export type OwnershipFilter = 'my-tasks' | 'waiting-on' | 'observing'
 
 export interface FilterState {
   time: TimeFilter[]
-  ownership: OwnershipFilter[]
 }

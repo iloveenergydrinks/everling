@@ -4,6 +4,7 @@ import {
   updateSenderIntelligence 
 } from '@/lib/smart-agent'
 import { applySmartDeadlines } from '@/lib/smart-deadlines'
+import { processTaskVisibility } from '@/lib/task-visibility'
 
 interface EmailData {
   From: string
@@ -58,8 +59,10 @@ export async function createMultipleTasksFromEmail(
   const createdTasks = []
   const skippedDuplicates = []
   
-  // Get the first admin or member to assign as creator
-  const creator = organization.members.find((m: any) => m.role === 'admin') || organization.members[0]
+  // Try to find the sender as a member, otherwise use admin/first member
+  const creator = organization.members.find((m: any) => 
+    m.user.email?.toLowerCase() === metadata.senderEmail.toLowerCase()
+  ) || organization.members.find((m: any) => m.role === 'admin') || organization.members[0]
   
   // Get the user's timezone for proper date handling
   let userTimezone = 'America/New_York' // Default fallback
@@ -90,6 +93,25 @@ export async function createMultipleTasksFromEmail(
     metadata.toEmail
   )
   console.log('🤖 Task relationships:', relationships)
+  
+  // Process task visibility once for all tasks (they share the same email context)
+  const visibilityResult = await processTaskVisibility(
+    {
+      from: emailData.From,
+      subject: emailData.Subject,
+      body: emailData.TextBody || emailData.HtmlBody || '',
+      aiRelationships: relationships // Pass AI's understanding
+    },
+    organization.id,
+    creator?.userId || null
+  )
+  
+  console.log('👁️ Task visibility:', {
+    visibility: visibilityResult.visibility,
+    assignedTo: visibilityResult.assignedToId,
+    sharedWithCount: visibilityResult.sharedWith.length,
+    unresolved: visibilityResult.unresolvedMentions
+  })
 
   // Process each task
   for (let index = 0; index < tasksData.length; index++) {
@@ -246,7 +268,11 @@ export async function createMultipleTasksFromEmail(
         createdById: creator?.userId || null,
         createdVia: 'email',
         emailThreadId: emailData.MessageID || metadata.threadId,
-        // Task relationship fields
+        // Visibility fields
+        visibility: visibilityResult.visibility,
+        assignedToId: visibilityResult.assignedToId,
+        sharedWith: visibilityResult.sharedWith,
+        // Legacy relationship fields (kept for backward compatibility)
         assignedToEmail: relationships.assignedToEmail,
         assignedByEmail: relationships.assignedByEmail,
         taskType: relationships.taskType,

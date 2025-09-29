@@ -16,18 +16,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if user already has an organization
-    const existingMembership = await prisma.organizationMember.findFirst({
-      where: { userId: session.user.id }
-    })
-
-    if (existingMembership) {
-      return NextResponse.json(
-        { error: 'You already belong to an organization' },
-        { status: 400 }
-      )
-    }
-
     const body = await request.json()
     const { agentName, organizationName } = body
 
@@ -88,6 +76,14 @@ export async function POST(request: NextRequest) {
           }
         })
       }
+
+      // Set this as the user's current organization
+      await tx.user.update({
+        where: { id: session.user.id },
+        data: {
+          currentOrganizationId: organization.id
+        }
+      })
 
       return organization
     })

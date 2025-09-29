@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { useSession, signOut } from "next-auth/react"
+import { useSearchParams } from "next/navigation"
 import { getSmartTaskList, interpretCommand } from "@/lib/tasks"
 import { NotificationSetup } from "@/components/notification-setup"
 import { getUserTimezone } from "@/lib/timezones"
@@ -9,7 +10,7 @@ import { toast } from "@/hooks/use-toast"
 import { 
   Copy, Circle, Calendar, AlertTriangle,
   Plus, X, Search, RefreshCw, ArrowDownToLine,
-  CheckCircle, User
+  CheckCircle, User, ChevronDown
 } from "lucide-react"
 import { CompactTimezoneIndicator } from "@/components/compact-timezone-indicator"
 import { WelcomeCard } from "@/components/welcome-card"
@@ -22,10 +23,12 @@ import { HowItWorksDrawer } from "./components/HowItWorksDrawer"
 import { OrganizationDrawer } from "./components/OrganizationDrawer"
 import { ApiKeyModal } from "./components/ApiKeyModal"
 import { TaskList } from "./components/TaskList"
-import { Task, FilterState, TimeFilter, OwnershipFilter } from "./components/types"
+import { OrganizationSwitcher } from "./components/OrganizationSwitcher"
+import { Task, FilterState, TimeFilter } from "./components/types"
 
 export default function DashboardPage() {
   const { data: session } = useSession()
+  const searchParams = useSearchParams()
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -61,9 +64,12 @@ export default function DashboardPage() {
   
   // Filter state
   const [filters, setFilters] = useState<FilterState>({
-    time: [],
-    ownership: []
+    time: []
   })
+  
+  // View mode for task display
+  const [viewMode, setViewMode] = useState<'all' | 'assigned' | 'created' | 'shared' | 'team'>('all')
+  const [showViewDropdown, setShowViewDropdown] = useState(false)
 
   // Discord connection state
   const [discordConnectedUI, setDiscordConnectedUI] = useState<boolean>(false)
@@ -152,6 +158,21 @@ export default function DashboardPage() {
       window.removeEventListener('discord-status-update', handleDiscordStatusUpdate as any)
     }
   }, [])
+  
+  // Check for Google linking success
+  useEffect(() => {
+    if (searchParams?.get('linked') === 'google') {
+      toast({
+        title: 'Google account linked!',
+        description: 'You can now sign in with your Google account.',
+        variant: 'success'
+      })
+      // Remove the parameter from URL to prevent showing on refresh
+      const url = new URL(window.location.href)
+      url.searchParams.delete('linked')
+      window.history.replaceState({}, '', url)
+    }
+  }, [searchParams])
 
   // Initial data fetching
   useEffect(() => {
@@ -180,6 +201,13 @@ export default function DashboardPage() {
     
     return () => clearInterval(interval)
   }, [])
+  
+  // Refetch tasks when view mode changes
+  useEffect(() => {
+    if (!loading) { // Only refetch after initial load
+      fetchTasks()
+    }
+  }, [viewMode])
 
   // Process AI commands
   const processAICommand = async (query: string) => {
@@ -454,7 +482,11 @@ export default function DashboardPage() {
   // Fetch functions
   const fetchTasks = async () => {
     try {
-      const response = await fetch("/api/tasks")
+      const url = viewMode === 'all' 
+        ? "/api/tasks"
+        : `/api/tasks?filter=${viewMode}`
+      
+      const response = await fetch(url)
       if (response.ok) {
         const data = await response.json()
         setTasks(data)
@@ -691,23 +723,7 @@ export default function DashboardPage() {
       })
     }
 
-    // Ownership filters
-    if (filters.ownership.length > 0) {
-      result = result.filter(task => {
-        return filters.ownership.some(filter => {
-          switch (filter) {
-            case 'my-tasks':
-              return task.userRole === 'executor'
-            case 'waiting-on':
-              return task.userRole === 'delegator'
-            case 'observing':
-              return task.userRole === 'observer' || task.taskType === 'fyi'
-            default:
-              return true
-          }
-        })
-      })
-    }
+    // View mode is now handled by API filter, not here
 
     // Auto-hide expired tasks unless filter is active
     if (!filters.time.includes('expired')) {
@@ -784,17 +800,20 @@ export default function DashboardPage() {
     )
   }
 
-  const isDrawerOpen = showSettings || showNotifications || showIntegrations || showHowItWorks
-  const isWideDrawer = false // No wide drawers anymore
+  // Each drawer handles its own backdrop and animations now
+  // No need for dashboard-level backdrop or content shifting
 
   return (
     <>
-      <div 
-        className={`min-h-screen py-8 md:py-12 transition-all duration-300 ease-out ${
-          isDrawerOpen ? 'md:mr-[480px] lg:mr-[640px]' : ''
-        }`}
-      >
+      <div className="min-h-screen py-8 md:py-12">
         <div className="mx-auto max-w-3xl px-4 md:px-6">
+          {/* Organization Switcher */}
+          <div className="mb-6 flex justify-between items-center">
+            <OrganizationSwitcher key={organization?.updatedAt} />
+            <div className="text-sm text-muted-foreground">
+              {session?.user?.email}
+            </div>
+          </div>
 
           {/* Monthly Usage Warning Banner */}
           {organization && organization.plan === 'free' && (
@@ -1131,119 +1150,95 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Filter Pills */}
-          <div className="mb-6 space-y-2">
-            <div className="flex flex-wrap gap-2">
-              {/* Time filters */}
-              <button
-                onClick={() => toggleFilter('time', 'today')}
-                className={`inline-flex items-center px-2 py-0.5 text-xs rounded transition-colors ${
-                  filters.time.includes('today')
-                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                    : 'bg-muted/50 hover:bg-muted text-muted-foreground'
-                }`}
-              >
-                Today
-              </button>
-              <button
-                onClick={() => toggleFilter('time', 'tomorrow')}
-                className={`inline-flex items-center px-2 py-0.5 text-xs rounded transition-colors ${
-                  filters.time.includes('tomorrow')
-                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                    : 'bg-muted/50 hover:bg-muted text-muted-foreground'
-                }`}
-              >
-                Tomorrow
-              </button>
-              <button
-                onClick={() => toggleFilter('time', 'week')}
-                className={`inline-flex items-center px-2 py-0.5 text-xs rounded transition-colors ${
-                  filters.time.includes('week')
-                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                    : 'bg-muted/50 hover:bg-muted text-muted-foreground'
-                }`}
-              >
-                This Week
-              </button>
-              <button
-                onClick={() => toggleFilter('time', 'no-date')}
-                className={`inline-flex items-center px-2 py-0.5 text-xs rounded transition-colors ${
-                  filters.time.includes('no-date')
-                    ? 'bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400'
-                    : 'bg-muted/50 hover:bg-muted text-muted-foreground'
-                }`}
-              >
-                No Date
-              </button>
-              <button
-                onClick={() => toggleFilter('time', 'expired')}
-                className={`inline-flex items-center px-2 py-0.5 text-xs rounded transition-colors ${
-                  filters.time.includes('expired')
-                    ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                    : 'bg-muted/50 hover:bg-muted text-muted-foreground'
-                }`}
-              >
-                Expired
-              </button>
-              <button
-                onClick={() => toggleFilter('time', 'completed')}
-                className={`inline-flex items-center px-2 py-0.5 text-xs rounded transition-colors ${
-                  filters.time.includes('completed')
-                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                    : 'bg-muted/50 hover:bg-muted text-muted-foreground'
-                }`}
-              >
-                Completed
-              </button>
+          {/* Beautiful Filters */}
+          <div className="space-y-3 mb-6">
+            {/* View selector with count */}
+            <div className="flex items-center justify-between">
+              <div className="relative">
+                <button
+                  onClick={() => setShowViewDropdown(!showViewDropdown)}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm bg-background border border-border rounded hover:border-foreground/20 transition-all"
+                >
+                  <Circle className="h-2 w-2 fill-current" />
+                  <span>
+                    {viewMode === 'all' && 'All tasks'}
+                    {viewMode === 'assigned' && 'Assigned to me'}
+                    {viewMode === 'created' && 'Created by me'}
+                    {viewMode === 'shared' && 'Shared with me'}
+                    {viewMode === 'team' && 'Team tasks'}
+                  </span>
+                  <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ml-1 ${showViewDropdown ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {showViewDropdown && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-10" 
+                      onClick={() => setShowViewDropdown(false)}
+                    />
+                    <div className="absolute top-full left-0 mt-1.5 bg-background border rounded shadow-md overflow-hidden z-20 min-w-[200px]">
+                      {[
+                        { value: 'all', label: 'All tasks' },
+                        { value: 'assigned', label: 'Assigned to me' },
+                        { value: 'created', label: 'Created by me' },
+                        { value: 'shared', label: 'Shared with me' },
+                        { value: 'team', label: 'Team tasks' }
+                      ].map((option, index) => (
+                        <button
+                          key={option.value}
+                          onClick={() => { 
+                            setViewMode(option.value as any)
+                            setShowViewDropdown(false) 
+                          }}
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors flex items-center gap-2 ${
+                            viewMode === option.value ? 'bg-muted/50' : ''
+                          }`}
+                        >
+                          <Circle className={`h-1.5 w-1.5 ${viewMode === option.value ? 'fill-current' : ''}`} />
+                          <span className={viewMode === option.value ? 'font-medium' : ''}>{option.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
               
-              <div className="w-px h-6 bg-border mx-1" />
-              
-              {/* Ownership filters */}
-              <button
-                onClick={() => toggleFilter('ownership', 'my-tasks')}
-                className={`inline-flex items-center px-2 py-0.5 text-xs rounded transition-colors ${
-                  filters.ownership.includes('my-tasks')
-                    ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
-                    : 'bg-muted/50 hover:bg-muted text-muted-foreground'
-                }`}
-              >
-                My Tasks
-              </button>
-              <button
-                onClick={() => toggleFilter('ownership', 'waiting-on')}
-                className={`inline-flex items-center px-2 py-0.5 text-xs rounded transition-colors ${
-                  filters.ownership.includes('waiting-on')
-                    ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400'
-                    : 'bg-muted/50 hover:bg-muted text-muted-foreground'
-                }`}
-              >
-                Waiting On
-              </button>
-              <button
-                onClick={() => toggleFilter('ownership', 'observing')}
-                className={`inline-flex items-center px-2 py-0.5 text-xs rounded transition-colors ${
-                  filters.ownership.includes('observing')
-                    ? 'bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-400'
-                    : 'bg-muted/50 hover:bg-muted text-muted-foreground'
-                }`}
-              >
-                Observing
-              </button>
+              <div className="text-sm text-muted-foreground">
+                {visibleTasks.length}
+              </div>
             </div>
-            
-            {/* Filter summary */}
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span>
-                Showing {visibleTasks.length} {visibleTasks.length === 1 ? 'task' : 'tasks'}
-                {filters.time.length > 0 && ` • ${filters.time.join(', ')}`}
-                {filters.ownership.length > 0 && ` • ${filters.ownership.join(', ')}`}
-              </span>
-              <button
-                onClick={() => setFilters({ time: [], ownership: [] })}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Clear filters
-              </button>
+
+            {/* Time filters - elegant pills */}
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { value: 'today', label: 'Today' },
+                { value: 'tomorrow', label: 'Tomorrow' },
+                { value: 'week', label: 'This week' },
+                { value: 'expired', label: 'Overdue' },
+                { value: 'no-date', label: 'No date' },
+                { value: 'completed', label: 'Done' }
+              ].map((filter) => (
+                <button
+                  key={filter.value}
+                  onClick={() => toggleFilter('time', filter.value as TimeFilter)}
+                  className={`px-2.5 py-1 text-xs rounded border transition-all ${
+                    filters.time.includes(filter.value as TimeFilter)
+                      ? 'bg-foreground text-background border-foreground'
+                      : 'bg-background border-border hover:border-foreground/50'
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+              
+              {filters.time.length > 0 && (
+                <button
+                  onClick={() => setFilters({ time: [] })}
+                  className="px-2.5 py-1 text-xs rounded text-muted-foreground hover:text-foreground transition-all"
+                >
+                  Clear
+                </button>
+              )}
             </div>
           </div>
 
@@ -1323,19 +1318,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Overlay for desktop drawers */}
-      {isDrawerOpen && (
-        <div 
-          className={`hidden md:block fixed inset-0 bg-black/10 z-40 transition-all duration-300 ease-out md:mr-[480px] lg:mr-[640px]`}
-          onClick={() => {
-            setShowSettings(false)
-            setShowNotifications(false)
-            setShowIntegrations(false)
-            setShowHowItWorks(false)
-            setShowOrganization(false)
-          }}
-        />
-      )}
+      {/* Removed - each drawer handles its own backdrop */}
 
       {/* Drawers */}
       <SettingsDrawer
@@ -1394,6 +1377,7 @@ export default function DashboardPage() {
       <OrganizationDrawer
         show={showOrganization}
         onClose={() => setShowOrganization(false)}
+        onOrganizationUpdate={fetchOrganization}
       />
     </>
   )

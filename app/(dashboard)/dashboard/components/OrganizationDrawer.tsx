@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/hooks/use-toast'
-import { Loader2, Users, Settings, Send, UserPlus, Crown, User, Shield, Copy, Trash2 } from 'lucide-react'
+import { Loader2, Users, Settings, Send, UserPlus, Crown, User, Shield, Copy, Trash2, X } from 'lucide-react'
 import { DrawerWrapper } from './DrawerWrapper'
 
 interface Organization {
@@ -37,9 +37,10 @@ interface Member {
 interface OrganizationDrawerProps {
   show: boolean
   onClose: () => void
+  onOrganizationUpdate?: () => void
 }
 
-export function OrganizationDrawer({ show, onClose }: OrganizationDrawerProps) {
+export function OrganizationDrawer({ show, onClose, onOrganizationUpdate }: OrganizationDrawerProps) {
   const { data: session } = useSession()
   const [activeTab, setActiveTab] = useState('general')
   const [loading, setLoading] = useState(true)
@@ -54,12 +55,15 @@ export function OrganizationDrawer({ show, onClose }: OrganizationDrawerProps) {
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('member')
   const [inviting, setInviting] = useState(false)
+  const [pendingInvites, setPendingInvites] = useState<any[]>([])
+  const [loadingInvites, setLoadingInvites] = useState(false)
 
   // Fetch data when drawer opens
   useEffect(() => {
     if (show) {
       fetchOrganizationData()
       fetchMembers()
+      fetchPendingInvites()
     }
   }, [show])
 
@@ -121,6 +125,10 @@ export function OrganizationDrawer({ show, onClose }: OrganizationDrawerProps) {
           description: 'Organization name updated',
           variant: 'success'
         })
+        // Notify parent to refresh organization data
+        if (onOrganizationUpdate) {
+          onOrganizationUpdate()
+        }
       } else {
         throw new Error('Failed to update')
       }
@@ -164,6 +172,11 @@ export function OrganizationDrawer({ show, onClose }: OrganizationDrawerProps) {
         })
         setInviteEmail('')
         fetchMembers() // Refresh members list
+        fetchPendingInvites() // Refresh pending invites
+        // Notify parent to refresh organization data
+        if (onOrganizationUpdate) {
+          onOrganizationUpdate()
+        }
       } else {
         const error = await response.json()
         throw new Error(error.message || 'Failed to send invite')
@@ -194,6 +207,10 @@ export function OrganizationDrawer({ show, onClose }: OrganizationDrawerProps) {
           description: 'Member has been removed from the organization',
           variant: 'success'
         })
+        // Notify parent to refresh organization data
+        if (onOrganizationUpdate) {
+          onOrganizationUpdate()
+        }
       } else {
         throw new Error('Failed to remove member')
       }
@@ -201,6 +218,73 @@ export function OrganizationDrawer({ show, onClose }: OrganizationDrawerProps) {
       toast({
         title: 'Error',
         description: 'Failed to remove member',
+        variant: 'error'
+      })
+    }
+  }
+
+  const fetchPendingInvites = async () => {
+    setLoadingInvites(true)
+    try {
+      const response = await fetch('/api/organization/invites')
+      if (response.ok) {
+        const data = await response.json()
+        setPendingInvites(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch invites:', error)
+    } finally {
+      setLoadingInvites(false)
+    }
+  }
+
+  const handleResendInvite = async (inviteId: string) => {
+    try {
+      const response = await fetch(`/api/organization/invites/${inviteId}/resend`, {
+        method: 'POST'
+      })
+
+      if (response.ok) {
+        toast({
+          title: 'Invitation resent',
+          description: 'The invitation has been resent successfully',
+          variant: 'success'
+        })
+        fetchPendingInvites() // Refresh the list
+      } else {
+        throw new Error('Failed to resend invitation')
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to resend invitation',
+        variant: 'error'
+      })
+    }
+  }
+
+  const handleRevokeInvite = async (inviteId: string, email: string) => {
+    if (!confirm(`Are you sure you want to revoke the invitation to ${email}?`)) return
+
+    try {
+      const response = await fetch(`/api/organization/invites/${inviteId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        toast({
+          title: 'Invitation revoked',
+          description: 'The invitation has been revoked',
+          variant: 'success'
+        })
+        setPendingInvites(pendingInvites.filter(i => i.id !== inviteId))
+      } else {
+        throw new Error('Failed to revoke invitation')
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to revoke invitation',
         variant: 'error'
       })
     }
@@ -270,7 +354,7 @@ export function OrganizationDrawer({ show, onClose }: OrganizationDrawerProps) {
                 </TabsTrigger>
                 <TabsTrigger value="invites" className="gap-2">
                   <Send className="h-4 w-4" />
-                  Invites
+                  Invites {pendingInvites.length > 0 && `(${pendingInvites.length})`}
                 </TabsTrigger>
               </TabsList>
 
@@ -484,6 +568,80 @@ export function OrganizationDrawer({ show, onClose }: OrganizationDrawerProps) {
                     </div>
                   )}
                 </div>
+
+                {/* Pending Invitations */}
+                {canManageMembers && (
+                  <div className="border rounded-md p-3 md:p-4">
+                    <h3 className="font-medium text-sm mb-3">Pending Invitations</h3>
+                    
+                    {loadingInvites ? (
+                      <div className="text-center py-6">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto" />
+                      </div>
+                    ) : pendingInvites.length === 0 ? (
+                      <div className="text-center py-6 text-muted-foreground text-sm">
+                        No pending invitations
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {pendingInvites.map((invite) => (
+                          <div
+                            key={invite.id}
+                            className={`flex items-center justify-between p-3 rounded border ${
+                              invite.isExpired ? 'bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-800' : 'bg-background'
+                            }`}
+                          >
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium">{invite.email}</span>
+                                <span className={`text-xs px-2 py-0.5 rounded border ${
+                                  invite.role === 'admin' 
+                                    ? 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950/30 dark:text-orange-400' 
+                                    : 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-400'
+                                }`}>
+                                  {invite.role}
+                                </span>
+                                {invite.isExpired && (
+                                  <span className="text-xs text-red-600 dark:text-red-400">Expired</span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                                <span>
+                                  Invited by {invite.invitedBy.name || invite.invitedBy.email}
+                                </span>
+                                <span>•</span>
+                                <span>
+                                  {new Date(invite.createdAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleResendInvite(invite.id)}
+                                className="text-xs"
+                              >
+                                <Send className="h-3 w-3 mr-1" />
+                                Resend
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRevokeInvite(invite.id, invite.email)}
+                                className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+                              >
+                                <X className="h-3 w-3 mr-1" />
+                                Revoke
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </div>
