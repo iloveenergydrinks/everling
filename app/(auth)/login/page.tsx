@@ -134,7 +134,7 @@ function LoginForm() {
                 setEmail("")
               }}
               variant="outline" 
-              className="w-full"
+              className="w-full rounded"
             >
               Back to login
             </Button>
@@ -206,6 +206,7 @@ function LoginForm() {
                 <Input
                   id="email"
                   type="email"
+                  className="rounded"
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -224,6 +225,7 @@ function LoginForm() {
                   <Input
                     id="password"
                     type="password"
+                    className="rounded"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -240,7 +242,7 @@ function LoginForm() {
               )}
             </CardContent>
             <CardFooter className="flex flex-col space-y-4">
-              <Button type="submit" className="w-full" disabled={loading || !email}>
+              <Button type="submit" className="w-full rounded" disabled={loading || !email}>
                 {loading 
                   ? (magicLinkMode ? "Sending link..." : "Signing in...") 
                   : (magicLinkMode ? "Send magic link" : "Sign in")
@@ -259,7 +261,7 @@ function LoginForm() {
               <Button
                 type="button"
                 variant="outline"
-                className="w-full"
+                className="w-full rounded"
                 onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
                 disabled={loading}
               >

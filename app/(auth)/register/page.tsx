@@ -181,6 +181,7 @@ export default function RegisterPage() {
               <Input
                 id="name"
                 type="text"
+                className="rounded"
                 placeholder="John Doe"
                 value={formData.name}
                 onChange={handleChange}
@@ -192,6 +193,7 @@ export default function RegisterPage() {
               <Input
                 id="email"
                 type="email"
+                className="rounded"
                 placeholder="you@example.com"
                 value={formData.email}
                 onChange={handleChange}
@@ -203,6 +205,7 @@ export default function RegisterPage() {
               <Input
                 id="password"
                 type="password"
+                className="rounded"
                 placeholder="••••••••"
                 value={formData.password}
                 onChange={handleChange}
@@ -236,7 +239,7 @@ export default function RegisterPage() {
                       }
                     }}
                     required
-                    className="pr-24"
+                    className="rounded pr-24"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                     @everling.io
@@ -298,7 +301,7 @@ export default function RegisterPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full rounded" disabled={loading}>
               {loading ? "Creating account..." : "Create account"}
             </Button>
             
@@ -314,7 +317,7 @@ export default function RegisterPage() {
             <Button
               type="button"
               variant="outline"
-              className="w-full"
+              className="w-full rounded"
               onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
               disabled={loading}
             >

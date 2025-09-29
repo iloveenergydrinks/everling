@@ -140,6 +140,7 @@ function ResetPasswordForm() {
                     <Input
                       id="password"
                       type="password"
+                      className="rounded"
                       placeholder="Enter new password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -153,6 +154,7 @@ function ResetPasswordForm() {
                     <Input
                       id="confirmPassword"
                       type="password"
+                      className="rounded"
                       placeholder="Confirm new password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
@@ -162,12 +164,12 @@ function ResetPasswordForm() {
                   </div>
                   
                   <div className="space-y-3">
-                    <Button type="submit" className="w-full" disabled={loading || !password || !confirmPassword}>
+                    <Button type="submit" className="w-full rounded" disabled={loading || !password || !confirmPassword}>
                       {loading ? "Updating password..." : "Update password"}
                     </Button>
                     
                     <Link href="/login" className="block">
-                      <Button variant="ghost" className="w-full">
+                      <Button variant="ghost" className="w-full rounded">
                         Back to login
                       </Button>
                     </Link>

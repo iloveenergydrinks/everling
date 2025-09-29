@@ -47,13 +47,10 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen py-12">
       <div className="mx-auto max-w-md px-6">
         {/* Header */}
-        <div className="mb-8 text-center">
-          <Link href="/" className="text-2xl font-medium hover:text-muted-foreground transition-colors">
-            ← Everling.io
+        <div className="mb-6">
+          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
+            Back to home
           </Link>
-          <p className="text-sm text-muted-foreground mt-2">
-            Reset your password
-          </p>
         </div>
 
         {/* Reset Form */}
@@ -79,12 +76,12 @@ export default function ForgotPasswordPage() {
                     setEmail("")
                   }}
                   variant="outline" 
-                  className="w-full"
+                  className="w-full rounded"
                 >
                   Send another link
                 </Button>
                 <Link href="/login" className="block">
-                  <Button variant="ghost" className="w-full">
+                  <Button variant="ghost" className="w-full rounded">
                     Back to login
                   </Button>
                 </Link>
@@ -112,6 +109,7 @@ export default function ForgotPasswordPage() {
                     <Input
                       id="email"
                       type="email"
+                      className="rounded"
                       placeholder="you@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -120,12 +118,12 @@ export default function ForgotPasswordPage() {
                   </div>
                   
                   <div className="space-y-3">
-                    <Button type="submit" className="w-full" disabled={loading || !email}>
+                    <Button type="submit" className="w-full rounded" disabled={loading || !email}>
                       {loading ? "Sending reset link..." : "Send reset link"}
                     </Button>
                     
                     <Link href="/login" className="block">
-                      <Button variant="ghost" className="w-full">
+                      <Button variant="ghost" className="w-full rounded">
                         Back to login
                       </Button>
                     </Link>
