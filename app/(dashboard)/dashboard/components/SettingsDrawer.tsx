@@ -159,10 +159,215 @@ export function SettingsDrawer({
     })
   }
   
+  const handlePasswordChange = async () => {
+    const hasPassword = authProviders.providers?.password || false
+    
+    if (hasPassword) {
+      // User wants to change existing password
+      const currentPassword = await showPrompt(
+        'Enter Current Password',
+        'Please enter your current password to verify your identity',
+        {
+          confirmText: 'Continue',
+          cancelText: 'Cancel',
+          placeholder: 'Current password',
+          inputType: 'password'
+        }
+      )
+      
+      if (!currentPassword) return
+      
+      const newPassword = await showPrompt(
+        'Enter New Password',
+        'Choose a strong password with at least 8 characters',
+        {
+          confirmText: 'Set Password',
+          cancelText: 'Cancel',
+          placeholder: 'New password (min 8 characters)',
+          inputType: 'password'
+        }
+      )
+      
+      if (!newPassword || newPassword.length < 8) {
+        if (newPassword && newPassword.length < 8) {
+          toast({
+            title: "Password too short",
+            description: "Password must be at least 8 characters long",
+            variant: "error"
+          })
+        }
+        return
+      }
+      
+      // Change the password
+      try {
+        const response = await fetch('/api/user/change-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            currentPassword,
+            newPassword 
+          })
+        })
+        
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Failed to change password')
+        }
+        
+        toast({
+          title: "Password changed",
+          description: "Your password has been updated successfully",
+          variant: 'success'
+        })
+        
+        await fetchAuthProviders()
+      } catch (error: any) {
+        toast({
+          title: "Failed to change password",
+          description: error.message || "Please check your current password and try again",
+          variant: "error"
+        })
+      }
+    } else {
+      // User wants to set a new password
+      const newPassword = await showPrompt(
+        'Set Your Password',
+        'Create a password to secure your account. You can use this alongside Google login.',
+        {
+          confirmText: 'Set Password',
+          cancelText: 'Cancel',
+          placeholder: 'Enter password (min 8 characters)',
+          inputType: 'password'
+        }
+      )
+      
+      if (!newPassword || newPassword.length < 8) {
+        if (newPassword && newPassword.length < 8) {
+          toast({
+            title: "Password too short",
+            description: "Password must be at least 8 characters long",
+            variant: "error"
+          })
+        }
+        return
+      }
+      
+      // Set the password
+      try {
+        const response = await fetch('/api/user/set-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: newPassword })
+        })
+        
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Failed to set password')
+        }
+        
+        toast({
+          title: "Password set successfully",
+          description: "You can now sign in with your email and password",
+          variant: 'success'
+        })
+        
+        await fetchAuthProviders()
+      } catch (error: any) {
+        toast({
+          title: "Failed to set password",
+          description: error.message || "Could not set password",
+          variant: "error"
+        })
+      }
+    }
+  }
+
   const handleGoogleUnlink = async () => {
+    // Check if user has a password first
+    if (!authProviders.providers?.password) {
+      // User needs to set a password first
+      const password = await showPrompt(
+        'Set a Password First',
+        'To unlink Google, you need another way to sign in. Please create a password for your account. This ensures you won\'t lose access.',
+        {
+          confirmText: 'Set Password',
+          cancelText: 'Cancel',
+          placeholder: 'Enter a secure password (min 8 characters)',
+          inputType: 'password'
+        }
+      )
+      
+      if (!password || password.length < 8) {
+        if (password && password.length < 8) {
+          toast({
+            title: "Password too short",
+            description: "Password must be at least 8 characters long",
+            variant: "error"
+          })
+        }
+        return
+      }
+      
+      // Set the password first
+      setUnlinkingGoogle(true)
+      try {
+        const setPasswordResponse = await fetch('/api/user/set-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        })
+        
+        if (!setPasswordResponse.ok) {
+          const errorData = await setPasswordResponse.json()
+          throw new Error(errorData.error || 'Failed to set password')
+        }
+        
+        toast({
+          title: "Password set successfully",
+          description: "Now unlinking your Google account...",
+          variant: 'success'
+        })
+        
+        // Refresh auth providers
+        await fetchAuthProviders()
+        
+        // Now proceed to unlink Google
+        const unlinkResponse = await fetch('/api/user/auth-providers', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider: 'google' })
+        })
+        
+        if (!unlinkResponse.ok) {
+          const unlinkData = await unlinkResponse.json()
+          throw new Error(unlinkData.error || 'Failed to unlink Google account')
+        }
+        
+        toast({
+          title: "Google account unlinked",
+          description: "You can now log in with your email and password.",
+          variant: 'success'
+        })
+        
+        await fetchAuthProviders()
+      } catch (error: any) {
+        toast({
+          title: "Operation failed",
+          description: error.message || "Could not complete the operation",
+          variant: "error",
+        })
+      } finally {
+        setUnlinkingGoogle(false)
+      }
+      
+      return
+    }
+    
+    // User already has a password, proceed with normal unlinking
     const confirmed = await showConfirm(
       'Unlink Google Account',
-      'Are you sure you want to unlink your Google account? You can always link it again later.',
+      'Are you sure you want to unlink your Google account? You can still log in with your password.',
       {
         confirmText: 'Unlink',
         variant: 'destructive'
@@ -587,19 +792,14 @@ export function SettingsDrawer({
                         </p>
                       </div>
                     </div>
-                    {authProviders.providers?.password && (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="rounded text-xs"
-                        onClick={() => {
-                          onClose()
-                          window.location.href = '/forgot-password'
-                        }}
-                      >
-                        Change Password
-                      </Button>
-                    )}
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="rounded text-xs"
+                      onClick={handlePasswordChange}
+                    >
+                      {authProviders.providers?.password ? 'Change Password' : 'Set Password'}
+                    </Button>
                   </div>
                   
                   {/* Google */}

@@ -123,7 +123,7 @@ export default function RegisterPage() {
   if (success) {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
-        <Card className="w-full max-w-md">
+        <Card className="w-full max-w-md rounded">
           <CardHeader>
             <CardTitle className="text-green-600">🎉 Your AI Assistant is Ready!</CardTitle>
             <CardDescription>
@@ -162,7 +162,7 @@ export default function RegisterPage() {
         </div>
 
         {/* Register Form */}
-        <Card className="w-full">
+        <Card className="w-full rounded">
         <CardHeader className="text-center">
           <CardTitle className="text-xl">Create account</CardTitle>
           <CardDescription>

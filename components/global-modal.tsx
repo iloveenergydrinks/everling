@@ -23,6 +23,8 @@ interface ModalState {
   variant?: "default" | "destructive"
   promptValue?: string
   onPromptConfirm?: (value: string) => void
+  placeholder?: string
+  inputType?: "text" | "password"
 }
 
 // Global state management for modals
@@ -75,11 +77,11 @@ export function GlobalModal() {
         {modalState.type === "prompt" && (
           <div className="py-4">
             <input
-              type="text"
+              type={modalState.inputType || "text"}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               className="w-full px-3 py-2 text-sm border rounded-sm focus:outline-none focus:ring-1 focus:ring-primary"
-              placeholder="Enter value..."
+              placeholder={modalState.placeholder || "Enter value..."}
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -169,6 +171,8 @@ export const showPrompt = (
     confirmText?: string
     cancelText?: string
     defaultValue?: string
+    placeholder?: string
+    inputType?: "text" | "password"
   }
 ) => {
   return new Promise<string | null>((resolve) => {
@@ -181,6 +185,8 @@ export const showPrompt = (
         confirmText: options?.confirmText || "OK",
         cancelText: options?.cancelText || "Cancel",
         promptValue: options?.defaultValue || "",
+        placeholder: options?.placeholder,
+        inputType: options?.inputType,
         onPromptConfirm: (value) => {
           resolve(value)
         },

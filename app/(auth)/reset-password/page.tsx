@@ -102,7 +102,7 @@ function ResetPasswordForm() {
         </div>
 
         {/* Reset Form */}
-        <Card className="w-full">
+        <Card className="w-full rounded">
           {success ? (
             <CardContent className="text-center py-8">
               <div className="mb-4">
@@ -186,7 +186,7 @@ export default function ResetPasswordPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center">
-        <Card className="w-full max-w-md">
+        <Card className="w-full max-w-md rounded">
           <CardContent className="pt-6">
             <div className="text-center">Loading...</div>
           </CardContent>

@@ -57,7 +57,7 @@ export default function ForgotPasswordPage() {
         </div>
 
         {/* Reset Form */}
-        <Card className="w-full">
+        <Card className="w-full rounded">
           {sent ? (
             <CardContent className="text-center py-8">
               <div className="mb-4">
@@ -102,7 +102,7 @@ export default function ForgotPasswordPage() {
               <form onSubmit={handleSubmit}>
                 <CardContent className="space-y-4">
                   {error && (
-                    <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                    <div className="rounded bg-destructive/10 p-3 text-sm text-destructive">
                       {error}
                     </div>
                   )}

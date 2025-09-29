@@ -98,7 +98,7 @@ function LoginForm() {
         </div>
 
         {/* Login Form */}
-        <Card className="w-full">
+        <Card className="w-full rounded">
         <CardHeader className="text-center">
           <CardTitle className="text-xl">Sign in</CardTitle>
           <CardDescription>
