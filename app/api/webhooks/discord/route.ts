@@ -90,9 +90,13 @@ async function handleSlashCommand(interaction: any) {
   const { data, member, user } = interaction
   const command = data.name
   const options = data.options || []
+  
+  console.log(`[Discord] Handling slash command: ${command}`)
 
   // Get the Discord user
   const discordUser = member?.user || user
+  
+  console.log(`[Discord] User ID: ${discordUser.id}, Username: ${discordUser.username}`)
 
   // Find the linked user account
   const linkedUser = await prisma.user.findFirst({
@@ -105,6 +109,7 @@ async function handleSlashCommand(interaction: any) {
   })
 
   if (!linkedUser) {
+    console.log(`[Discord] User not linked: ${discordUser.id}`)
     return NextResponse.json({
       type: 4,
       data: {
@@ -113,9 +118,12 @@ async function handleSlashCommand(interaction: any) {
       }
     })
   }
+  
+  console.log(`[Discord] Linked user found: ${linkedUser.email}`)
 
   // Always defer ephemeral, then follow up asynchronously
   ;(async () => {
+    const startTime = Date.now()
     try {
       switch (command) {
         case 'task': {
@@ -192,41 +200,71 @@ async function handleSlashCommand(interaction: any) {
         }
 
         case 'digest': {
-          // Build an ephemeral digest-like response
-          const today = new Date(); today.setHours(0, 0, 0, 0)
-          const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1)
+          console.log(`[Discord] Starting digest for user ${linkedUser.email}`)
+          // Build an ephemeral digest-like response with timeout protection
+          const digestTimeout = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Digest timeout')), 2500)
+          )
+          
+          try {
+            const queryStartTime = Date.now()
+            const digestData = await Promise.race([
+              (async () => {
+                const today = new Date(); today.setHours(0, 0, 0, 0)
+                const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1)
 
-          const tasks = await prisma.task.findMany({
-            where: {
-              createdById: linkedUser.id,
-              status: { not: 'done' },
-              OR: [
-                { dueDate: { gte: today, lt: tomorrow } },
-                { reminderDate: { gte: today, lt: tomorrow } }
-              ]
-            },
-            orderBy: [
-              { priority: 'desc' },
-              { dueDate: 'asc' },
-              { reminderDate: 'asc' }
-            ],
-            take: 10
-          })
-
-          const totalPending = await prisma.task.count({
-            where: { createdById: linkedUser.id, status: { not: 'done' } }
-          })
-
-          let content = "📋 **Your Task Digest**\n\n"
-          if (tasks.length === 0) {
-            content += "You have no tasks due today."
-          } else {
-            content += tasks.map((t, i) => `${i + 1}. ${t.title}${t.dueDate ? ` (due ${new Date(t.dueDate).toLocaleDateString()})` : ''}`).join('\n')
-            if (totalPending > tasks.length) {
-              content += `\n\n+${totalPending - tasks.length} more pending task(s)`
+                // Run both queries in parallel for speed
+                const [tasks, totalPending] = await Promise.all([
+                  prisma.task.findMany({
+                    where: {
+                      createdById: linkedUser.id,
+                      status: { not: 'done' },
+                      OR: [
+                        { dueDate: { gte: today, lt: tomorrow } },
+                        { reminderDate: { gte: today, lt: tomorrow } }
+                      ]
+                    },
+                    orderBy: [
+                      { priority: 'desc' },
+                      { dueDate: 'asc' },
+                      { reminderDate: 'asc' }
+                    ],
+                    take: 10
+                  }),
+                  prisma.task.count({
+                    where: { createdById: linkedUser.id, status: { not: 'done' } }
+                  })
+                ])
+                
+                return { tasks, totalPending }
+              })(),
+              digestTimeout
+            ])
+            
+            console.log(`[Discord] Digest queries completed in ${Date.now() - queryStartTime}ms`)
+            const { tasks, totalPending } = digestData as any
+            
+            let content = "📋 **Your Task Digest**\n\n"
+            if (tasks.length === 0) {
+              content += "You have no tasks due today."
+            } else {
+              content += tasks.map((t: any, i: number) => `${i + 1}. ${t.title}${t.dueDate ? ` (due ${new Date(t.dueDate).toLocaleDateString()})` : ''}`).join('\n')
+              if (totalPending > tasks.length) {
+                content += `\n\n+${totalPending - tasks.length} more pending task(s)`
+              }
             }
+            
+            console.log(`[Discord] Sending digest follow-up with ${tasks.length} tasks`)
+            await sendFollowup(interaction, { content, flags: 64 })
+            console.log(`[Discord] Digest follow-up sent successfully`)
+          } catch (err: any) {
+            console.error('Digest command error:', err.message || err)
+            // Send a simpler fallback response
+            await sendFollowup(interaction, { 
+              content: "📋 Fetching your digest... Please check your dashboard at https://everling.io/dashboard", 
+              flags: 64 
+            })
           }
-          await sendFollowup(interaction, { content, flags: 64 })
           break
         }
 
@@ -237,10 +275,14 @@ async function handleSlashCommand(interaction: any) {
     } catch (err) {
       console.error('Slash command follow-up error:', err)
       try { await sendFollowup(interaction, { content: '❌ An error occurred while processing your command.', flags: 64 }) } catch {}
+    } finally {
+      const duration = Date.now() - startTime
+      console.log(`[Discord] Command ${command} completed in ${duration}ms`)
     }
   })()
 
   // Defer ephemeral response immediately
+  console.log(`[Discord] Sending deferred response for ${command}`)
   return NextResponse.json({
     type: 5,
     data: { flags: 64 }
@@ -250,15 +292,29 @@ async function handleSlashCommand(interaction: any) {
 // Helper: send follow-up message after a deferred reply
 async function sendFollowup(interaction: any, data: { content?: string; embeds?: any; flags?: number }) {
   const url = `https://discord.com/api/webhooks/${interaction.application_id}/${interaction.token}`
-  await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      content: data.content,
-      embeds: data.embeds,
-      flags: typeof data.flags === 'number' ? data.flags : 64
+  
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        content: data.content,
+        embeds: data.embeds,
+        flags: typeof data.flags === 'number' ? data.flags : 64
+      })
     })
-  })
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`Discord follow-up failed: ${response.status} ${response.statusText}`, errorText)
+      throw new Error(`Discord API error: ${response.status}`)
+    }
+    
+    return response
+  } catch (error) {
+    console.error('Error sending Discord follow-up:', error)
+    throw error
+  }
 }
 
 // (old handleTasksListCommand inlined into deferred follow-up flow)
