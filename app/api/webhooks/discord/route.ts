@@ -103,6 +103,7 @@ async function handleSlashCommand(interaction: any) {
     where: {
       OR: [
         { discordId: discordUser.id },
+        { discordUserId: discordUser.id },
         { email: `${discordUser.username}@discord` }
       ]
     }
@@ -133,37 +134,50 @@ async function handleSlashCommand(interaction: any) {
 
           if (!description) {
             await sendFollowup(interaction, { content: "❌ Please provide a task description", flags: 64 })
-            return
+            break
           }
 
           const enrichedContent = `${description}${priority === 'high' ? ' [high priority]' : ''}${due ? ` [due ${due}]` : ''}`
 
-          const result = await smartAgent({
-            content: enrichedContent,
-            subject: `Quick task from Discord`,
-            from: discordUser?.username || 'Discord User',
-            metadata: {
-              source: 'discord',
-              channelId: interaction.channel_id,
-              guildId: interaction.guild_id,
-              messageId: interaction.id
-            },
-            userId: linkedUser.id
-          })
+          try {
+            console.log(`[Discord] Creating task with content: ${enrichedContent}`)
+            const result = await smartAgent({
+              content: enrichedContent,
+              subject: `Quick task from Discord`,
+              from: discordUser?.username || 'Discord User',
+              metadata: {
+                source: 'discord',
+                channelId: interaction.channel_id,
+                guildId: interaction.guild_id,
+                messageId: interaction.id
+              },
+              userId: linkedUser.id
+            })
 
-          if (result.success && result.task) {
-            await sendFollowup(interaction, {
-              content: `✅ Created task: **${result.task.title}**${result.task.dueDate ? `\n📅 Due: ${new Date(result.task.dueDate).toLocaleDateString()}` : ''}`,
-              flags: 64
+            console.log(`[Discord] Task creation result:`, JSON.stringify(result))
+            
+            if (result.success && result.task) {
+              await sendFollowup(interaction, {
+                content: `✅ Created task: **${result.task.title}**${result.task.dueDate ? `\n📅 Due: ${new Date(result.task.dueDate).toLocaleDateString()}` : ''}`,
+                flags: 64
+              })
+            } else if (result.success && result.tasks && result.tasks.length > 0) {
+              const taskList = result.tasks.map((t: any, i: number) => `${i + 1}. ${t.title}${t.dueDate ? ` (due ${new Date(t.dueDate).toLocaleDateString()})` : ''}`).join('\n')
+              await sendFollowup(interaction, {
+                content: `✅ Created ${result.tasks.length} task(s):\n${taskList}`,
+                flags: 64
+              })
+            } else {
+              const errorMsg = result.message || "Failed to create task"
+              console.error(`[Discord] Task creation failed:`, errorMsg)
+              await sendFollowup(interaction, { content: `❌ ${errorMsg}`, flags: 64 })
+            }
+          } catch (error: any) {
+            console.error(`[Discord] Task creation error:`, error)
+            await sendFollowup(interaction, { 
+              content: `❌ Error creating task: ${error.message || 'Unknown error'}`, 
+              flags: 64 
             })
-          } else if (result.success && result.tasks && result.tasks.length > 0) {
-            const taskList = result.tasks.map((t: any, i: number) => `${i + 1}. ${t.title}${t.dueDate ? ` (due ${new Date(t.dueDate).toLocaleDateString()})` : ''}`).join('\n')
-            await sendFollowup(interaction, {
-              content: `✅ Created ${result.tasks.length} task(s):\n${taskList}`,
-              flags: 64
-            })
-          } else {
-            await sendFollowup(interaction, { content: "❌ Failed to create task. Please try again.", flags: 64 })
           }
           break
         }
