@@ -35,19 +35,38 @@ export async function POST(req: NextRequest) {
     const signature = req.headers.get('X-Signature-Ed25519')
     const timestamp = req.headers.get('X-Signature-Timestamp')
     
-    // Parse the interaction
+    // Parse the interaction first to check if it's a verification ping
     const interaction = JSON.parse(body)
     
-    // Handle Discord ping (verification) - MUST respond immediately
+    // For Discord verification ping, check signature if headers are present
     if (interaction.type === 1) {
-      console.log('Discord verification ping received')
+      // If this is a verification ping and we have signature headers, verify them
+      if ((signature || timestamp) && process.env.DISCORD_PUBLIC_KEY) {
+        const isValid = verifyDiscordSignature(
+          body,
+          signature!,
+          timestamp!,
+          process.env.DISCORD_PUBLIC_KEY
+        )
+        
+        if (!isValid) {
+          console.log('Invalid signature for verification ping')
+          console.log('Signature:', signature?.substring(0, 20) + '...')
+          console.log('Timestamp:', timestamp)
+          console.log('Public key:', process.env.DISCORD_PUBLIC_KEY?.substring(0, 20) + '...')
+          console.log('Body:', body.substring(0, 100))
+          return NextResponse.json({ error: 'invalid_request_signature' }, { status: 401 })
+        }
+      }
+      
+      console.log('Discord verification ping received and validated')
       return NextResponse.json({ type: 1 })
     }
     
-    // For actual commands, verify signature if public key is set
+    // For all other interactions, require signature verification if public key is set
     if (process.env.DISCORD_PUBLIC_KEY && process.env.DISCORD_PUBLIC_KEY !== '') {
       if (!signature || !timestamp) {
-        console.log('Missing signature headers')
+        console.log('Missing signature headers for interaction')
         return NextResponse.json({ error: 'Missing signature headers' }, { status: 401 })
       }
       
@@ -59,10 +78,11 @@ export async function POST(req: NextRequest) {
       )
       
       if (!isValid) {
-        console.log('Invalid signature for command:', interaction.data?.name)
-        console.log('Public key:', process.env.DISCORD_PUBLIC_KEY)
+        console.log('Invalid signature for interaction')
         return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
       }
+    } else {
+      console.log('⚠️ WARNING: DISCORD_PUBLIC_KEY not configured - signature verification skipped')
     }
     
     // Handle slash commands
